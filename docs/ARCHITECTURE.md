@@ -118,7 +118,7 @@ job or extra infrastructure to maintain.
 | Suite | What it proves |
 | --- | --- |
 | `src/game/engine.test.ts` | Every rule and edge case of the auction; random games always terminate and budgets always add up |
-| `src/data/characters.test.ts` | Character ids are unique and every universe is large enough for the biggest team |
+| `src/data/characters.test.ts` | Character ids are unique, every character has a rating and a reason, and every universe has enough cards and a spread of strong, average and weak ones |
 | `supabase/tests/parity.test.ts` | Runs the real migration in PGlite. Checks validation, seat and host permissions, that the rival and the deck are never leaked, that API roles cannot touch tables, and that random games produce identical views in SQL and TypeScript at every step |
 
 | `e2e/online.e2e.mjs` | Two isolated browser sessions play a whole online game through the real UI against the migration. Asserts that the hidden character never appears in the rival's page, that both players see every result, that only the host can start or restart, and that a reload keeps the seat. It runs without a Realtime server, so it also proves the polling fallback is sufficient on its own |
@@ -135,7 +135,7 @@ that the tables and internal helpers are not reachable (HTTP 404 and 406).
 - **Routing**: a 30-line hash router (`src/router.ts`). Hash routes work on any static
   host with no rewrite rules, and a room link (`#/room/ABCDE`) survives a refresh.
 - **Code splitting**: the online screens and the Supabase client are loaded on demand, so
-  same-device players download about 58 kB of JavaScript (gzipped) instead of 118 kB.
+  same-device players download about 64 kB of JavaScript (gzipped) instead of 124 kB.
 - **Internationalisation**: a typed dictionary (`src/i18n/strings.ts`). The English table
   is typed as `Record<StringKey, string>`, so a missing translation is a compile error.
 - **Fonts**: self-hosted through Fontsource; the app makes no third-party font requests.
