@@ -22,13 +22,46 @@ export interface BoardProps {
   onPass(): void;
   onNext(): void;
   onQuit(): void;
+  /**
+   * Quick matches: leaving gives the win to the opponent, so the quit link
+   * says so and asks for a second tap.
+   */
+  quitForfeits?: boolean;
+  /** Quick matches: time left for the player who has to act. */
+  clock?: { seat: Seat; secondsLeft: number };
+  /** Quick matches: called to take the win once the opponent's time is up. */
+  onClaim?: () => void;
 }
+
+/** The clock stays out of the way until this many seconds are left. */
+const CLOCK_VISIBLE_FROM = 30;
 
 const rivalOf = (seat: Seat): Seat => (seat === 0 ? 1 : 0);
 
-export function Board({ view, mode, busy, error, onDraw, onBid, onPass, onNext, onQuit }: BoardProps) {
+export function Board({
+  view,
+  mode,
+  busy,
+  error,
+  onDraw,
+  onBid,
+  onPass,
+  onNext,
+  onQuit,
+  quitForfeits,
+  clock,
+  onClaim,
+}: BoardProps) {
   const { t, money } = useI18n();
   const [peeking, setPeeking] = useState(false);
+  const [confirmingQuit, setConfirmingQuit] = useState(false);
+
+  // The second tap must follow the first within a few seconds.
+  useEffect(() => {
+    if (!confirmingQuit) return;
+    const timer = window.setTimeout(() => setConfirmingQuit(false), 4000);
+    return () => window.clearTimeout(timer);
+  }, [confirmingQuit]);
 
   // Never carry a peek over to the next card.
   useEffect(() => setPeeking(false), [view.round, view.phase]);
@@ -73,9 +106,19 @@ export function Board({ view, mode, busy, error, onDraw, onBid, onPass, onNext, 
           </span>
           {view.code && <span>{t('board.room', { code: view.code })}</span>}
         </p>
-        <button type="button" className="link" onClick={onQuit}>
-          {t('board.quit')}
-        </button>
+        {quitForfeits ? (
+          <button
+            type="button"
+            className="link"
+            onClick={() => (confirmingQuit ? onQuit() : setConfirmingQuit(true))}
+          >
+            {t(confirmingQuit ? 'board.forfeit.confirm' : 'board.forfeit')}
+          </button>
+        ) : (
+          <button type="button" className="link" onClick={onQuit}>
+            {t('board.quit')}
+          </button>
+        )}
       </header>
 
       <Scoreboard view={view} />
@@ -151,6 +194,27 @@ export function Board({ view, mode, busy, error, onDraw, onBid, onPass, onNext, 
         <p className="alert" role="alert">
           {t(`error.${error}` as StringKey)}
         </p>
+      )}
+
+      {clock && clock.secondsLeft <= CLOCK_VISIBLE_FROM && (
+        <div className="clock" role="status">
+          {mine(clock.seat) ? (
+            <p className="alert">{t('board.timer.you', { n: Math.max(0, clock.secondsLeft) })}</p>
+          ) : clock.secondsLeft > 0 ? (
+            <p className="note">
+              {t('board.timer.rival', { name: player(clock.seat).name, n: clock.secondsLeft })}
+            </p>
+          ) : (
+            <>
+              <p className="note">{t('board.timer.expired', { name: player(clock.seat).name })}</p>
+              {onClaim && (
+                <button type="button" className="btn btn--wide" onClick={onClaim} disabled={busy}>
+                  {t('board.timer.claim')}
+                </button>
+              )}
+            </>
+          )}
+        </div>
       )}
 
       <section className="controls">

@@ -1,13 +1,23 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Board } from '../components/Board';
 import { Final } from '../components/Final';
-import type { GameView } from '../game/types';
+import type { GameView, Seat } from '../game/types';
+import { useNow } from '../hooks';
 import { useI18n } from '../i18n';
 import type { StringKey } from '../i18n/strings';
 import { ONLINE_AVAILABLE } from '../online/config';
 import { useOnlineRoom, type OnlineRoom } from '../online/useOnlineRoom';
 import { navigate } from '../router';
 import { readStored, writeStored } from '../storage';
+
+/** Seconds a player has for one action in a quick match. Enforced by the server. */
+export const TURN_SECONDS = 60;
+
+/** What a quick match needs from the screen that hosts it. */
+export interface MatchedHandlers {
+  onExit(): void;
+  onFindAnother(): void;
+}
 
 /** One online room: join form, lobby, board or final screen depending on its state. */
 export function Room({ code }: { code: string }) {
@@ -25,12 +35,36 @@ export function Room({ code }: { code: string }) {
   return <ConnectedRoom code={code} />;
 }
 
-function ConnectedRoom({ code }: { code: string }) {
+/**
+ * A room this device is connected to. With `matched`, the room came from
+ * matchmaking: its code stays hidden, leaving forfeits, turns are timed and
+ * the final screen offers a new opponent instead of a rematch.
+ */
+export function ConnectedRoom({ code, matched }: { code: string; matched?: MatchedHandlers }) {
   const { t } = useI18n();
   const room = useOnlineRoom(code);
   const { view } = room;
 
   if (!view) {
+    if (matched) {
+      return (
+        <main className="page">
+          <h1 className="display">{t('match.title')}</h1>
+          {room.loadError ? (
+            <>
+              <p className="alert" role="alert">
+                {t(`error.${room.loadError}` as StringKey)}
+              </p>
+              <button type="button" className="btn btn--primary" onClick={matched.onFindAnother}>
+                {t('match.again')}
+              </button>
+            </>
+          ) : (
+            <p className="waiting">{t('online.connecting')}</p>
+          )}
+        </main>
+      );
+    }
     if (room.loadError === 'NOT_IN_ROOM') return <JoinForm code={code} room={room} />;
     return (
       <main className="page">
@@ -49,9 +83,17 @@ function ConnectedRoom({ code }: { code: string }) {
     );
   }
 
-  if (view.status === 'lobby') return <Lobby view={view} room={room} />;
+  if (view.status === 'lobby') {
+    if (!matched) return <Lobby view={view} room={room} />;
+    return (
+      <main className="page">
+        <h1 className="display">{t('match.title')}</h1>
+        <p className="waiting">{t('match.searching')}</p>
+      </main>
+    );
+  }
 
-  return <Game view={view} room={room} />;
+  return <Game view={view} room={room} matched={matched} />;
 }
 
 /**
@@ -62,8 +104,20 @@ function ConnectedRoom({ code }: { code: string }) {
  * counts the results it has shown (`shown`) and replays any it has not seen
  * before displaying the current state.
  */
-function Game({ view, room }: { view: GameView; room: OnlineRoom }) {
-  const home = () => navigate('/');
+function Game({ view, room, matched }: { view: GameView; room: OnlineRoom; matched?: MatchedHandlers }) {
+  const home = matched ? matched.onExit : () => navigate('/');
+  // In a quick match, leaving the board means giving up the game.
+  const quit = matched ? () => void room.resign() : home;
+  // Quick matches never show their room code.
+  const shownView: GameView = matched ? { ...view, code: null } : view;
+
+  const actor: Seat | null =
+    view.phase === 'draw' ? view.drawer : view.phase === 'bidding' ? view.turn : null;
+  const timed = Boolean(matched) && view.status === 'playing' && actor !== null;
+  const now = useNow(timed ? 1000 : null);
+  const idle = (view.idle ?? 0) + Math.max(0, now - room.receivedAt) / 1000;
+  const clock = timed && actor !== null ? { seat: actor, secondsLeft: Math.ceil(TURN_SECONDS - idle) } : undefined;
+
   const [shown, setShown] = useState(() =>
     view.phase === 'reveal' ? view.history.length - 1 : view.history.length,
   );
@@ -78,7 +132,7 @@ function Game({ view, room }: { view: GameView; room: OnlineRoom }) {
   if (missed) {
     const serverIsHere = view.phase === 'reveal' && view.history.length === shown + 1;
     const replay: GameView = {
-      ...view,
+      ...shownView,
       status: 'playing',
       phase: 'reveal',
       round: missed.round,
@@ -98,7 +152,8 @@ function Game({ view, room }: { view: GameView; room: OnlineRoom }) {
           setShown(shown + 1);
           if (serverIsHere) void room.act('next');
         }}
-        onQuit={home}
+        onQuit={quit}
+        quitForfeits={Boolean(matched) && view.status === 'playing'}
       />
     );
   }
@@ -106,8 +161,10 @@ function Game({ view, room }: { view: GameView; room: OnlineRoom }) {
   if (view.status === 'finished') {
     return (
       <Final
-        view={view}
-        onRematch={view.you === 0 ? () => void room.start() : undefined}
+        view={shownView}
+        onRematch={!matched && view.you === 0 ? () => void room.start() : undefined}
+        onFindAnother={matched?.onFindAnother}
+        forfeit={view.forfeit ?? null}
         busy={room.busy}
         onHome={home}
       />
@@ -116,7 +173,7 @@ function Game({ view, room }: { view: GameView; room: OnlineRoom }) {
 
   return (
     <Board
-      view={view}
+      view={shownView}
       mode="personal"
       busy={room.busy}
       error={room.actionError}
@@ -124,7 +181,10 @@ function Game({ view, room }: { view: GameView; room: OnlineRoom }) {
       onBid={(amount) => void room.act('bid', amount)}
       onPass={() => void room.act('pass')}
       onNext={() => void room.act('next')}
-      onQuit={home}
+      onQuit={quit}
+      quitForfeits={Boolean(matched)}
+      clock={clock}
+      onClaim={() => void room.claim()}
     />
   );
 }

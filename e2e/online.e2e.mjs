@@ -9,7 +9,8 @@
  *
  * Checks: the rival's page never contains the hidden character, both players
  * see every result, only the host can start a rematch, and a page reload
- * keeps the player's seat.
+ * keeps the player's seat. Then quick matches: two searching players are
+ * paired, a forfeit is announced, and a lone player gets a stand-in opponent.
  *
  * Run with `npm run test:e2e`. Needs Chrome or Chromium; set CHROME_PATH if
  * it is not found automatically.
@@ -43,7 +44,9 @@ if (!chromePath) {
 
 const db = new PGlite();
 await db.exec('create role anon nologin; create role authenticated nologin;');
-await db.exec(readFileSync(new URL('../supabase/migrations/0001_init.sql', import.meta.url), 'utf8'));
+for (const file of ['0001_init.sql', '0002_matchmaking.sql']) {
+  await db.exec(readFileSync(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8'));
+}
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -102,6 +105,11 @@ const click = (page, text) =>
   }, text);
 
 const sees = (page, selector) => page.$(selector).then(Boolean);
+// Set E2E_SHOTS to a folder to keep screenshots of the main screens.
+const snap = (page, name) =>
+  process.env.E2E_SHOTS
+    ? page.screenshot({ path: `${process.env.E2E_SHOTS}/${name}.png`, fullPage: true })
+    : Promise.resolve();
 const text = (page) => page.evaluate(() => document.body.innerText);
 const roundOf = (page) => page.$eval('.board__meta strong', (e) => e.textContent).catch(() => '');
 
@@ -207,7 +215,91 @@ try {
   await until(guest, () => sees(guest, '.scoreboard'), 'the seat to survive a reload');
   assert(pageErrors.length === 0, `no page errors (${pageErrors.join('; ')})`);
 
-  console.log(`PASS  online e2e: ${rounds} rounds, ${secrecyChecks} secrecy checks, results seen ${JSON.stringify(results)}`);
+  console.log(`PASS  private room: ${rounds} rounds, ${secrecyChecks} secrecy checks, results seen ${JSON.stringify(results)}`);
+
+  // --- Quick match between two people ---------------------------------------
+
+  const ana = await phone('ana');
+  const ben = await phone('ben');
+  for (const [page, name] of [[ana, 'Ana'], [ben, 'Ben']]) {
+    await page.goto(`${base}#/match`, { waitUntil: 'networkidle2' });
+    await page.type('input[autocomplete=nickname]', name);
+    await click(page, 'Find an opponent');
+  }
+  await until(ana, () => sees(ana, '.scoreboard'), 'a match for Ana', 20000);
+  await until(ben, () => sees(ben, '.scoreboard'), 'a match for Ben', 20000);
+  for (const page of [ana, ben]) {
+    const shown = await text(page);
+    assert(shown.includes('Ana') && shown.includes('Ben'), 'both names are on the board');
+    assert(!/Room [A-Z0-9]{5}/.test(shown), 'a quick match does not show its room code');
+    assert(new URL(page.url()).hash === '#/match', 'the address stays on the quick-match page');
+  }
+  // One round, then Ben gives up with two taps.
+  await until(ana, async () => (await click(ana, 'Draw a card')) || (await click(ben, 'Draw a card')), 'someone to draw');
+  await click(ben, 'Forfeit');
+  await until(ben, () => click(ben, 'Confirm forfeit'), 'the confirmation');
+  await until(ben, () => sees(ben, '.final'), 'the final screen');
+  await until(ana, () => sees(ana, '.final'), 'the final screen');
+  assert((await text(ana)).includes('Ana wins: Ben left the game'), 'the forfeit is announced to the winner');
+  assert(!(await click(ana, 'Rematch')), 'no rematch in a quick match');
+  console.log('PASS  quick match: paired, played, forfeit announced');
+  await snap(ana, 'match-forfeit');
+
+  // Both search again and are paired again; this time one of them stops playing.
+  await click(ana, 'Find another opponent');
+  await click(ben, 'Find another opponent');
+  await until(ana, () => sees(ana, '.scoreboard'), 'a second match for Ana', 20000);
+  await until(ben, () => sees(ben, '.scoreboard'), 'a second match for Ben', 20000);
+  const idler = (await sees(ana, '.controls .btn--primary')) ? ana : ben;
+  const waiter = idler === ana ? ben : ana;
+  const idleFor = (seconds) =>
+    db.query(`update encheres.rooms set updated_at = now() - make_interval(secs => $1) where matched and status = 'playing'`, [seconds]);
+  await idleFor(45);
+  await until(idler, async () => (await text(idler)).includes('left to play'), 'the clock on the idle side');
+  await until(waiter, async () => (await text(waiter)).includes('left to play'), 'the clock on the waiting side');
+  assert((await text(idler)).includes('You have'), 'the idle player is warned');
+  assert(!(await click(waiter, 'Claim the win')), 'the win cannot be claimed early');
+  await snap(waiter, 'match-clock');
+  await idleFor(62);
+  await until(waiter, () => click(waiter, 'Claim the win'), 'the claim button');
+  await until(waiter, () => sees(waiter, '.final'), 'the final screen');
+  await until(idler, () => sees(idler, '.final'), 'the final screen');
+  assert((await text(idler)).includes('left the game'), 'the timeout is announced to the idle player');
+  console.log('PASS  quick match: turn clock shown, win claimed after the limit');
+
+  // --- Quick match when nobody else is looking ------------------------------
+
+  const solo = await phone('solo');
+  await solo.goto(`${base}#/online`, { waitUntil: 'networkidle2' });
+  await snap(solo, 'online');
+  await click(solo, 'Find an opponent');
+  await until(solo, () => sees(solo, 'input[autocomplete=nickname]'), 'the quick-match page');
+  await solo.type('input[autocomplete=nickname]', 'Cam');
+  await click(solo, 'Find an opponent');
+  await sleep(400);
+  await snap(solo, 'match-searching');
+  await until(solo, () => sees(solo, '.scoreboard'), 'an opponent', 25000);
+  await snap(solo, 'match-stand-in');
+  const names = await solo.$$eval('.player__name', (els) => els.map((e) => e.textContent));
+  assert(names.length === 2 && names[0].startsWith('Cam'), 'the player sits in the first seat');
+  assert(!/cpu|computer|ordi|bot/i.test(names[1]), `the opponent has an ordinary name (${names[1]})`);
+  let moves = 0;
+  for (let step = 0; step < 900 && !(await sees(solo, '.final')); step++) {
+    if (await click(solo, 'Draw a card')) moves++;
+    else if (await sees(solo, '.bid__actions button:not(:disabled)')) {
+      await click(solo, Math.random() < 0.6 ? 'Bid ' : 'Pass');
+      moves++;
+    } else if (!(await click(solo, 'Next round'))) await click(solo, 'See the teams');
+    await sleep(150);
+  }
+  await until(solo, () => sees(solo, '.final'), 'the end of the game', 5000);
+  assert(moves > 0, 'the game was played');
+  assert(!/computer|ordinateur/i.test(await text(solo)), 'the final screen does not mention the computer');
+  assert(await click(solo, 'Find another opponent'), 'a new search can be started');
+  await until(solo, async () => (await text(solo)).includes('Looking for an opponent'), 'the new search');
+  await click(solo, 'Cancel');
+  assert(pageErrors.length === 0, `no page errors (${pageErrors.join('; ')})`);
+  console.log(`PASS  quick match without players: stand-in "${names[1]}" joined, ${moves} moves`);
 } catch (error) {
   failed = true;
   console.error(`FAIL  ${error.message}`);

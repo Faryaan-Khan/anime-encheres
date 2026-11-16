@@ -9,6 +9,7 @@ import { Rules } from './screens/Rules';
 // same-device players never download it.
 const Online = lazy(() => import('./screens/Online').then((m) => ({ default: m.Online })));
 const Room = lazy(() => import('./screens/Room').then((m) => ({ default: m.Room })));
+const Match = lazy(() => import('./screens/Match').then((m) => ({ default: m.Match })));
 
 export function App() {
   const route = useRoute();
@@ -36,6 +37,7 @@ export function App() {
       {route.name === 'rules' && <Rules />}
       <Suspense fallback={<p className="waiting">{t('online.connecting')}</p>}>
         {route.name === 'online' && <Online />}
+        {route.name === 'match' && <Match />}
         {route.name === 'room' && <Room key={route.code} code={route.code} />}
       </Suspense>
     </div>

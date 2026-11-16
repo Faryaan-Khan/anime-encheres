@@ -9,6 +9,12 @@ interface Props {
   view: GameView;
   /** `undefined` hides the button (online guest: only the host can restart). */
   onRematch?: () => void;
+  /** Quick matches: look for a new opponent instead of a rematch. */
+  onFindAnother?: () => void;
+  /** The seat that gave up or ran out of time, if the game ended that way. */
+  forfeit?: Seat | null;
+  /** Extra line under the explanation. */
+  footnote?: string;
   busy?: boolean;
   onHome(): void;
 }
@@ -20,20 +26,24 @@ const VERDICT: Record<'narrow' | 'clear' | 'crushing', StringKey> = {
 };
 
 /** Both teams side by side with the verdict computed from the power ratings. */
-export function Final({ view, onRematch, busy, onHome }: Props) {
+export function Final({ view, onRematch, onFindAnother, forfeit = null, footnote, busy, onHome }: Props) {
   const { t, money } = useI18n();
   const powers = (seat: Seat) => view.players[seat].team.map((id) => getCharacter(id).power);
   const verdict = judge(powers(0), powers(1));
+  // A forfeit decides the game whatever the teams look like.
+  const winner: Seat | null = forfeit !== null ? (forfeit === 0 ? 1 : 0) : verdict.winner;
 
   return (
     <main className="final">
       <header className="final__head">
         <h1 className="display">
-          {verdict.winner === null || verdict.margin === 'tie'
-            ? t('final.verdict.tie')
-            : t(VERDICT[verdict.margin], { name: view.players[verdict.winner].name })}
+          {forfeit !== null && winner !== null
+            ? t('final.forfeit', { winner: view.players[winner].name, loser: view.players[forfeit].name })
+            : verdict.winner === null || verdict.margin === 'tie'
+              ? t('final.verdict.tie')
+              : t(VERDICT[verdict.margin], { name: view.players[verdict.winner].name })}
         </h1>
-        {verdict.winner !== null && (
+        {forfeit === null && verdict.winner !== null && (
           <p>
             {verdict.ratio >= 1000
               ? t('final.ratio.huge')
@@ -50,7 +60,7 @@ export function Final({ view, onRematch, busy, onHome }: Props) {
         return (
           <section
             key={player.seat}
-            className={`team team--seat${player.seat}${verdict.winner === player.seat ? ' team--winner' : ''}`}
+            className={`team team--seat${player.seat}${winner === player.seat ? ' team--winner' : ''}`}
           >
             <header className="team__head">
               <h2>{player.name}</h2>
@@ -85,10 +95,15 @@ export function Final({ view, onRematch, busy, onHome }: Props) {
         );
       })}
 
-      <p className="note">{t('final.how')}</p>
+      {forfeit === null && <p className="note">{t('final.how')}</p>}
+      {footnote && <p className="note">{footnote}</p>}
 
       <div className="final__actions">
-        {onRematch ? (
+        {onFindAnother ? (
+          <button type="button" className="btn btn--primary" onClick={onFindAnother} disabled={busy}>
+            {t('match.again')}
+          </button>
+        ) : onRematch ? (
           <button type="button" className="btn btn--primary" onClick={onRematch} disabled={busy}>
             {t('final.rematch')}
           </button>

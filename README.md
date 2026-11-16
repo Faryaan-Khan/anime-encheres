@@ -12,8 +12,9 @@ turns it into a web app with three ways to play:
   drawer presses and holds it.
 - **Against the computer** — two difficulty levels. The computer only knows what a player
   in its seat would know.
-- **Online** — each player uses their own phone and joins with a five-character room code.
-  The hidden card never leaves the server unless a player is allowed to see it.
+- **Online** — a quick match against whoever else is looking for a game, or a private room
+  that a friend joins with a five-character code. The hidden card never leaves the server
+  unless a player is allowed to see it.
 
 The interface is available in **French and English**.
 
@@ -39,8 +40,10 @@ rival, during the same auction.
   plays out the rest of the game before every bid
 - Adjustable budget (300M, 500M, 1 Md) and team size (3 to 7)
 - Same-device games are saved after every move and can be resumed
-- Online rooms with a shareable link, rematches and automatic reconnection; both players
-  always see each result, even if the other moves on first
+- Private online rooms with a shareable link, rematches and automatic reconnection; both
+  players always see each result, even if the other moves on first
+- Quick matches: a matchmaking queue, a 60-second turn clock, forfeits, and the computer
+  stepping in when nobody else is looking for a game
 - French and English, remembered per device
 - Designed for phones first, usable on desktop, keyboard accessible
 
@@ -85,8 +88,8 @@ Same-device play works immediately. Online play uses the Supabase project config
 | Command | What it does |
 | --- | --- |
 | `npm run dev` | Development server with hot reload |
-| `npm test` | Runs the 73 unit, database, parity and bot tests |
-| `npm run test:e2e` | Plays a full online game between two headless browser sessions (needs Chrome) |
+| `npm test` | Runs the 89 unit, database, parity and bot tests |
+| `npm run test:e2e` | Plays private rooms and quick matches between headless browser sessions (needs Chrome) |
 | `npm run ratings` | Rebuilds the power-ratings document and CSV from `src/data/rosters.json` |
 | `npm run typecheck` | TypeScript in strict mode, no output |
 | `npm run build` | Type check, then production build into `dist/` |
@@ -100,13 +103,14 @@ src/
   bot/             Computer opponent and the simulator used to measure it
   data/            Universes, characters and power ratings (`rosters.json`)
   local/           Games on this device (shared screen or against the computer)
+  match/           Quick-match settings
   online/          Supabase client, API calls and the room synchronisation hook
   components/      Board, cards, bidding controls, scoreboard, final screen
   screens/         Home, setup, online lobby, rules
   i18n/            French and English strings
 supabase/
-  migrations/      The database: tables, rules and the five API functions
-  tests/           Security tests and engine/SQL parity tests
+  migrations/      The database: tables, rules, matchmaking and the API functions
+  tests/           Security, matchmaking and engine/SQL parity tests
 e2e/               Two-browser end-to-end test of online play
 docs/              Architecture, rules, deployment, portfolio notes
 ```
@@ -128,7 +132,6 @@ and universe colour. To show a picture on a card, add an image you are allowed t
 
 ## Roadmap
 
-- Bidding timer and online matchmaking
 - "Undercover" and dice variants seen in the French videos
 - Spectators and audience voting on the final teams
 

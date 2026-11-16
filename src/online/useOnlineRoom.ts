@@ -3,10 +3,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { GameView } from '../game/types';
 import {
   OnlineError,
+  claimForfeit,
   getClient,
   getRoom,
   joinRoom,
   play,
+  resign,
   startGame,
   toOnlineError,
   type OnlineErrorCode,
@@ -25,6 +27,12 @@ export interface OnlineRoom {
   join(name: string): Promise<void>;
   start(): Promise<void>;
   act(action: PlayAction, amount?: number): Promise<void>;
+  /** Matched games: give up. */
+  resign(): Promise<void>;
+  /** Matched games: win because the opponent ran out of time. */
+  claim(): Promise<void>;
+  /** When the current view arrived, in milliseconds; `view.idle` is as of then. */
+  receivedAt: number;
 }
 
 /**
@@ -41,6 +49,7 @@ export function useOnlineRoom(code: string): OnlineRoom {
   const [loadError, setLoadError] = useState<OnlineErrorCode | null>(null);
   const [actionError, setActionError] = useState<OnlineErrorCode | null>(null);
   const [busy, setBusy] = useState(false);
+  const [receivedAt, setReceivedAt] = useState(() => Date.now());
   const channelRef = useRef<RealtimeChannel | null>(null);
   const memberRef = useRef(false);
 
@@ -49,6 +58,7 @@ export function useOnlineRoom(code: string): OnlineRoom {
     memberRef.current = true;
     setLoadError(null);
     setView((prev) => (!prev || next.version >= prev.version ? next : prev));
+    setReceivedAt(Date.now());
   }, []);
 
   const refresh = useCallback(async () => {
@@ -127,5 +137,9 @@ export function useOnlineRoom(code: string): OnlineRoom {
     [code, run],
   );
 
-  return { view, loadError, actionError, busy, join, start, act };
+  const giveUp = useCallback(() => run(() => resign(code)), [code, run]);
+  // Claiming a moment too early is harmless: the button simply stays.
+  const claim = useCallback(() => run(() => claimForfeit(code), ['TOO_EARLY']), [code, run]);
+
+  return { view, loadError, actionError, busy, join, start, act, resign: giveUp, claim, receivedAt };
 }

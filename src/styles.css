@@ -875,6 +875,34 @@ input {
   color: var(--muted);
 }
 
+.clock {
+  display: grid;
+  gap: 0.6rem;
+  text-align: center;
+}
+
+.searching::after {
+  content: '';
+  display: inline-block;
+  width: 0.6rem;
+  height: 0.6rem;
+  margin-left: 0.5rem;
+  border-radius: 50%;
+  background: var(--ink);
+  animation: pulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+  to {
+    opacity: 0.15;
+  }
+}
+
+.page__subhead {
+  margin-top: 0.4rem;
+  font-size: 1.15rem;
+}
+
 /* ---------- Lobby ---------- */
 
 .lobby__share {
