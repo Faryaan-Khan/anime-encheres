@@ -28,6 +28,9 @@ Pick three or four.
   and wrote a parity test that replays random games through both and compares every state.
 - Ran the real SQL migration inside PGlite (WebAssembly Postgres) in the test suite, so
   database logic and permissions are tested in CI without any external service.
+- Added matchmaking without new infrastructure: waiting players are lobby rooms, pairing
+  runs under a Postgres advisory lock, and simultaneous searchers converge on the next
+  poll. Includes a server-checked turn clock, forfeits and a computer fallback.
 - Built a computer opponent for a hidden-information game: a rule-based level with a
   Bayesian read of the rival's bids, and a look-ahead level that samples hidden states
   consistent with what it has seen and plays each one out (determinized Monte Carlo). The
@@ -44,7 +47,7 @@ Pick three or four.
   version checks to discard stale responses.
 - Reduced the initial JavaScript for offline players by about half through route-level
   code splitting of the backend client.
-- Set up CI with GitHub Actions (type check, 73 tests, production build) and continuous
+- Set up CI with GitHub Actions (type check, 89 tests, production build) and continuous
   deployment to Netlify.
 
 ## Skills demonstrated
@@ -93,14 +96,17 @@ swaps the hidden card to prove the decision is unchanged. The state itself is in
 browser, so a player could inspect it; that is why online play keeps state on the server.
 
 **What would you do next?**
-Spectators with audience voting, the "Undercover" variant, a bid timer, matchmaking, and
-moving the sync ping into the database so clients cannot send it themselves.
+Spectators with audience voting, the "Undercover" variant, skill-based pairing once there
+are enough players, and moving the sync ping into the database so clients cannot send it
+themselves.
 
 ## Honest limits
 
 Worth saying before an interviewer finds them:
 
 - Two-player rooms only; no spectators yet.
+- Quick matches pair by arrival order, not skill, and fall back to the computer when the
+  queue is empty; that fallback runs in the browser, not on the server.
 - Identity is tied to browser storage; clearing it loses the seat.
 - The character list is static and names only.
 - No rate limiting beyond what Supabase applies by default.

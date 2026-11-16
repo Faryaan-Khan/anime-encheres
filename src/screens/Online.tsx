@@ -70,6 +70,16 @@ export function Online() {
     <main className="page">
       <h1 className="display">{t('online.title')}</h1>
 
+      <section className="panel">
+        <h2>{t('online.match')}</h2>
+        <p className="note">{t('online.match.hint')}</p>
+        <button type="button" className="btn btn--primary" onClick={() => navigate('/match')}>
+          {t('match.find')}
+        </button>
+      </section>
+
+      <h2 className="page__subhead">{t('online.private')}</h2>
+
       <label className="field">
         <span>{t('setup.name')}</span>
         <input

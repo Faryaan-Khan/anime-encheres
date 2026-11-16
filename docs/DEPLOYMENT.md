@@ -6,11 +6,12 @@ site; online play needs both.
 ## 1. Database (Supabase)
 
 1. Create a Supabase project (the free plan is enough).
-2. Open **SQL Editor**, paste the contents of
-   [`supabase/migrations/0001_init.sql`](../supabase/migrations/0001_init.sql) and run it.
-   The editor warns about "destructive operations" because the script contains `revoke`
-   and a `delete` inside a function body; on a new project nothing is removed. The script
-   is idempotent, so it can be run again after an update.
+2. Open **SQL Editor** and run the two scripts in order:
+   [`0001_init.sql`](../supabase/migrations/0001_init.sql), then
+   [`0002_matchmaking.sql`](../supabase/migrations/0002_matchmaking.sql).
+   The editor warns about "destructive operations" because the scripts contain `revoke`
+   and `delete` statements inside function bodies; nothing is removed. Both scripts are
+   idempotent, so they can be run again after an update.
 3. Open **Project Settings → API Keys** and copy the project URL and the **publishable**
    key.
 

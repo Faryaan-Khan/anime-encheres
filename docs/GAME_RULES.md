@@ -54,6 +54,14 @@ sees only what a player in its seat would see. "Computer" bids by feel and bluff
 then. "Computer, ultra hard" counts the cards that have come out and plays out the rest of
 the game in its head before every bid.
 
+### Quick match
+
+"Quick match" finds you an opponent online. The rules are fixed so that anyone can be
+paired: 500M each, teams of 5, one universe picked at random. You have 60 seconds for each
+action; if your opponent runs out of time you can claim the win, and leaving the game
+gives the win to your opponent. To play with a friend instead, create a private room and
+share its code.
+
 ### The bluff
 
 Only the drawer knows what the card is worth.
@@ -118,6 +126,14 @@ Choisissez « Jouer contre l'ordinateur » et un niveau. L'ordinateur suit les m
 et ne voit que ce qu'un joueur à sa place verrait. « Ordinateur » mise au feeling et
 bluffe parfois. « Ordinateur ultra » compte les cartes sorties et simule la suite de la
 partie avant chaque mise.
+
+### Partie rapide
+
+« Partie rapide » te trouve un adversaire en ligne. Les règles sont fixes pour que tout le
+monde puisse être associé : 500M chacun, équipes de 5, un univers tiré au sort. Tu as
+60 secondes par action ; si ton adversaire dépasse ce temps, tu peux réclamer la victoire,
+et quitter la partie donne la victoire à l'adversaire. Pour jouer avec un ami, crée plutôt
+un salon privé et partage son code.
 
 ### Le bluff
 

@@ -4,6 +4,7 @@ export type Route =
   | { name: 'home' }
   | { name: 'local' }
   | { name: 'solo' }
+  | { name: 'match' }
   | { name: 'online' }
   | { name: 'rules' }
   | { name: 'room'; code: string };
@@ -12,6 +13,7 @@ export function parseRoute(hash: string): Route {
   const parts = hash.replace(/^#\/?/, '').split('/').filter(Boolean);
   if (parts[0] === 'local') return { name: 'local' };
   if (parts[0] === 'solo') return { name: 'solo' };
+  if (parts[0] === 'match') return { name: 'match' };
   if (parts[0] === 'online') return { name: 'online' };
   if (parts[0] === 'rules') return { name: 'rules' };
   if (parts[0] === 'room' && parts[1]) {

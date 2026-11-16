@@ -4,7 +4,7 @@ import { bid, createGame, draw, next, pass, toView } from '../game/engine';
 import type { GameState, Settings } from '../game/types';
 import { readStored, removeStored, writeStored } from '../storage';
 
-const KEY = 'ae.local';
+const DEFAULT_KEY = 'ae.local';
 
 /** The computer always sits in the second seat. */
 export const BOT_SEAT = 1;
@@ -24,9 +24,9 @@ interface Saved {
   memory?: BotMemory;
 }
 
-function load(): Saved | null {
+function load(key: string): Saved | null {
   try {
-    const raw = readStored(KEY);
+    const raw = readStored(key);
     if (!raw) return null;
     const saved = JSON.parse(raw) as Saved;
     return saved?.state?.players?.length === 2 && saved.setup ? saved : null;
@@ -37,7 +37,7 @@ function load(): Saved | null {
 
 /** True when a game on this device was left unfinished. */
 export function hasSavedLocalGame(): boolean {
-  const saved = load();
+  const saved = load(DEFAULT_KEY);
   return saved !== null && saved.state.phase !== 'finished';
 }
 
@@ -56,14 +56,17 @@ function watched(setup: LocalSetup, state: GameState, memory?: BotMemory): Saved
  * against the computer. The whole state lives in the browser and is saved
  * after every move, so closing the tab does not lose the game.
  */
-export function useLocalGame() {
-  const [saved, setSaved] = useState<Saved | null>(load);
+export function useLocalGame(key: string = DEFAULT_KEY) {
+  const [saved, setSaved] = useState<Saved | null>(() => load(key));
 
-  const commit = useCallback((value: Saved | null) => {
-    setSaved(value);
-    if (value) writeStored(KEY, JSON.stringify(value));
-    else removeStored(KEY);
-  }, []);
+  const commit = useCallback(
+    (value: Saved | null) => {
+      setSaved(value);
+      if (value) writeStored(key, JSON.stringify(value));
+      else removeStored(key);
+    },
+    [key],
+  );
 
   const start = useCallback(
     (setup: LocalSetup) => commit(watched(setup, createGame(setup))),
@@ -100,6 +103,7 @@ export function useLocalGame() {
     state: saved?.state ?? null,
     poolSize: saved?.setup.pool.length ?? 0,
     bot: saved?.setup.bot ?? null,
+    names: saved?.setup.names ?? null,
     start,
     rematch: () => saved && commit(watched(saved.setup, createGame(saved.setup))),
     clear: () => commit(null),

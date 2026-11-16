@@ -134,8 +134,9 @@ Instead the browser is given no table access at all:
 - Tables live in the `encheres` schema. Supabase's API only exposes `public`, so the
   tables cannot be addressed from outside. Row-level security is also enabled with no
   policies, as a second barrier.
-- `public` contains five `SECURITY DEFINER` functions: `create_room`, `join_room`,
-  `get_room`, `start_game` and `play`. They are the entire API.
+- `public` contains `SECURITY DEFINER` functions and nothing else: `create_room`,
+  `join_room`, `get_room`, `start_game` and `play`, plus four for quick matches. They are
+  the entire API.
 - Every function ends by calling `encheres.room_view(code, seat)`, the single place where
   the state is filtered for a seat. It is the SQL twin of `toView`.
 
@@ -165,6 +166,32 @@ every 2.5 seconds while the tab is visible, so a missed message can never leave 
 stale for long. Responses carry the room `version`, and the client ignores any response
 older than the one it already shows.
 
+### Quick matches
+
+`supabase/migrations/0002_matchmaking.sql` adds matchmaking without a new table. A player
+looking for a game is simply the host of a lobby room flagged `matched`. `find_match`
+either seats the caller in the longest-waiting such room and starts the game, or opens a
+new waiting room for them. The client calls it again every 2.5 seconds with the code it
+was given until the room is `playing`; that poll is also the heartbeat, and a room nobody
+has polled for 12 seconds is skipped.
+
+- **Races.** Pairing runs under a transaction-level advisory lock, so two callers cannot
+  take the same seat. Two players who start at the same instant each open a room; on the
+  next poll the one in the newer room moves into the older one.
+- **Closed rooms.** A matched room cannot be joined by code, started by hand or
+  restarted, and the client never shows its code.
+- **Turn clock.** Strangers leave. Room views carry `idle`, the seconds since the last
+  change. After 60 seconds without an action, the waiting player may call
+  `claim_forfeit`; the server checks the time itself. `resign` gives up at once. The clock
+  does not run during a reveal, since either player can move on from it.
+- **When nobody is there.** After 12 to 18 seconds the client leaves the queue and starts
+  a game against the computer, at a random level, under an ordinary player name and with
+  human-like pauses. The screen, the address, the clock and the forfeit rules are the same
+  as in a real match. Players are not told; this is a product decision, and
+  `DISCLOSE_STAND_IN_AFTER_MATCH` in `src/match/config.ts` adds a line on the final screen
+  if that should change. Leaving the queue reports a game instead if a real opponent
+  arrived at the last moment.
+
 ### Never missing a result
 
 Either player may leave the reveal screen, and the other device only finds out on its next
@@ -187,7 +214,8 @@ job or extra infrastructure to maintain.
 | `src/data/characters.test.ts` | Character ids are unique, every character has a rating and a reason, and every universe has enough cards and a spread of strong, average and weak ones |
 | `supabase/tests/parity.test.ts` | Runs the real migration in PGlite. Checks validation, seat and host permissions, that the rival and the deck are never leaked, that API roles cannot touch tables, and that random games produce identical views in SQL and TypeScript at every step |
 
-| `e2e/online.e2e.mjs` | Two isolated browser sessions play a whole online game through the real UI against the migration. Asserts that the hidden character never appears in the rival's page, that both players see every result, that only the host can start or restart, and that a reload keeps the seat. It runs without a Realtime server, so it also proves the polling fallback is sufficient on its own |
+| `supabase/tests/matchmaking.test.ts` | Pairing order, simultaneous searches, abandoned waiters, self-matching, closed rooms, resigning, and the turn clock (too early, in time, during a reveal) |
+| `e2e/online.e2e.mjs` | Quick matches too: two searching browsers are paired, a forfeit and a timeout are announced, and a lone player gets a stand-in opponent. Two isolated browser sessions play a whole online game through the real UI against the migration. Asserts that the hidden character never appears in the rival's page, that both players see every result, that only the host can start or restart, and that a reload keeps the seat. It runs without a Realtime server, so it also proves the polling fallback is sufficient on its own |
 
 The parity test is the important one. Having the rules in two languages is a risk; the
 test turns that risk into a guarantee by making any divergence fail the build.
