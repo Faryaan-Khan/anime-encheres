@@ -88,7 +88,7 @@ function Game({ view, room }: { view: GameView; room: OnlineRoom }) {
     return (
       <Board
         view={replay}
-        mode="online"
+        mode="personal"
         busy={room.busy}
         error={room.actionError}
         onDraw={() => undefined}
@@ -107,7 +107,6 @@ function Game({ view, room }: { view: GameView; room: OnlineRoom }) {
     return (
       <Final
         view={view}
-        allowVote={false}
         onRematch={view.you === 0 ? () => void room.start() : undefined}
         busy={room.busy}
         onHome={home}
@@ -118,7 +117,7 @@ function Game({ view, room }: { view: GameView; room: OnlineRoom }) {
   return (
     <Board
       view={view}
-      mode="online"
+      mode="personal"
       busy={room.busy}
       error={room.actionError}
       onDraw={() => void room.act('draw')}

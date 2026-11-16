@@ -10,10 +10,11 @@ import { Scoreboard } from './Scoreboard';
 export interface BoardProps {
   view: GameView;
   /**
-   * `local`: one shared screen, the card stays face down unless the drawer
-   * holds the peek button. `online`: this device belongs to `view.you`.
+   * `shared`: two players look at one screen, so the card stays face down
+   * unless the drawer presses and holds it. `personal`: this screen belongs
+   * to `view.you` alone (online play, or a game against the computer).
    */
-  mode: 'local' | 'online';
+  mode: 'shared' | 'personal';
   busy?: boolean;
   error?: string | null;
   onDraw(): void;
@@ -35,7 +36,7 @@ export function Board({ view, mode, busy, error, onDraw, onBid, onPass, onNext, 
   const player = (seat: Seat): PlayerView => view.players[seat];
   const drawer = player(view.drawer);
   const bidder = player(view.turn);
-  const mine = (seat: Seat) => mode === 'local' || view.you === seat;
+  const mine = (seat: Seat) => mode === 'shared' || view.you === seat;
 
   const { settings } = view;
   const required = view.highBidder === null ? settings.minBid : view.highBid + settings.increment;
@@ -46,7 +47,7 @@ export function Board({ view, mode, busy, error, onDraw, onBid, onPass, onNext, 
 
   const faceUp =
     view.phase === 'reveal' ||
-    (view.phase === 'bidding' && (mode === 'local' ? peeking : view.card !== null));
+    (view.phase === 'bidding' && (mode === 'shared' ? peeking : view.card !== null));
 
   const peekHandlers = {
     onPointerDown: (e: PointerEvent<HTMLButtonElement>) => {
@@ -81,7 +82,7 @@ export function Board({ view, mode, busy, error, onDraw, onBid, onPass, onNext, 
 
       <section className="stage" aria-live="polite">
         <div className={`stage__card${view.phase === 'reveal' ? ' stage__card--reveal' : ''}`}>
-          {mode === 'local' && view.phase === 'bidding' ? (
+          {mode === 'shared' && view.phase === 'bidding' ? (
             <button
               type="button"
               className="peek"
@@ -119,25 +120,30 @@ export function Board({ view, mode, busy, error, onDraw, onBid, onPass, onNext, 
                 </>
               )}
             </div>
-            {mode === 'online' && (
+            {mode === 'personal' && (
               <p className="note">
                 {view.card !== null ? t('board.onlyYou') : t('board.hidden', { name: drawer.name })}
               </p>
             )}
-            {mode === 'local' && <p className="note">{t('board.peek', { name: drawer.name })}</p>}
+            {mode === 'shared' && <p className="note">{t('board.peek', { name: drawer.name })}</p>}
           </>
         )}
 
         {view.phase === 'reveal' && last && (
-          <h2 className="stage__title">
-            {last.winner === null
-              ? t('board.noTaker', { character: getCharacter(last.card).name })
-              : t('board.soldTo', {
-                  name: player(last.winner).name,
-                  character: getCharacter(last.card).name,
-                  price: money(last.price),
-                })}
-          </h2>
+          <>
+            <h2 className="stage__title">
+              {last.winner === null
+                ? t('board.noTaker', { character: getCharacter(last.card).name })
+                : t('board.soldTo', {
+                    name: player(last.winner).name,
+                    character: getCharacter(last.card).name,
+                    price: money(last.price),
+                  })}
+            </h2>
+            {getCharacter(last.card).power > 0 && (
+              <p className="power">{t('board.power', { n: getCharacter(last.card).power })}</p>
+            )}
+          </>
         )}
       </section>
 
