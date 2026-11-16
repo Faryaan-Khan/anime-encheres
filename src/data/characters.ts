@@ -1,11 +1,15 @@
 /**
  * Character pools.
  *
- * Only names are stored here. Cards are drawn by the app itself (see
+ * The roster lives in rosters.json so that scripts can read it too
+ * (`npm run ratings` rebuilds docs/POWER_RATINGS.md from it).
+ * Only names, ratings and notes are stored. Cards are drawn by the app itself (see
  * components/CharacterCard.tsx); no artwork ships with the project.
  * To show a picture on a card, drop an image you are allowed to use into
  * src/assets/cards/ named after the character id (for example `goku.webp`).
  */
+
+import rosters from './rosters.json';
 
 export interface Universe {
   id: string;
@@ -18,7 +22,16 @@ export interface Character {
   id: string;
   name: string;
   universe: string;
+  /**
+   * Strength at the character's canon peak, 1 to 100, on one scale shared by
+   * every universe. A judgment call, meant to be edited.
+   */
+  power: number;
+  /** One line explaining the rating. */
+  note: string;
 }
+
+export type Tier = 'S' | 'A' | 'B' | 'C' | 'D';
 
 export const UNIVERSES: Universe[] = [
   { id: 'dragon-ball', name: 'Dragon Ball', color: '#ff8a1f' },
@@ -30,52 +43,10 @@ export const UNIVERSES: Universe[] = [
   { id: 'demon-slayer', name: 'Demon Slayer', color: '#ff5d93' },
 ];
 
-const roster: Record<string, string[]> = {
-  'dragon-ball': [
-    'Goku', 'Vegeta', 'Gohan', 'Piccolo', 'Trunks', 'Goten', 'Krillin', 'Frieza',
-    'Cell', 'Majin Buu', 'Beerus', 'Whis', 'Jiren', 'Broly', 'Hit', 'Android 17',
-    'Android 18', 'Zamasu', 'Goku Black', 'Master Roshi', 'Tien', 'Yamcha', 'Kefla', 'Toppo',
-  ],
-  'one-piece': [
-    'Monkey D. Luffy', 'Roronoa Zoro', 'Sanji', 'Nami', 'Usopp', 'Tony Tony Chopper',
-    'Nico Robin', 'Franky', 'Brook', 'Jinbe', 'Portgas D. Ace', 'Sabo', 'Trafalgar Law',
-    'Eustass Kid', 'Shanks', 'Dracule Mihawk', 'Whitebeard', 'Kaido', 'Big Mom',
-    'Blackbeard', 'Donquixote Doflamingo', 'Crocodile', 'Boa Hancock', 'Akainu',
-    'Aokiji', 'Kizaru', 'Monkey D. Garp', 'Gol D. Roger',
-  ],
-  naruto: [
-    'Naruto Uzumaki', 'Sasuke Uchiha', 'Sakura Haruno', 'Kakashi Hatake', 'Itachi Uchiha',
-    'Madara Uchiha', 'Obito Uchiha', 'Minato Namikaze', 'Jiraiya', 'Tsunade', 'Orochimaru',
-    'Pain', 'Gaara', 'Rock Lee', 'Might Guy', 'Neji Hyuga', 'Shikamaru Nara', 'Hinata Hyuga',
-    'Hashirama Senju', 'Tobirama Senju', 'Kisame Hoshigaki', 'Deidara', 'Killer Bee',
-    'Kaguya Otsutsuki',
-  ],
-  'jujutsu-kaisen': [
-    'Yuji Itadori', 'Megumi Fushiguro', 'Nobara Kugisaki', 'Satoru Gojo', 'Ryomen Sukuna',
-    'Suguru Geto', 'Kento Nanami', 'Maki Zenin', 'Toge Inumaki', 'Panda', 'Yuta Okkotsu',
-    'Toji Fushiguro', 'Mahito', 'Jogo', 'Hanami', 'Choso', 'Aoi Todo', 'Kinji Hakari',
-    'Kenjaku', 'Yuki Tsukumo', 'Naoya Zenin', 'Hiromi Higuruma',
-  ],
-  bleach: [
-    'Ichigo Kurosaki', 'Rukia Kuchiki', 'Renji Abarai', 'Byakuya Kuchiki', 'Kenpachi Zaraki',
-    'Toshiro Hitsugaya', 'Sosuke Aizen', 'Gin Ichimaru', 'Kisuke Urahara', 'Yoruichi Shihoin',
-    'Genryusai Yamamoto', 'Ulquiorra Cifer', 'Grimmjow Jaegerjaquez', 'Coyote Starrk',
-    'Uryu Ishida', 'Yasutora Sado', 'Orihime Inoue', 'Shunsui Kyoraku', 'Yhwach',
-    'Retsu Unohana', 'Mayuri Kurotsuchi', 'Kaname Tosen',
-  ],
-  'hunter-x-hunter': [
-    'Gon Freecss', 'Killua Zoldyck', 'Kurapika', 'Leorio Paradinight', 'Hisoka Morow',
-    'Chrollo Lucilfer', 'Meruem', 'Isaac Netero', 'Illumi Zoldyck', 'Ging Freecss',
-    'Biscuit Krueger', 'Neferpitou', 'Feitan Portor', 'Uvogin', 'Kite', 'Knuckle Bine',
-    'Morel Mackernasey', 'Zeno Zoldyck', 'Silva Zoldyck', 'Alluka Zoldyck',
-  ],
-  'demon-slayer': [
-    'Tanjiro Kamado', 'Nezuko Kamado', 'Zenitsu Agatsuma', 'Inosuke Hashibira', 'Giyu Tomioka',
-    'Kyojuro Rengoku', 'Shinobu Kocho', 'Tengen Uzui', 'Muichiro Tokito', 'Mitsuri Kanroji',
-    'Obanai Iguro', 'Sanemi Shinazugawa', 'Gyomei Himejima', 'Muzan Kibutsuji', 'Kokushibo',
-    'Doma', 'Akaza', 'Yoriichi Tsugikuni',
-  ],
-};
+/** `[name, power, note]`. See docs/POWER_RATINGS.md for the scale. */
+type RosterEntry = [name: string, power: number, note: string];
+
+const roster = rosters as unknown as Record<string, RosterEntry[]>;
 
 /** "Monkey D. Luffy" → "monkey-d-luffy". Ids are stable: they are stored in rooms. */
 export function slug(name: string): string {
@@ -88,7 +59,7 @@ export function slug(name: string): string {
 }
 
 export const CHARACTERS: Character[] = UNIVERSES.flatMap((u) =>
-  roster[u.id].map((name) => ({ id: slug(name), name, universe: u.id })),
+  roster[u.id].map(([name, power, note]) => ({ id: slug(name), name, universe: u.id, power, note })),
 );
 
 const byId = new Map(CHARACTERS.map((c) => [c.id, c]));
@@ -105,7 +76,25 @@ export function poolFor(universeId: string): string[] {
 
 /** Falls back to a readable card for ids this build does not know. */
 export function getCharacter(id: string): Character {
-  return byId.get(id) ?? { id, name: id, universe: 'unknown' };
+  return byId.get(id) ?? { id, name: id, universe: 'unknown', power: 0, note: '' };
+}
+
+const topPower = new Map(
+  UNIVERSES.map((u) => [u.id, Math.max(...roster[u.id].map(([, power]) => power))]),
+);
+
+/**
+ * Where a character stands inside their own universe, relative to its
+ * strongest character. Used to check that every roster has a spread of
+ * strong, average and weak cards.
+ */
+export function tierOf(character: Character): Tier {
+  const ratio = character.power / (topPower.get(character.universe) ?? 100);
+  if (ratio >= 0.93) return 'S';
+  if (ratio >= 0.82) return 'A';
+  if (ratio >= 0.66) return 'B';
+  if (ratio >= 0.45) return 'C';
+  return 'D';
 }
 
 export function getUniverse(id: string): Universe {

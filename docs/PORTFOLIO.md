@@ -36,7 +36,7 @@ Pick three or four.
   version checks to discard stale responses.
 - Reduced the initial JavaScript for offline players by about half through route-level
   code splitting of the backend client.
-- Set up CI with GitHub Actions (type check, 47 tests, production build) and continuous
+- Set up CI with GitHub Actions (type check, 51 tests, production build) and continuous
   deployment to Netlify.
 
 ## Skills demonstrated
