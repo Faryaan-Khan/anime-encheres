@@ -1,0 +1,10 @@
+{
+  "name": "Enchères Animés",
+  "short_name": "Enchères",
+  "description": "Hidden-card anime character auction game.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#eceee8",
+  "theme_color": "#eceee8",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
