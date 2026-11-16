@@ -1,8 +1,9 @@
 # Power ratings
 
 Every character has a **power** from 1 to 100: their strength at their canon peak, on one
-scale shared by all universes. The ratings feed the planned team verdict and computer
-opponent; during an auction they are not shown.
+scale shared by all universes. The ratings decide the verdict at the end of a game and
+are what the computer opponent values cards by. A card's power is shown when it is
+revealed, never during the bidding.
 
 This file is generated. Edit `src/data/rosters.json`, then run `npm run ratings`.
 
@@ -25,6 +26,8 @@ This file is generated. Edit `src/data/rosters.json`, then run `npm run ratings`
   | 15–29 | Competent, outclassed | Usopp, Leorio, Rui |
   | 1–14 | Should not be in a fight | Mr. Satan, Komugi, Kon |
 
+- **Small gaps matter.** In the verdict, strength doubles every 2.5 points, so a 55 is
+  about four times as strong as a 50.
 - **Tier** (S to D) is relative to the strongest character of the same universe, so it
   says how good a card is in a single-universe game: S is within 7% of the top, A within
   18%, B within 34%, C within 55%, D below that.

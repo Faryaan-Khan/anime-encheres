@@ -479,6 +479,14 @@ input {
   grid-template-columns: 1fr 1fr;
 }
 
+.options--stack {
+  display: grid;
+}
+
+.options--stack .option span {
+  text-align: left;
+}
+
 .option {
   position: relative;
   display: block;
@@ -693,6 +701,15 @@ input {
   font-size: 1.2rem;
   line-height: 1.3;
   text-wrap: balance;
+}
+
+.power {
+  padding: 0.05rem 0.6rem;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--white);
+  font-family: var(--font-display);
+  font-size: 0.85rem;
 }
 
 .stage__bid {
@@ -952,6 +969,25 @@ input {
 
 .team__head p {
   font-size: 0.92rem;
+}
+
+.team__head .team__power {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+}
+
+.team__rating {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.team__rating--best {
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--white);
 }
 
 .team__cards {

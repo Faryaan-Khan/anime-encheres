@@ -6,10 +6,12 @@ fictional budget. Bluff the price up on a weak card, or stay quiet and take a st
 for almost nothing. When the teams are complete, argue about who built the better one.
 
 The format comes from the "enchères animés" videos popular on French TikTok. This project
-turns it into a web app with two ways to play:
+turns it into a web app with three ways to play:
 
 - **One device** — two players pass a single phone. The card stays face down until the
   drawer presses and holds it.
+- **Against the computer** — two difficulty levels. The computer only knows what a player
+  in its seat would know.
 - **Online** — each player uses their own phone and joins with a five-character room code.
   The hidden card never leaves the server unless a player is allowed to see it.
 
@@ -30,8 +32,11 @@ rival, during the same auction.
 - Seven universes and 326 characters, or everything mixed together; rosters are sized to
   each cast and mix top tiers, fan favourites, mid-tier and weak cards
 - A power rating and a one-line reason for every character
-  ([docs/POWER_RATINGS.md](docs/POWER_RATINGS.md)), ready for the team verdict and computer
-  opponent
+  ([docs/POWER_RATINGS.md](docs/POWER_RATINGS.md))
+- A verdict at the end of every game: team power is computed from the ratings with a
+  top-heavy formula, so one great character outweighs several average ones
+- A computer opponent in two levels: a rule-based player, and one that counts cards and
+  plays out the rest of the game before every bid
 - Adjustable budget (300M, 500M, 1 Md) and team size (3 to 7)
 - Same-device games are saved after every move and can be resumed
 - Online rooms with a shareable link, rematches and automatic reconnection; both players
@@ -80,7 +85,7 @@ Same-device play works immediately. Online play uses the Supabase project config
 | Command | What it does |
 | --- | --- |
 | `npm run dev` | Development server with hot reload |
-| `npm test` | Runs the 51 unit, database and parity tests |
+| `npm test` | Runs the 73 unit, database, parity and bot tests |
 | `npm run test:e2e` | Plays a full online game between two headless browser sessions (needs Chrome) |
 | `npm run ratings` | Rebuilds the power-ratings document and CSV from `src/data/rosters.json` |
 | `npm run typecheck` | TypeScript in strict mode, no output |
@@ -91,9 +96,10 @@ Same-device play works immediately. Online play uses the Supabase project config
 
 ```text
 src/
-  game/            Pure auction engine and its types (no React, no I/O)
+  game/            Pure auction engine, team verdict and their types (no React, no I/O)
+  bot/             Computer opponent and the simulator used to measure it
   data/            Universes, characters and power ratings (`rosters.json`)
-  local/           Same-device game state, saved in the browser
+  local/           Games on this device (shared screen or against the computer)
   online/          Supabase client, API calls and the room synchronisation hook
   components/      Board, cards, bidding controls, scoreboard, final screen
   screens/         Home, setup, online lobby, rules
@@ -122,8 +128,6 @@ and universe colour. To show a picture on a card, add an image you are allowed t
 
 ## Roadmap
 
-- Team verdict on the final screen, computed from the power ratings
-- Computer opponent with two difficulty levels
 - Bidding timer and online matchmaking
 - "Undercover" and dice variants seen in the French videos
 - Spectators and audience voting on the final teams

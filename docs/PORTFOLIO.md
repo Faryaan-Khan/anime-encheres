@@ -28,6 +28,14 @@ Pick three or four.
   and wrote a parity test that replays random games through both and compares every state.
 - Ran the real SQL migration inside PGlite (WebAssembly Postgres) in the test suite, so
   database logic and permissions are tested in CI without any external service.
+- Built a computer opponent for a hidden-information game: a rule-based level with a
+  Bayesian read of the rival's bids, and a look-ahead level that samples hidden states
+  consistent with what it has seen and plays each one out (determinized Monte Carlo). The
+  look-ahead level wins 71% of simulated games against the rule-based one.
+- Kept the bot honest by construction: it receives the same filtered view as a human, and
+  a test verifies its decision does not change when the hidden card does.
+- Designed a top-heavy team scoring formula (strength doubles every 2.5 rating points) and
+  a card valuation derived from it, then measured both bots against baseline strategies.
 - Wrote an end-to-end test in which two headless browser sessions play a full online game
   and assert that the hidden card never reaches the rival's page.
 - Implemented account-free player identity with device-generated tokens stored server-side
@@ -36,7 +44,7 @@ Pick three or four.
   version checks to discard stale responses.
 - Reduced the initial JavaScript for offline players by about half through route-level
   code splitting of the backend client.
-- Set up CI with GitHub Actions (type check, 51 tests, production build) and continuous
+- Set up CI with GitHub Actions (type check, 73 tests, production build) and continuous
   deployment to Netlify.
 
 ## Skills demonstrated
@@ -45,6 +53,7 @@ Pick three or four.
 | --- | --- |
 | Front-end engineering | `src/components`, `src/screens`: typed React, accessible controls, responsive CSS without a framework |
 | State modelling | `src/game/engine.ts`: immutable state machine with an explicit settle step |
+| Game AI | `src/bot/bot.ts`: valuation, inference under hidden information, Monte Carlo look-ahead, opponent modelling; `src/bot/simulate.ts`: benchmarking |
 | Database and SQL | `supabase/migrations/0001_init.sql`: schema design, PL/pgSQL, row locking, privileges |
 | Security thinking | Threat model in `docs/ARCHITECTURE.md`; tests asserting what a rival and an outsider cannot see |
 | Testing | Unit, property-style random playthroughs, database integration, cross-implementation parity and a two-browser end-to-end test |
@@ -72,9 +81,20 @@ legal; the client then refreshes.
 A random token generated on the device. The server stores its hash and derives the seat
 from it on every call.
 
+**How do you know the hard bot is actually better?**
+Self-play. A simulator runs whole games between any two strategies with seats swapped, and
+the test suite asserts that each level beats the one below it. The win rates are in
+`docs/ARCHITECTURE.md`. They compare strategies with each other; they are not a claim
+about how the bot does against people.
+
+**Why does the bot not cheat, given it runs in the browser?**
+Its decision function only receives the view a human in its seat would get, and a test
+swaps the hidden card to prove the decision is unchanged. The state itself is in the
+browser, so a player could inspect it; that is why online play keeps state on the server.
+
 **What would you do next?**
-Spectators with audience voting, the "Undercover" variant, a bid timer, and moving the
-sync ping into the database so clients cannot send it themselves.
+Spectators with audience voting, the "Undercover" variant, a bid timer, matchmaking, and
+moving the sync ping into the database so clients cannot send it themselves.
 
 ## Honest limits
 

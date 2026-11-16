@@ -7,6 +7,11 @@ import { removeStored } from '../storage';
 export function Home() {
   const { t, money } = useI18n();
   const resumable = hasSavedLocalGame();
+  // Starting a new game replaces any unfinished one.
+  const newGame = (path: string) => {
+    removeStored('ae.local');
+    navigate(path);
+  };
 
   return (
     <main className="home">
@@ -29,17 +34,13 @@ export function Home() {
             {t('home.resume')}
           </button>
         )}
-        <button
-          type="button"
-          className="btn btn--primary btn--mode"
-          onClick={() => {
-            // A new game replaces any unfinished one.
-            removeStored('ae.local');
-            navigate('/local');
-          }}
-        >
+        <button type="button" className="btn btn--primary btn--mode" onClick={() => newGame('/local')}>
           {t('home.local')}
           <small>{t('home.local.hint')}</small>
+        </button>
+        <button type="button" className="btn btn--mode" onClick={() => newGame('/solo')}>
+          {t('home.solo')}
+          <small>{t('home.solo.hint')}</small>
         </button>
         <button type="button" className="btn btn--mode" onClick={() => navigate('/online')}>
           {t('home.online')}

@@ -36,8 +36,23 @@ cannot afford the next bid.
 ### End of the game
 
 The game ends when both teams are full, when the deck is empty, or when nobody who still
-needs characters can afford the minimum bid. Then compare the teams and argue about who
-would win. On one device, the table can crown a winner on the final screen.
+needs characters can afford the minimum bid.
+
+### The verdict
+
+Every character has a power rating (see [POWER_RATINGS.md](POWER_RATINGS.md)); it is shown
+when a card is revealed. At the end the game compares the two teams. Strength doubles
+every 2.5 points of power and a team's strength is the sum of its members', so the
+strongest characters count the most: one 95 beats a 92 and a 91 together. The final screen
+shows each team's power and how decisive the win is. The ratings are opinions, so you are
+still free to argue.
+
+### Against the computer
+
+Choose "Play against the computer" and a level. The computer follows the same rules and
+sees only what a player in its seat would see. "Computer" bids by feel and bluffs now and
+then. "Computer, ultra hard" counts the cards that have come out and plays out the rest of
+the game in its head before every bid.
 
 ### The bluff
 
@@ -48,6 +63,8 @@ Only the drawer knows what the card is worth.
 - Not the drawer? Watch how they bid. A big opening bid can be real, or bait.
 - Money you do not spend is worthless at the end, but running out early leaves the rest of
   the deck to your opponent at the minimum price.
+- One top character is worth more than a team of average ones. Save for the cards that
+  decide the game.
 
 ## Français
 
@@ -85,8 +102,22 @@ budget insuffisant pour la prochaine mise.
 
 La partie se termine quand les deux équipes sont complètes, quand la pioche est vide, ou
 quand plus aucun joueur ayant encore besoin de personnages ne peut payer la mise minimale.
-Comparez ensuite les équipes et débattez. Sur un seul appareil, vous pouvez désigner le
-vainqueur sur l'écran final.
+
+### Le verdict
+
+Chaque personnage a une note de puissance (voir [POWER_RATINGS.md](POWER_RATINGS.md)),
+affichée quand la carte est révélée. À la fin, le jeu compare les deux équipes. La force
+double tous les 2,5 points de puissance et la force d'une équipe est la somme de celles de
+ses membres : les plus forts pèsent donc le plus, et un 95 bat un 92 et un 91 réunis.
+L'écran final affiche la puissance de chaque équipe et l'ampleur de la victoire. Les notes
+restent des avis : vous pouvez toujours débattre.
+
+### Contre l'ordinateur
+
+Choisissez « Jouer contre l'ordinateur » et un niveau. L'ordinateur suit les mêmes règles
+et ne voit que ce qu'un joueur à sa place verrait. « Ordinateur » mise au feeling et
+bluffe parfois. « Ordinateur ultra » compte les cartes sorties et simule la suite de la
+partie avant chaque mise.
 
 ### Le bluff
 
@@ -99,3 +130,5 @@ Seul celui qui a pioché connaît la valeur de la carte.
   être sincère, ou un piège.
 - L'argent non dépensé ne vaut rien à la fin, mais être à sec trop tôt laisse le reste de
   la pioche à ton adversaire au prix minimum.
+- Un personnage de tout premier plan vaut plus qu'une équipe de moyens. Garde ton budget
+  pour les cartes qui décident de la partie.

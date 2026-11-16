@@ -31,7 +31,8 @@ export function App() {
       </header>
 
       {route.name === 'home' && <Home />}
-      {route.name === 'local' && <LocalGame />}
+      {route.name === 'local' && <LocalGame key="local" />}
+      {route.name === 'solo' && <LocalGame key="solo" solo />}
       {route.name === 'rules' && <Rules />}
       <Suspense fallback={<p className="waiting">{t('online.connecting')}</p>}>
         {route.name === 'online' && <Online />}
