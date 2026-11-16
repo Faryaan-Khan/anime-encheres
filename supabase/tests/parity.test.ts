@@ -14,10 +14,15 @@ import { bid, createGame, draw, next, pass, requiredBid, toView } from '../../sr
 import { seeded } from '../../src/game/testing';
 import type { GameState, GameView, Seat } from '../../src/game/types';
 
-const migration = readFileSync(
-  fileURLToPath(new URL('../migrations/0001_init.sql', import.meta.url)),
-  'utf8',
-);
+const migration = ['0001_init.sql', '0002_matchmaking.sql']
+  .map((file) => readFileSync(fileURLToPath(new URL(`../migrations/${file}`, import.meta.url)), 'utf8'))
+  .join('\n');
+
+/** Fields that only exist online; the engine has no equivalent. */
+function withoutOnlineFields(view: GameView): GameView {
+  const { matched: _matched, forfeit: _forfeit, idle: _idle, ...rest } = view;
+  return rest;
+}
 
 const pool = Array.from({ length: 24 }, (_, i) => `c${i + 1}`);
 const HOST = 'host-token-0123456789abcdef';
@@ -255,7 +260,9 @@ describe('parity with the TypeScript engine', () => {
           version: server.version,
           poolSize: pool.length,
         });
-        expect(server).toEqual(expected);
+        expect(server.matched).toBe(false);
+        expect(server.forfeit).toBeNull();
+        expect(withoutOnlineFields(server)).toEqual(expected);
       }
     };
 

@@ -82,6 +82,12 @@ export interface GameView {
   deckCount: number;
   card: string | null;
   history: HistoryEntry[];
+  /** Online only: the room was created by matchmaking. */
+  matched?: boolean;
+  /** Online only: the seat that gave up or ran out of time, if any. */
+  forfeit?: Seat | null;
+  /** Online only: seconds since the last change, as of when this view was read. */
+  idle?: number;
 }
 
 export type GameErrorCode =
