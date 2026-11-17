@@ -184,13 +184,46 @@ has polled for 12 seconds is skipped.
   change. After 60 seconds without an action, the waiting player may call
   `claim_forfeit`; the server checks the time itself. `resign` gives up at once. The clock
   does not run during a reveal, since either player can move on from it.
-- **When nobody is there.** After 12 to 18 seconds the client leaves the queue and starts
-  a game against the computer, at a random level, under an ordinary player name and with
-  human-like pauses. The screen, the address, the clock and the forfeit rules are the same
-  as in a real match. Players are not told; this is a product decision, and
-  `DISCLOSE_STAND_IN_AFTER_MATCH` in `src/match/config.ts` adds a line on the final screen
-  if that should change. Leaving the queue reports a game instead if a real opponent
-  arrived at the last moment.
+- **When nobody is there.** After 12 to 18 seconds the database seats an opponent itself
+  and plays its moves (next section). The player's device does nothing different.
+
+### The computer opponent in quick matches
+
+`supabase/migrations/0005_accounts_and_opponent.sql`. Earlier versions ran this opponent in
+the browser, which meant its results could only be self-reported. It now lives in the
+database, so a game against it is judged like any other and counts for trophies at every
+rank.
+
+- **Seating.** `find_match` seats the computer in the caller's waiting room once the wait
+  passes a threshold that differs per room. It gets an ordinary name, a random secret
+  token, and a skill between 0 and 1 taken from the player's trophies (1200 trophies and
+  above is the top), with a little variety.
+- **Moving.** The computer has no clock. Every time the player's device asks for the room
+  (`get_room`, every 1.5 seconds), `bot_step` checks whether it is the computer's move
+  and whether it has "thought" long enough, and if so plays through the same `play`
+  function a person uses. To the network it looks exactly like a game against a person.
+- **Bidding.** `bot_choice` is a port of the rule-based player in `src/bot/bot.ts`. A
+  beginner is timid with cards it has seen and reckless with cards it has not; an expert
+  prices soundly, rarely chases a hidden card and counts the cards left. Measured in
+  simulation: skill 0 wins 32% against the offline "normal" level, skill 1 wins 58%, and
+  skill 1 is level with the offline look-ahead player.
+- **Fairness.** When the player drew the card, the functions never read it. A test swaps
+  the hidden card and checks the decision does not move.
+- **Two languages, one behaviour.** A test plays whole games and requires the SQL and the
+  TypeScript player to choose the same action at every step for five skill levels.
+- **Leaving.** A player who runs out of time or walks away loses by forfeit: the room
+  ends itself after 65 seconds on the player's move, and abandoned rooms are settled the
+  next time that player opens their profile or searches again.
+- **Disclosure.** Players are not told that an opponent is the computer; that is a
+  product decision. `opponent_enabled` in `encheres.config` switches it off.
+
+### Accounts
+
+A profile starts on one device. `encheres.devices` attaches more devices to it, in two
+ways: a recovery code (16 characters, stored only as a hash, limited attempts), or a
+one-time Google sign-in through Supabase Auth, after which `link_account` ties the profile
+to that Google account. In both cases the device token remains the identity for every
+other call; no session is kept in the browser.
 
 ### Ranking
 
@@ -220,11 +253,8 @@ and gives the database its own copy of the power ratings.
   data a future learning opponent, replays or rating reviews would need.
 - **Leaderboards.** World (trophies), this week (trophies gained since Monday, UTC) and
   per country. Only the top 50 rows and the caller's own rank leave the database.
-- **The stand-in and trophies.** A game against the stand-in is played in the browser, so
-  its result is reported by the client and cannot be trusted. It therefore counts only
-  below 300 trophies, at most ten times a day, for +20 or -10. Above 300 the client keeps
-  searching until a person is found. The leagues and badges are derived from the profile
-  in `src/ranking.ts`; nothing about them is stored.
+- **Leagues and badges** are derived from the profile in `src/ranking.ts`; nothing about
+  them is stored. Each kind of badge is earned once and then levels up.
 - **Abuse limits.** Functions that create rows count calls per caller in `rate_limits`:
   rooms and searches per network address (stored only as a hash), feedback per device and
   per address. Exceeding a limit raises `RATE_LIMITED`.
@@ -258,9 +288,11 @@ job or extra infrastructure to maintain.
 | `src/data/characters.test.ts` | Character ids are unique, every character has a rating and a reason, and every universe has enough cards and a spread of strong, average and weak ones |
 | `supabase/tests/parity.test.ts` | Runs the real migrations in PGlite. Checks validation, seat and host permissions, that the rival and the deck are never leaked, that API roles cannot touch tables, and that random games produce identical views in SQL and TypeScript at every step |
 | `supabase/tests/matchmaking.test.ts` | Pairing order, simultaneous searches, abandoned waiters, self-matching, closed rooms, resigning, and the turn clock (too early, in time, during a reveal) |
-| `supabase/tests/ranking.test.ts` | The server's verdict equals the app's on random teams and whole games, trophy amounts, the floor at zero, forfeits and timeouts, settling once, private rooms unranked, pairing by level, profile validation, the three leaderboards, feedback limits, the caps on stand-in games, rate limits, and that API roles can reach only the public functions |
+| `supabase/tests/ranking.test.ts` | The server's verdict equals the app's on random teams and whole games, trophy amounts, the floor at zero, forfeits and timeouts, settling once, private rooms unranked, pairing by level, profile validation, the three leaderboards, feedback limits, rate limits, and that API roles can reach only the public functions |
 | `src/ranking.test.ts` | League thresholds and badges |
-| `e2e/online.e2e.mjs` | Trophies appear on the final screen, the profile can be edited, the leaderboards list the players, feedback is stored, and a player above the practice ceiling is never given a stand-in. Quick matches too: two searching browsers are paired, a forfeit and a timeout are announced, and a lone player gets a stand-in opponent. Two isolated browser sessions play a whole online game through the real UI against the migration. Asserts that the hidden character never appears in the rival's page, that both players see every result, that only the host can start or restart, and that a reload keeps the seat. It runs without a Realtime server, so it also proves the polling fallback is sufficient on its own |
+| `supabase/tests/opponent.test.ts` | The computer sits down only after the wait, looks like any player, follows the player's trophies, makes the same decisions as the TypeScript player through whole games, never depends on a card it has not seen, finishes games that count, and wins by forfeit when the player leaves |
+| `supabase/tests/accounts.test.ts` | Recovery codes (format, hashing, replacement, attempt limits), one profile on two devices, and sign-in linking |
+| `e2e/online.e2e.mjs` | Trophies appear on the final screen, the profile can be edited, the leaderboards list the players, feedback is stored, the computer joins from the server at any rank, and an account is recovered on a second browser with its code. Quick matches too: two searching browsers are paired, a forfeit and a timeout are announced, and a lone player gets an opponent from the server. Two isolated browser sessions play a whole online game through the real UI against the migration. Asserts that the hidden character never appears in the rival's page, that both players see every result, that only the host can start or restart, and that a reload keeps the seat. It runs without a Realtime server, so it also proves the polling fallback is sufficient on its own |
 
 The parity test is the important one. Having the rules in two languages is a risk; the
 test turns that risk into a guarantee by making any divergence fail the build.

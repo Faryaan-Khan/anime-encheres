@@ -53,7 +53,7 @@ Pick three or four.
 - Added abuse controls without accounts: per-device and per-address rate limits (addresses
   stored only as hashes), input validation in every function, and a strict Content
   Security Policy on the site.
-- Set up CI with GitHub Actions (type check, 125 tests, production build) and continuous
+- Set up CI with GitHub Actions (type check, 157 tests, production build) and continuous
   deployment to Netlify.
 
 ## Skills demonstrated
@@ -111,11 +111,10 @@ themselves.
 Worth saying before an interviewer finds them:
 
 - Two-player rooms only; no spectators yet.
-- Below 300 trophies, quick matches fall back to the computer when the queue is empty.
-  That game runs in the browser, so its result is self-reported; it is capped (small
-  amounts, ten a day, never past 300) rather than trusted.
-- Identity is tied to browser storage; clearing it loses the profile. There is no sign-in
-  yet, so a profile cannot move to another device.
+- When the queue is empty the opponent is the computer, and players are not told.
+- The online computer opponent is rule-based; the stronger look-ahead player only runs
+  offline, because it is too heavy for a database function.
+- A recovery code is a bearer secret: whoever has it can open the profile.
 - The character list is static and names only.
 - Rate limits are per device token and per network address; a determined attacker with
   many addresses can still create rows, only more slowly.

@@ -1020,25 +1020,57 @@ input {
 }
 
 .badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
   margin-top: 0.5rem;
 }
 
 .badge {
-  padding: 0.25rem 0.7rem;
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.5rem 0.7rem;
   border: 2px dashed var(--muted);
-  border-radius: 999px;
+  border-radius: var(--radius);
   color: var(--muted);
-  font-size: 0.85rem;
-  font-weight: 700;
 }
 
 .badge--earned {
-  border: 2px solid var(--ink);
+  border: var(--line);
   background: var(--sticker);
   color: var(--ink);
+}
+
+.badge__pips {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.badge__pips i {
+  width: 0.7rem;
+  aspect-ratio: 1;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+}
+
+.badge__pips i.on {
+  background: currentColor;
+}
+
+.badge__note {
+  font-size: 0.8rem;
+}
+
+.code {
+  padding: 0.6rem 0.8rem;
+  border: var(--line);
+  border-radius: var(--radius);
+  background: var(--white);
+  font-family: var(--font-display);
+  font-size: clamp(0.8rem, 4.1vw, 1.15rem);
+  text-align: center;
+  white-space: nowrap;
+  user-select: all;
 }
 
 .recent,

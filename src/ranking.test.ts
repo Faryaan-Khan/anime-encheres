@@ -17,12 +17,26 @@ describe('leagues', () => {
 });
 
 describe('badges', () => {
-  it('are earned from stats', () => {
+  it('start unearned, with the first milestone in sight', () => {
     const none = badgesOf({ games: 0, wins: 0, best: 0, bestStreak: 0 });
-    expect(none.every((b) => !b.earned)).toBe(true);
-    const some = badgesOf({ games: 12, wins: 10, best: 320, bestStreak: 3 });
-    expect(some.filter((b) => b.earned).map((b) => b.key)).toEqual([
-      'badge.firstGame', 'badge.firstWin', 'badge.wins10', 'badge.streak3', 'badge.silver',
+    expect(none.map((b) => b.key)).toEqual(['badge.games', 'badge.wins', 'badge.streak', 'badge.league']);
+    expect(none.every((b) => b.level === 0 && b.reached === null)).toBe(true);
+    expect(none.map((b) => b.next)).toEqual([1, 1, 3, 300]);
+  });
+
+  it('level up in place instead of multiplying', () => {
+    const some = badgesOf({ games: 120, wins: 49, best: 640, bestStreak: 4 });
+    expect(some).toHaveLength(4);
+    expect(some.map((b) => [b.level, b.reached, b.next])).toEqual([
+      [4, 100, 500],
+      [2, 10, 50],
+      [1, 3, 5],
+      [2, 600, 1000],
     ]);
+  });
+
+  it('stop at the top level', () => {
+    const top = badgesOf({ games: 9999, wins: 9999, best: 9999, bestStreak: 99 });
+    expect(top.every((b) => b.level === b.levels && b.next === null)).toBe(true);
   });
 });

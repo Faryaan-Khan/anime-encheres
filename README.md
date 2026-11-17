@@ -42,8 +42,11 @@ rival, during the same auction.
 - Same-device games are saved after every move and can be resumed
 - Private online rooms with a shareable link, rematches and automatic reconnection; both
   players always see each result, even if the other moves on first
-- Quick matches: a matchmaking queue, a 60-second turn clock, forfeits, and the computer
-  stepping in when nobody else is looking for a game
+- Quick matches: a matchmaking queue, a 60-second turn clock, forfeits, and an opponent
+  played by the database itself when nobody else is looking for a game, with a strength
+  that follows the player's trophies
+- Saved accounts: a recovery code opens a profile on another device; Google sign-in is
+  built and waits for the provider to be configured
 - Ranked play: trophies won and lost by rank difference, six leagues, pairing with
   players of a similar level, and the winner decided by the server
 - Player profiles with statistics, badges, an avatar and a country; world, weekly and
@@ -94,7 +97,7 @@ Same-device play works immediately. Online play uses the Supabase project config
 | Command | What it does |
 | --- | --- |
 | `npm run dev` | Development server with hot reload |
-| `npm test` | Runs the 125 unit, database, parity, ranking and bot tests |
+| `npm test` | Runs the 157 unit, database, parity, ranking, account and bot tests |
 | `npm run test:e2e` | Plays private rooms, quick matches and the profile, leaderboard and feedback screens in headless browser sessions (needs Chrome) |
 | `npm run ratings` | Rebuilds the power-ratings document, the CSV and the database seed (`0004`) from `src/data/rosters.json` |
 | `npm run typecheck` | TypeScript in strict mode, no output |

@@ -4,8 +4,14 @@ import { countryFlag, countryName, countryOptions } from '../data/countries';
 import { useI18n } from '../i18n';
 import type { StringKey } from '../i18n/strings';
 import { toOnlineError } from '../online/api';
-import { ONLINE_AVAILABLE } from '../online/config';
-import { getProfile, updateProfile, type Profile as ProfileData } from '../online/profile';
+import { GOOGLE_SIGN_IN, ONLINE_AVAILABLE } from '../online/config';
+import {
+  getProfile,
+  newRecoveryCode,
+  redeemRecoveryCode,
+  updateProfile,
+  type Profile as ProfileData,
+} from '../online/profile';
 import { badgesOf, leagueOf, nextLeague } from '../ranking';
 import { navigate } from '../router';
 import { writeStored } from '../storage';
@@ -38,9 +44,22 @@ export function Profile() {
   useEffect(() => {
     if (!ONLINE_AVAILABLE) return;
     let cancelled = false;
-    getProfile()
+    const load = async () => {
+      if (GOOGLE_SIGN_IN) {
+        // Coming back from Google: finish the sign-in before showing the profile.
+        const account = await import('../online/account');
+        if (account.returningFromSignIn()) return account.finishGoogleSignIn();
+      }
+      return getProfile();
+    };
+    load()
       .then((p) => !cancelled && show(p))
-      .catch((e) => !cancelled && setError(`error.${toOnlineError(e).code}` as StringKey));
+      .catch(async (e) => {
+        if (cancelled) return;
+        setError(`error.${toOnlineError(e).code}` as StringKey);
+        // A failed sign-in must not hide the profile itself.
+        if (GOOGLE_SIGN_IN) await getProfile().then((p) => !cancelled && show(p)).catch(() => undefined);
+      });
     return () => {
       cancelled = true;
     };
@@ -64,7 +83,7 @@ export function Profile() {
     }
   };
 
-  if (!ONLINE_AVAILABLE || (!profile && error)) {
+  if (!ONLINE_AVAILABLE || (!profile && error && error !== 'error.ALREADY_LINKED')) {
     return (
       <main className="page">
         <h1 className="display">{t('profile.title')}</h1>
@@ -150,8 +169,20 @@ export function Profile() {
         <h2 className="page__subhead">{t('profile.badges')}</h2>
         <ul className="badges">
           {badgesOf(profile).map((badge) => (
-            <li key={badge.key} className={badge.earned ? 'badge badge--earned' : 'badge'}>
-              {t(badge.key)}
+            <li key={badge.key} className={badge.level > 0 ? 'badge badge--earned' : 'badge'}>
+              <strong>{t(badge.key)}</strong>
+              <span className="badge__pips" aria-hidden="true">
+                {Array.from({ length: badge.levels }, (_, i) => (
+                  <i key={i} className={i < badge.level ? 'on' : undefined} />
+                ))}
+              </span>
+              <span className="badge__note">
+                {badge.level > 0 && `${t('badge.level', { n: badge.level })}, `}
+                {badge.reached !== null && `${t('badge.reached', { n: badge.reached })}, `}
+                {badge.next === null
+                  ? t('badge.top')
+                  : t(badge.level > 0 ? 'badge.next' : 'badge.first', { n: badge.next })}
+              </span>
             </li>
           ))}
         </ul>
@@ -225,10 +256,110 @@ export function Profile() {
         </button>
       </form>
 
-      <p className="note">{t('profile.device')}</p>
+      <Account profile={profile} onOpened={show} />
       <button type="button" className="btn" onClick={() => navigate('/')}>
         {t('setup.back')}
       </button>
     </main>
+  );
+}
+
+/** Ways to keep a profile beyond this device: a recovery code, and Google when it is set up. */
+function Account({ profile, onOpened }: { profile: ProfileData; onOpened(profile: ProfileData): void }) {
+  const { t } = useI18n();
+  const [code, setCode] = useState<string | null>(null);
+  const [typed, setTyped] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<StringKey | null>(null);
+  const [opened, setOpened] = useState(false);
+
+  const run = async (task: () => Promise<void>) => {
+    setBusy(true);
+    setError(null);
+    setOpened(false);
+    try {
+      await task();
+    } catch (err) {
+      setError(`error.${toOnlineError(err).code}` as StringKey);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const getCode = () => run(async () => setCode(await newRecoveryCode()));
+
+  const useCode = (e: FormEvent) => {
+    e.preventDefault();
+    void run(async () => {
+      const found = await redeemRecoveryCode(typed);
+      if (!found) return setError('account.code.wrong');
+      // Read it again through this device, which now opens that profile.
+      onOpened(await getProfile());
+      writeStored('ae.name', found.name);
+      setTyped('');
+      setCode(null);
+      setOpened(true);
+    });
+  };
+
+  const google = () =>
+    run(async () => {
+      const account = await import('../online/account');
+      await account.startGoogleSignIn();
+    });
+
+  return (
+    <section className="panel">
+      <h2>{t('account.title')}</h2>
+      <p className="note">{t('account.intro')}</p>
+
+      {GOOGLE_SIGN_IN &&
+        (profile.saved ? (
+          <p className="note">{t('account.google.saved')}</p>
+        ) : (
+          <button type="button" className="btn btn--primary" disabled={busy} onClick={google}>
+            {t('account.google')}
+          </button>
+        ))}
+
+      {code ? (
+        <>
+          <p className="code" aria-live="polite">
+            {code}
+          </p>
+          <p className="note">{t('account.code.shown')}</p>
+        </>
+      ) : (
+        <button type="button" className="btn" disabled={busy} onClick={getCode}>
+          {t(profile.hasCode ? 'account.code.renew' : 'account.code.get')}
+        </button>
+      )}
+
+      <form className="form" onSubmit={useCode} noValidate>
+        <label className="field">
+          <span>{t('account.code.label')}</span>
+          <input
+            type="text"
+            value={typed}
+            maxLength={40}
+            autoComplete="off"
+            autoCapitalize="characters"
+            spellCheck={false}
+            placeholder="XXXX-XXXX-XXXX-XXXX"
+            onChange={(e) => setTyped(e.target.value)}
+          />
+        </label>
+        <p className="note">{t('account.code.replace')}</p>
+        {error && (
+          <p className="alert" role="alert">
+            {t(error)}
+          </p>
+        )}
+        {opened && <p className="note">{t('account.code.done')}</p>}
+        <button type="submit" className="btn" disabled={busy || typed.trim().length < 16}>
+          {t('account.code.use')}
+        </button>
+      </form>
+    </section>
   );
 }
