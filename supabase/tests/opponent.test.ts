@@ -371,6 +371,51 @@ describe('playing', () => {
   });
 });
 
+describe('once the player cannot buy any more', () => {
+  const finish = (code: string) =>
+    db.query(`update encheres.room_players set budget = 5, team = $2 where room_code = $1 and seat = 0`, [
+      code,
+      pool.slice(0, 2),
+    ]);
+
+  it('the computer finishes its team at once and the game is settled', async () => {
+    await rpc('get_profile', [ANA]);
+    const code = await againstComputer();
+    await finish(code);
+    const view = await rpc('get_room', [code, ANA]);
+    expect(view.status).toBe('finished');
+    expect(view.forfeit ?? null).toBeNull();
+    expect(view.result).toBeTruthy();
+    expect((await rpc<{ games: number; forfeits: number }>('get_profile', [ANA]))).toMatchObject({ games: 1, forfeits: 0 });
+  });
+
+  it('waits until the player has seen the result of their last purchase', async () => {
+    const code = await againstComputer();
+    await finish(code);
+    await db.query(`update encheres.rooms set phase = 'reveal', updated_at = now() where code = $1`, [code]);
+    expect((await rpc('get_room', [code, ANA])).status).toBe('playing');
+  });
+
+  it('settles the game for a player who walked away after finishing', async () => {
+    const code = await againstComputer();
+    await finish(code);
+    await db.query(`update encheres.rooms set phase = 'reveal' where code = $1`, [code]);
+    await idle(code, 100);
+    await rpc('get_profile', [ANA]);
+    const r = await room(code);
+    expect(r.status).toBe('finished');
+    expect(r.forfeit).toBeNull();
+  });
+
+  it('leaving is not giving up', async () => {
+    const code = await againstComputer();
+    await finish(code);
+    const view = await rpc('resign', [code, ANA]);
+    expect(view.status).toBe('finished');
+    expect(view.forfeit ?? null).toBeNull();
+  });
+});
+
 describe('trust', () => {
   it('no longer accepts results reported by the browser', async () => {
     expect(await rpcError('report_practice', [ANA, 'win', ['A', 'B'], [[], []]])).toMatch(/does not exist/);

@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { decide, emptyMemory, isBotTurn, observe, type BotLevel, type BotMemory } from '../bot/bot';
-import { bid, createGame, draw, next, pass, toView } from '../game/engine';
+import { bid, canStillBuy, createGame, draw, next, pass, toView } from '../game/engine';
 import type { GameState, Settings } from '../game/types';
 import { readStored, removeStored, writeStored } from '../storage';
 
@@ -8,6 +8,7 @@ const DEFAULT_KEY = 'ae.local';
 
 /** The computer always sits in the second seat. */
 export const BOT_SEAT = 1;
+const PLAYER_SEAT = 0;
 
 export interface LocalSetup {
   settings: Settings;
@@ -99,6 +100,40 @@ export function useLocalGame(key: string = DEFAULT_KEY) {
     commit(watched(saved.setup, state, memory));
   }, [commit, saved]);
 
+  /**
+   * Once the player cannot buy any more, nothing the computer does can change
+   * their team: it finishes its own at once and the game ends.
+   */
+  const finishForBot = useCallback(() => {
+    if (!saved?.setup.bot || canStillBuy(saved.state, PLAYER_SEAT)) return;
+    let state = saved.state;
+    let memory = saved.memory ?? emptyMemory();
+    for (let step = 0; step < 400 && state.phase !== 'finished'; step++) {
+      if (state.phase === 'reveal') {
+        state = next(state);
+        continue;
+      }
+      const view = toView(state, BOT_SEAT);
+      if (isBotTurn(view)) {
+        const decided = decide(view, { pool: saved.setup.pool, level: saved.setup.bot, memory });
+        memory = decided.memory;
+        const action = decided.action;
+        state =
+          action.type === 'draw'
+            ? draw(state, BOT_SEAT)
+            : action.type === 'pass'
+              ? pass(state, BOT_SEAT)
+              : bid(state, BOT_SEAT, action.amount);
+      } else if (state.phase === 'draw') {
+        state = draw(state, state.drawer);
+      } else {
+        state = pass(state, state.turn);
+      }
+      memory = observe(memory, toView(state, BOT_SEAT), saved.setup.pool);
+    }
+    commit({ setup: saved.setup, state, memory });
+  }, [commit, saved]);
+
   return {
     state: saved?.state ?? null,
     poolSize: saved?.setup.pool.length ?? 0,
@@ -112,5 +147,6 @@ export function useLocalGame(key: string = DEFAULT_KEY) {
     pass: () => apply((s) => pass(s, s.turn)),
     next: () => apply(next),
     playBot,
+    finishForBot,
   };
 }

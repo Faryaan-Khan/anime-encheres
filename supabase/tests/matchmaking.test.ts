@@ -225,7 +225,7 @@ describe('turn timer', () => {
     expect(await rpcError('claim_forfeit', [game.code, token(waiter)])).toContain('TOO_EARLY');
   });
 
-  it('restarts the clock with every action and never runs during a reveal', async () => {
+  it('restarts the clock with every action, and moves on from a result nobody moved on from', async () => {
     await search(ANA, 'Ana');
     const game = await search(BEN, 'Ben');
     const drawer = game.drawer;
@@ -238,10 +238,14 @@ describe('turn timer', () => {
     await rpc('play', [game.code, token(drawer), 'pass', null]);
     const reveal = await rpc('play', [game.code, token(rival), 'pass', null]);
     expect(reveal.phase).toBe('reveal');
-    await backdate(game.code!, 300);
-    const still = await rpc('get_room', [game.code, token(rival)]);
-    expect(still.phase).toBe('reveal');
-    expect(still.strikes).toEqual([0, 0]);
+    await backdate(game.code!, 11);
+    expect((await rpc('get_room', [game.code, token(rival)])).phase).toBe('reveal');
+    await backdate(game.code!, 13);
+    const moved = await rpc('get_room', [game.code, token(rival)]);
+    expect(moved.phase).toBe('draw');
+    expect(moved.round).toBe(2);
+    // Moving on is nobody's fault.
+    expect(moved.strikes).toEqual([0, 0]);
   });
 });
 
@@ -334,6 +338,66 @@ describe('automatic draw', () => {
       { a: 'next', s: rival },
       { a: 'draw', s: rival },
     ]);
+  });
+});
+
+describe('a player who cannot buy any more', () => {
+  const token = (seat: Seat) => (seat === 0 ? ANA : BEN);
+  const finish = (code: string, seat: Seat) =>
+    db.query(
+      `update encheres.room_players set budget = 5, team = $3 where room_code = $1 and seat = $2`,
+      [code, seat, pool.slice(0, 2)],
+    );
+  const seenAgo = (code: string, seat: Seat, seconds: number) =>
+    db.query(
+      `update encheres.room_players set seen_at = now() - make_interval(secs => $3) where room_code = $1 and seat = $2`,
+      [code, seat, seconds],
+    );
+  const start = async () => {
+    await search(ANA, 'Ana');
+    const game = await search(BEN, 'Ben');
+    await db.query(`update encheres.rooms set seen_at = now() - interval '2 minutes' where code = $1`, [game.code]);
+    return game.code!;
+  };
+
+  it('never counts as having left, so their result stands', async () => {
+    const code = await start();
+    await finish(code, 1);
+    await seenAgo(code, 1, 600);
+    expect((await rpc('get_room', [code, ANA])).status).toBe('playing');
+  });
+
+  it('still wins if the other player, who could still buy, leaves', async () => {
+    const code = await start();
+    await finish(code, 1);
+    await seenAgo(code, 0, 600);
+    const view = await rpc('get_room', [code, BEN]);
+    expect(view.status).toBe('finished');
+    expect(view.forfeit).toBe(0);
+  });
+
+  it('can leave without giving up the match', async () => {
+    const code = await start();
+    await finish(code, 1);
+    const view = await rpc('resign', [code, token(1)]);
+    expect(view.status).toBe('playing');
+    expect(view.forfeit ?? null).toBeNull();
+    // Still allowed for a player who could buy.
+    expect((await rpc('resign', [code, token(0)])).forfeit).toBe(0);
+  });
+});
+
+describe('the minute sweep', () => {
+  it('moves along and settles games that nobody is looking at', async () => {
+    await search(ANA, 'Ana');
+    const game = await search(BEN, 'Ben');
+    await db.query(`update encheres.rooms set seen_at = now() - interval '2 minutes', updated_at = now() - interval '1 minute' where code = $1`, [game.code]);
+    await db.query(`update encheres.room_players set seen_at = now() - interval '10 minutes' where room_code = $1`, [game.code]);
+    expect((await db.query<{ n: number }>('select encheres.sweep_games() as n')).rows[0].n).toBe(1);
+    const room = (await db.query<{ status: string; forfeit: number | null }>('select status, forfeit from encheres.rooms where code = $1', [game.code])).rows[0];
+    expect(room.status).toBe('finished');
+    expect(room.forfeit).not.toBeNull();
+    expect((await db.query('select 1 from encheres.matches')).rows).toHaveLength(1);
   });
 });
 

@@ -4,7 +4,7 @@ import { Board } from '../components/Board';
 import { Final } from '../components/Final';
 import { DEFAULT_OPTIONS, SettingsFields, toSettings, type GameOptions } from '../components/SettingsFields';
 import { poolFor } from '../data/characters';
-import { toView } from '../game/engine';
+import { canStillBuy, toView } from '../game/engine';
 import { useI18n } from '../i18n';
 import type { StringKey } from '../i18n/strings';
 import { BOT_SEAT, useLocalGame } from '../local/useLocalGame';
@@ -22,12 +22,23 @@ type Opponent = 'friend' | BotLevel;
  */
 export function LocalGame({ solo = false }: { solo?: boolean }) {
   const game = useLocalGame();
-  const { state, bot, playBot } = game;
+  const { state, bot, playBot, finishForBot } = game;
 
-  // The computer moves a moment after it becomes its turn.
+  // The player cannot buy any more: once they have seen the result of their
+  // last purchase, the computer finishes and the final screen follows.
+  const playerDone = state !== null && bot !== null && state.phase !== 'finished' && !canStillBuy(state, 0);
+  useEffect(() => {
+    if (!playerDone || state?.phase === 'reveal') return;
+    const timer = window.setTimeout(finishForBot, BOT_DELAY);
+    return () => window.clearTimeout(timer);
+  }, [playerDone, state?.phase, finishForBot]);
+
+  // The computer moves a moment after it becomes its turn (unless it is
+  // finishing the game on its own, below).
   const botToAct =
     state !== null &&
     bot !== null &&
+    canStillBuy(state, 0) &&
     ((state.phase === 'draw' && state.drawer === BOT_SEAT) ||
       (state.phase === 'bidding' && state.turn === BOT_SEAT));
   useEffect(() => {
