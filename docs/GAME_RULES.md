@@ -56,21 +56,33 @@ the game in its head before every bid.
 
 ### Quick match
 
-"Quick match" finds you an opponent online. The rules are fixed so that anyone can be
-paired: 500M each, teams of 5, one universe picked at random. You have 60 seconds for each
-action; if your opponent runs out of time you can claim the win, and leaving the game
-gives the win to your opponent. To play with a friend instead, create a private room and
-share its code.
+"Quick match" finds you an opponent online. You choose a mode: one universe, or all of
+them mixed. The rules are fixed so that anyone can be paired: 500M each, teams of 5. You
+have 60 seconds for each action; if your opponent runs out of time you can claim the win,
+and leaving the game gives the win to your opponent. To play with a friend instead, create
+a private room and share its code, or invite them from your friends list.
 
 ### Trophies and leagues
 
-Quick matches are ranked. A win earns about 30 trophies, more against a higher-ranked
-player and less against a lower-ranked one; a loss costs about 26, and you never go below
-zero. Trophies place you in a league: Bronze, Silver (300), Gold (600), Platinum (1000),
-Diamond (1500), Legend (2200). You are paired with players close to your level, and the
-range widens the longer you wait. Private rooms never change trophies. Your profile shows
-your statistics, badges and recent games, and the leaderboards rank players worldwide,
-over the current week, and within your country.
+Quick matches are ranked, and every mode has its own trophies. A win earns about 30
+trophies, more against a higher-ranked player and less against a lower-ranked one; a loss
+costs about 26, and you never go below zero. Trophies place you in a league: Bronze,
+Silver (300), Gold (600), Platinum (1000), Diamond (1500), Legend (2200). You are paired
+with players close to your level in that mode. Private rooms never change trophies.
+
+Your overall score is the average of your trophies in every mode, with the mixed mode
+counting double because it is the hardest: you need to know every series. A mode you have
+never played counts as zero.
+
+On the first day of each month, everyone above 2200 trophies in a mode starts again from
+2200, the entrance of the Legend league.
+
+### Friends
+
+Your profile has a player tag. Give it to a friend, or type theirs in the Friends screen,
+and once they accept you appear in each other's friends leaderboard. When you create a
+private room you can invite a friend with one tap; the invitation appears on their home
+screen.
 
 ### The bluff
 
@@ -139,22 +151,35 @@ partie avant chaque mise.
 
 ### Partie rapide
 
-« Partie rapide » te trouve un adversaire en ligne. Les règles sont fixes pour que tout le
-monde puisse être associé : 500M chacun, équipes de 5, un univers tiré au sort. Tu as
-60 secondes par action ; si ton adversaire dépasse ce temps, tu peux réclamer la victoire,
-et quitter la partie donne la victoire à l'adversaire. Pour jouer avec un ami, crée plutôt
-un salon privé et partage son code.
+« Partie rapide » te trouve un adversaire en ligne. Tu choisis un mode : un seul univers,
+ou tous mélangés. Les règles sont fixes pour que tout le monde puisse être associé : 500M
+chacun, équipes de 5. Tu as 60 secondes par action ; si ton adversaire dépasse ce temps,
+tu peux réclamer la victoire, et quitter la partie donne la victoire à l'adversaire. Pour
+jouer avec un ami, crée plutôt un salon privé et partage son code, ou invite-le depuis ta
+liste d'amis.
 
 ### Trophées et ligues
 
-Les parties rapides sont classées. Une victoire rapporte environ 30 trophées, plus contre
-un joueur mieux classé et moins contre un joueur moins bien classé ; une défaite en coûte
-environ 26, et tu ne descends jamais sous zéro. Les trophées te placent dans une ligue :
-Bronze, Argent (300), Or (600), Platine (1000), Diamant (1500), Légende (2200). Tu es
-associé à des joueurs proches de ton niveau, et l'écart accepté grandit avec l'attente.
-Les salons privés ne changent jamais les trophées. Ton profil affiche tes statistiques,
-tes badges et tes dernières parties, et les classements rangent les joueurs dans le monde,
-sur la semaine en cours et dans ton pays.
+Les parties rapides sont classées, et chaque mode a ses propres trophées. Une victoire
+rapporte environ 30 trophées, plus contre un joueur mieux classé et moins contre un joueur
+moins bien classé ; une défaite en coûte environ 26, et tu ne descends jamais sous zéro.
+Les trophées te placent dans une ligue : Bronze, Argent (300), Or (600), Platine (1000),
+Diamant (1500), Légende (2200). Tu es associé à des joueurs proches de ton niveau dans ce
+mode. Les salons privés ne changent jamais les trophées.
+
+Ton score global est la moyenne de tes trophées dans tous les modes ; le mode Tout mélangé
+compte double, car c'est le plus difficile : il faut connaître toutes les séries. Un mode
+jamais joué compte pour zéro.
+
+Le premier jour de chaque mois, tous ceux qui dépassent 2200 trophées dans un mode
+repartent de 2200, l'entrée de la ligue Légende.
+
+### Amis
+
+Ton profil a un tag de joueur. Donne-le à un ami, ou saisis le sien dans l'écran Amis, et
+une fois la demande acceptée vous apparaissez dans le classement d'amis l'un de l'autre.
+Quand tu crées un salon privé, tu peux inviter un ami d'un geste ; l'invitation apparaît
+sur son écran d'accueil.
 
 ### Le bluff
 

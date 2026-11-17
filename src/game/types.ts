@@ -95,12 +95,13 @@ export interface GameView {
 /** How the server judged a finished online game. */
 export interface MatchResult {
   winner: Seat | null;
-  /** Team power of each seat. */
+  /** Ranked games: the mode (a universe id or `mix`) whose trophies moved. */
+  mode?: string | null;
   power: [number, number];
-  /** Trophy change of each seat; `null` outside ranked games. */
+  /** Trophy change of each seat; `null` in private rooms. */
   deltas: [number, number] | null;
-  /** Trophy count of each seat after the game; `null` outside ranked games. */
-  trophies: [number, number] | null;
+  /** New trophies of each seat in that mode; an entry is `null` for a seat without a profile. */
+  trophies: [number | null, number | null] | null;
 }
 
 export type GameErrorCode =

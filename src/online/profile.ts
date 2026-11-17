@@ -4,6 +4,8 @@ import { getClient, getPlayerToken, toOnlineError } from './api';
 export interface RecentMatch {
   at: string;
   kind: 'ranked';
+  /** A universe id, or `mix`. */
+  mode: string | null;
   opponent: string;
   outcome: 'win' | 'loss' | 'tie';
   delta: number;
@@ -12,14 +14,30 @@ export interface RecentMatch {
   opponentPower: number;
 }
 
+/** A player's trophies in one mode. */
+export interface ModeRating {
+  mode: string;
+  trophies: number;
+  best: number;
+  games: number;
+  wins: number;
+}
+
 export interface Profile {
   id: string;
+  /** Short public name other players type to add this one as a friend. */
+  tag: string;
   name: string;
   /** ISO 3166-1 alpha-2 code, chosen by the player. */
   country: string | null;
   avatar: number;
+  /** The overall score: a weighted average over every mode (see ranking.ts). */
   trophies: number;
   best: number;
+  /** Trophies in each mode played at least once. */
+  modes: ModeRating[];
+  /** Highest trophies ever reached in any single mode. */
+  peak: number;
   games: number;
   wins: number;
   losses: number;
@@ -27,7 +45,6 @@ export interface Profile {
   forfeits: number;
   streak: number;
   bestStreak: number;
-  weekGain: number;
   /** World rank; `null` until the first ranked game. */
   rank: number | null;
   players: number;
@@ -53,7 +70,8 @@ export interface Leaderboard {
   me: { rank: number; value: number } | null;
 }
 
-export type LeaderboardScope = 'all' | 'week';
+/** `overall`, or a mode: a universe id or `mix`. */
+export type LeaderboardScope = string;
 export type FeedbackCategory = 'idea' | 'bug' | 'ratings' | 'other';
 
 async function call<T>(fn: string, args: Record<string, unknown>): Promise<T> {
@@ -80,8 +98,63 @@ export function updateProfile(name: string, country: string | null, avatar: numb
   });
 }
 
-export function getLeaderboard(scope: LeaderboardScope, country: string | null): Promise<Leaderboard> {
-  return call('leaderboard', { p_token: getPlayerToken(), p_scope: scope, p_country: country });
+export function getLeaderboard(
+  scope: LeaderboardScope,
+  country: string | null,
+  friendsOnly: boolean,
+): Promise<Leaderboard> {
+  return call('leaderboard', {
+    p_token: getPlayerToken(),
+    p_scope: scope,
+    p_country: country,
+    p_friends: friendsOnly,
+  });
+}
+
+export interface Person {
+  id: string;
+  name: string;
+  avatar: number;
+  country: string | null;
+  trophies: number;
+  tag: string;
+}
+
+export interface Friends {
+  tag: string;
+  friends: Person[];
+  /** Requests received, waiting for an answer. */
+  incoming: Person[];
+  /** Requests sent, not answered yet. */
+  outgoing: Person[];
+  /** Private rooms a friend is waiting in for this player. */
+  invites: Array<{ code: string; from: string; avatar: number }>;
+}
+
+export type AddFriendStatus = 'sent' | 'accepted' | 'already' | 'unknown' | 'self' | 'full';
+
+export function getFriends(): Promise<Friends> {
+  return call('get_friends', { p_token: getPlayerToken() });
+}
+
+export function addFriend(tag: string): Promise<Friends & { status: AddFriendStatus }> {
+  return call('add_friend', { p_token: getPlayerToken(), p_tag: tag });
+}
+
+export function answerFriend(id: string, accept: boolean): Promise<Friends> {
+  return call('answer_friend', { p_token: getPlayerToken(), p_friend: id, p_accept: accept });
+}
+
+export function removeFriend(id: string): Promise<Friends> {
+  return call('remove_friend', { p_token: getPlayerToken(), p_friend: id });
+}
+
+export function inviteFriend(code: string, id: string): Promise<boolean> {
+  return call('invite_friend', { p_token: getPlayerToken(), p_code: code, p_friend: id });
+}
+
+export function dismissInvite(code: string): Promise<Friends> {
+  return call('dismiss_invite', { p_token: getPlayerToken(), p_code: code });
 }
 
 export function sendFeedback(

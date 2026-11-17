@@ -12,7 +12,9 @@ import {
   updateProfile,
   type Profile as ProfileData,
 } from '../online/profile';
-import { badgesOf, leagueOf, nextLeague } from '../ranking';
+import { MODES } from '../match/config';
+import { modeName } from '../modes';
+import { badgesOf, leagueOf } from '../ranking';
 import { navigate } from '../router';
 import { writeStored } from '../storage';
 
@@ -104,8 +106,7 @@ export function Profile() {
     );
   }
 
-  const league = leagueOf(profile.trophies);
-  const next = nextLeague(profile.trophies);
+  const trophiesIn = (mode: string) => profile.modes.find((m) => m.mode === mode)?.trophies ?? 0;
   const winRate = profile.games > 0 ? Math.round((profile.wins / profile.games) * 100) : 0;
   const stats: Array<[StringKey, string | number]> = [
     ['profile.stat.games', profile.games],
@@ -113,10 +114,9 @@ export function Profile() {
     ['profile.stat.losses', profile.losses],
     ['profile.stat.ties', profile.ties],
     ['profile.stat.winRate', `${winRate}%`],
-    ['profile.stat.best', profile.best],
+    ['profile.stat.best', profile.peak],
     ['profile.stat.streak', profile.streak],
     ['profile.stat.bestStreak', profile.bestStreak],
-    ['profile.stat.week', profile.weekGain > 0 ? `+${profile.weekGain}` : profile.weekGain],
     ['profile.stat.forfeits', profile.forfeits],
   ];
 
@@ -134,15 +134,16 @@ export function Profile() {
         </div>
       </header>
 
-      <section className="panel rank" style={{ borderTopColor: league.color }}>
-        <p className="rank__league">{t(league.key)}</p>
-        <p className="rank__trophies">{t('profile.trophies', { n: profile.trophies })}</p>
+      <section className="panel rank">
+        <p className="rank__league">{t('profile.overall')}</p>
+        <p className="rank__trophies">{profile.trophies}</p>
         <p className="note">
           {profile.rank === null
             ? t('profile.unranked')
-            : t('profile.rank', { rank: profile.rank, players: profile.players })}
-          {next && ` ${t('profile.next', { n: next.missing, league: t(next.league.key) })}`}
+            : t('profile.rank', { rank: profile.rank, players: profile.players })}{' '}
+          {t('profile.overall.hint')}
         </p>
+        <p className="note">{t('profile.tag', { tag: profile.tag })}</p>
         <div className="form__actions">
           <button type="button" className="btn" onClick={() => navigate('/leaderboard')}>
             {t('home.leaderboard')}
@@ -151,6 +152,22 @@ export function Profile() {
             {t('online.match')}
           </button>
         </div>
+      </section>
+
+      <section>
+        <h2 className="page__subhead">{t('profile.modes')}</h2>
+        <ul className="recent">
+          {MODES.map((mode) => {
+            const league = leagueOf(trophiesIn(mode));
+            return (
+              <li key={mode} style={{ borderLeftColor: league.color }}>
+                <strong>{modeName(mode, t)}</strong>
+                <span>{t(league.key)}</span>
+                <span className="recent__delta">{trophiesIn(mode)}</span>
+              </li>
+            );
+          })}
+        </ul>
       </section>
 
       <section>
@@ -197,7 +214,10 @@ export function Profile() {
             {profile.recent.map((match, i) => (
               <li key={`${match.at}-${i}`} className={`recent__${match.outcome}`}>
                 <strong>{t(OUTCOME[match.outcome])}</strong>
-                <span>{t('profile.versus', { name: match.opponent })}</span>
+                <span>
+                  {t('profile.versus', { name: match.opponent })}
+                  {match.mode && `, ${modeName(match.mode, t)}`}
+                </span>
                 <span className="recent__delta">{match.delta > 0 ? `+${match.delta}` : match.delta}</span>
               </li>
             ))}

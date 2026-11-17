@@ -116,7 +116,7 @@ export function startGame(code: string): Promise<GameView> {
 export function findMatch(
   name: string,
   settings: Settings,
-  pool: string[],
+  mode: string,
   waitingCode: string | null,
 ): Promise<GameView> {
   return rpc('find_match', {
@@ -126,8 +126,10 @@ export function findMatch(
     p_team_size: settings.teamSize,
     p_min_bid: settings.minBid,
     p_increment: settings.increment,
-    p_pool: pool,
+    // The server deals from its own list of the mode's cards.
+    p_pool: null,
     p_code: waitingCode,
+    p_mode: mode,
   });
 }
 

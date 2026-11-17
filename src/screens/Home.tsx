@@ -1,12 +1,34 @@
+import { useEffect, useState } from 'react';
 import { CharacterCard } from '../components/CharacterCard';
 import { useI18n } from '../i18n';
 import { hasSavedLocalGame } from '../local/useLocalGame';
+import { ONLINE_AVAILABLE } from '../online/config';
+import { getFriends, type Friends } from '../online/profile';
 import { navigate } from '../router';
 import { removeStored } from '../storage';
 
 export function Home() {
   const { t, money } = useI18n();
   const resumable = hasSavedLocalGame();
+  const [invites, setInvites] = useState<Friends['invites']>([]);
+
+  // A friend may be waiting in a private room: show their invitation here.
+  useEffect(() => {
+    if (!ONLINE_AVAILABLE) return;
+    let cancelled = false;
+    const load = () =>
+      getFriends()
+        .then((f) => !cancelled && setInvites(f.invites))
+        .catch(() => undefined);
+    void load();
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void load();
+    }, 15000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, []);
   // Starting a new game replaces any unfinished one.
   const newGame = (path: string) => {
     removeStored('ae.local');
@@ -29,29 +51,38 @@ export function Home() {
       </section>
 
       <nav className="home__modes">
+        {invites.map((invite) => (
+          <button
+            key={invite.code}
+            type="button"
+            className="btn btn--wide invite"
+            onClick={() => navigate(`/room/${invite.code}`)}
+          >
+            {t('home.invite', { name: invite.from })}
+          </button>
+        ))}
+        <button type="button" className="btn btn--primary btn--mode" onClick={() => navigate('/online')}>
+          {t('home.online')}
+          <small>{t('home.online.hint')}</small>
+        </button>
+        <button type="button" className="btn btn--mode" onClick={() => newGame('/local')}>
+          {t('home.offline')}
+          <small>{t('home.offline.hint')}</small>
+        </button>
         {resumable && (
           <button type="button" className="btn btn--wide" onClick={() => navigate('/local')}>
             {t('home.resume')}
           </button>
         )}
-        <button type="button" className="btn btn--primary btn--mode" onClick={() => newGame('/local')}>
-          {t('home.local')}
-          <small>{t('home.local.hint')}</small>
-        </button>
-        <button type="button" className="btn btn--mode" onClick={() => newGame('/solo')}>
-          {t('home.solo')}
-          <small>{t('home.solo.hint')}</small>
-        </button>
-        <button type="button" className="btn btn--mode" onClick={() => navigate('/online')}>
-          {t('home.online')}
-          <small>{t('home.online.hint')}</small>
-        </button>
         <div className="home__links">
           <button type="button" className="link" onClick={() => navigate('/profile')}>
             {t('home.profile')}
           </button>
           <button type="button" className="link" onClick={() => navigate('/leaderboard')}>
             {t('home.leaderboard')}
+          </button>
+          <button type="button" className="link" onClick={() => navigate('/friends')}>
+            {t('home.friends')}
           </button>
           <button type="button" className="link" onClick={() => navigate('/rules')}>
             {t('home.rules')}

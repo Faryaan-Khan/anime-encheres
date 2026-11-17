@@ -39,11 +39,19 @@ const age = (code: string, seconds: number) =>
   db.query(`update encheres.rooms set created_at = now() - make_interval(secs => $2) where code = $1`, [code, seconds]);
 const idle = (code: string, seconds: number) =>
   db.query(`update encheres.rooms set updated_at = now() - make_interval(secs => $2) where code = $1`, [code, seconds]);
-const setTrophies = (who: string, trophies: number) =>
-  db.query(
-    `update encheres.profiles set trophies = $2, games = greatest(games, 1) where token_hash = encheres.token_hash($1)`,
-    [who, trophies],
+const setTrophies = async (who: string, trophies: number, mode = 'one-piece') => {
+  await db.query(
+    `insert into encheres.ratings (profile, mode, trophies, best, games)
+     select id, $3, $2, $2, 1 from encheres.profiles where token_hash = encheres.token_hash($1)
+     on conflict (profile, mode) do update set trophies = excluded.trophies, best = excluded.trophies`,
+    [who, trophies, mode],
   );
+  await db.query(
+    `update encheres.profiles set games = greatest(games, 1), trophies = encheres.overall(id)
+      where token_hash = encheres.token_hash($1)`,
+    [who],
+  );
+};
 
 /** Ana waits long enough for the computer to sit down. Returns the room code. */
 async function againstComputer(cards: string[] = pool): Promise<string> {
@@ -82,6 +90,7 @@ beforeEach(async () => {
   await db.exec(`
     delete from encheres.rooms; delete from encheres.matches; delete from encheres.devices;
     delete from encheres.profiles; delete from encheres.rate_limits;
+    delete from encheres.config where key = 'season';
     update encheres.config set value = 'true' where key = 'opponent_enabled';
     update encheres.config set value = '[12, 18]' where key = 'opponent_after_seconds';
     update encheres.config set value = '1' where key = 'opponent_pace';`);
@@ -158,6 +167,9 @@ describe('decisions', () => {
         await db.exec('delete from encheres.rooms');
         const code = await againstComputer(cards);
         await db.query('update encheres.rooms set bot_skill = $2 where code = $1', [code, skill]);
+        // The server deals from its own list: use it in the same order.
+        const dealt = (await db.query<{ pool: string[] }>('select pool from encheres.rooms where code = $1', [code])).rows[0].pool;
+        expect([...dealt].sort()).toEqual([...cards].sort());
         let memory: BotMemory = emptyMemory();
         const moods = new Map<number, number>();
 
@@ -179,10 +191,10 @@ describe('decisions', () => {
           const view = (
             await db.query<{ v: GameView }>('select encheres.room_view($1, 1::smallint) as v', [code])
           ).rows[0].v;
-          memory = observe(memory, view, cards);
+          memory = observe(memory, view, dealt);
           const expected = decideByRules(
             view,
-            { pool: cards, level: 'normal', memory, rng: () => mood },
+            { pool: dealt, level: 'normal', memory, rng: () => mood },
             styleForSkill(skill),
           );
           memory = expected.memory;
@@ -279,10 +291,14 @@ describe('playing', () => {
     expect(result.deltas![0]).toBe(expected);
     expect(result.trophies![0]).toBe(500 + expected);
 
-    const profile = await rpc<{ games: number; trophies: number; recent: Array<{ opponent: string; kind: string }> }>(
-      'get_profile', [ANA]);
+    const profile = await rpc<{
+      games: number;
+      modes: Array<{ mode: string; trophies: number }>;
+      recent: Array<{ opponent: string; kind: string }>;
+    }>('get_profile', [ANA]);
     // One game was on the profile already (see setTrophies).
-    expect(profile).toMatchObject({ games: 2, trophies: 500 + expected });
+    expect(profile.games).toBe(2);
+    expect(profile.modes).toMatchObject([{ mode: 'one-piece', trophies: 500 + expected }]);
     expect(profile.recent[0]).toMatchObject({ kind: 'ranked', opponent: view.players[1].name });
 
     // The computer has no profile and never appears in a ranking.

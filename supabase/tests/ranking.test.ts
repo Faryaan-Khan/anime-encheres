@@ -29,7 +29,9 @@ interface Profile {
   forfeits: number;
   streak: number;
   bestStreak: number;
-  weekGain: number;
+  peak: number;
+  tag: string;
+  modes: Array<{ mode: string; trophies: number; best: number; games: number; wins: number }>;
   rank: number | null;
   players: number;
   recent: Array<{ kind: string; opponent: string; outcome: string; delta: number; forfeit: boolean }>;
@@ -45,12 +47,19 @@ const token = (seat: Seat) => (seat === 0 ? ANA : BEN);
 const search = (who: string, name: string, code: string | null = null) =>
   rpc('find_match', [who, name, 500, 5, 10, 10, pool, code]);
 const profile = (who: string) => rpc<Profile>('get_profile', [who]);
-const setTrophies = (who: string, trophies: number) =>
-  db.query(
-    `update encheres.profiles set trophies = $2, games = greatest(games, 1)
-      where token_hash = encheres.token_hash($1)`,
-    [who, trophies],
+const setTrophies = async (who: string, trophies: number, mode = 'one-piece') => {
+  await db.query(
+    `insert into encheres.ratings (profile, mode, trophies, best, games)
+     select id, $3, $2, $2, 1 from encheres.profiles where token_hash = encheres.token_hash($1)
+     on conflict (profile, mode) do update set trophies = excluded.trophies, best = excluded.trophies`,
+    [who, trophies, mode],
   );
+  await db.query(
+    `update encheres.profiles set games = greatest(games, 1), trophies = encheres.overall(id)
+      where token_hash = encheres.token_hash($1)`,
+    [who],
+  );
+};
 
 /** Ana and Ben are paired; returns the room code. */
 async function paired(): Promise<string> {
@@ -88,6 +97,7 @@ beforeEach(async () => {
   await db.exec(`
     delete from encheres.rooms; delete from encheres.matches; delete from encheres.feedback;
     delete from encheres.profiles; delete from encheres.rate_limits;
+    delete from encheres.config where key = 'season';
     update encheres.config set value = 'true' where key = 'opponent_enabled';`);
 });
 
@@ -102,7 +112,7 @@ describe('the server knows the ratings', () => {
 
   it('keeps the generated seed file in step with the roster', () => {
     const seed = readMigration('0004_character_powers.sql');
-    for (const c of CHARACTERS) expect(seed).toContain(`('${c.id}', ${c.power})`);
+    for (const c of CHARACTERS) expect(seed).toContain(`('${c.id}', ${c.power}, '${c.universe}')`);
   });
 
   it('computes team power exactly like the app', async () => {
@@ -160,8 +170,11 @@ describe('ranked games', () => {
       const [winner, loser] = expected.winner === 0 ? [ana, ben] : [ben, ana];
       expect(result.deltas![expected.winner]).toBe(30);
       expect(result.deltas![expected.winner === 0 ? 1 : 0]).toBe(0);
-      expect(winner).toMatchObject({ trophies: 30, best: 30, wins: 1, losses: 0, streak: 1, weekGain: 30, rank: 1 });
+      // Trophies belong to the mode; the profile's own number is the overall score (30 / 9).
+      expect(winner).toMatchObject({ trophies: 3, peak: 30, wins: 1, losses: 0, streak: 1, rank: 1 });
+      expect(winner.modes).toEqual([{ mode: 'one-piece', trophies: 30, best: 30, games: 1, wins: 1 }]);
       expect(loser).toMatchObject({ trophies: 0, wins: 0, losses: 1, streak: 0, rank: 2 });
+      expect(loser.modes).toEqual([{ mode: 'one-piece', trophies: 0, best: 0, games: 1, wins: 0 }]);
       expect(result.trophies![expected.winner]).toBe(30);
     }
   });
@@ -189,7 +202,8 @@ describe('ranked games', () => {
     const view = await rpc('resign', [code, BEN]);
     expect(view.result).toMatchObject({ winner: 0, deltas: [20, -16], trophies: [720, 484] });
     const ben = await profile(BEN);
-    expect(ben).toMatchObject({ trophies: 484, forfeits: 1, losses: 1, weekGain: -16 });
+    expect(ben).toMatchObject({ forfeits: 1, losses: 1 });
+    expect(ben.modes[0]).toMatchObject({ mode: 'one-piece', trophies: 484, best: 500 });
     expect(ben.recent[0]).toMatchObject({ kind: 'ranked', opponent: 'Ana', outcome: 'loss', delta: -16, forfeit: true });
     expect((await profile(ANA)).recent[0]).toMatchObject({ opponent: 'Ben', outcome: 'win', delta: 20 });
   });
@@ -214,10 +228,12 @@ describe('ranked games', () => {
     expect((await profile(token(idle))).forfeits).toBe(1);
   });
 
-  it('reject a pool with cards the server does not know', async () => {
-    expect(await rpcError('find_match', [ANA, 'Ana', 500, 5, 10, 10, [...pool.slice(0, 20), 'made-up-card'], null])).toContain(
-      'INVALID_INPUT',
-    );
+  it('are dealt from the server\'s own cards, whatever the client sends', async () => {
+    const view = await rpc('find_match', [ANA, 'Ana', 500, 5, 10, 10, ['made-up-card', 'another'], null, 'one-piece']);
+    const stored = (await db.query<{ pool: string[]; mode: string }>('select pool, mode from encheres.rooms')).rows[0];
+    expect(stored.mode).toBe('one-piece');
+    expect([...stored.pool].sort()).toEqual([...pool].sort());
+    expect(view.settings.poolSize).toBe(pool.length);
   });
 });
 
@@ -276,7 +292,7 @@ describe('profiles', () => {
   it('start empty and unranked', async () => {
     const p = await profile(ANA);
     expect(p).toMatchObject({
-      name: 'Player', country: null, avatar: 0, trophies: 0, games: 0, rank: null, players: 0, recent: [],
+      name: 'Player', country: null, avatar: 0, trophies: 0, games: 0, rank: null, players: 0, recent: [], modes: [], peak: 0,
     });
   });
 
@@ -306,38 +322,43 @@ describe('leaderboards', () => {
     await setTrophies(ANA, 400);
     await setTrophies(BEN, 900);
     await setTrophies(CAM, 650);
-    await db.exec(`update encheres.profiles set week_gain = trophies / 10, week = encheres.current_week()`);
   });
 
-  it('rank everyone who has played, best first, and mark the caller', async () => {
-    const board = await rpc<Board>('leaderboard', [ANA, 'all', null]);
+  it('rank a mode by its trophies, best first, and mark the caller', async () => {
+    const board = await rpc<Board>('leaderboard', [ANA, 'one-piece', null]);
     expect(board.rows.map((r) => [r.rank, r.name, r.value])).toEqual([[1, 'Ben', 900], [2, 'Cam', 650], [3, 'Ana', 400]]);
     expect(board.rows.map((r) => Boolean(r.you))).toEqual([false, false, true]);
     expect(board.total).toBe(3);
     expect(board.me).toEqual({ rank: 3, value: 400 });
+    // Nobody has played this other mode.
+    expect((await rpc<Board>('leaderboard', [ANA, 'naruto', null])).rows).toEqual([]);
+  });
+
+  it('rank the world by overall score, where mixed counts double', async () => {
+    // Seven universes and mixed: nine shares. Ana adds 450 in mixed, worth 900.
+    await setTrophies(ANA, 450, 'mix');
+    const board = await rpc<Board>('leaderboard', [ANA, 'overall', null]);
+    expect(board.rows.map((r) => [r.name, r.value])).toEqual([['Ana', 144], ['Ben', 100], ['Cam', 72]]);
+    expect((await rpc<Board>('leaderboard', [ANA, 'all', null])).rows).toEqual(board.rows);
+    expect((await profile(ANA)).trophies).toBe(144);
   });
 
   it('can be limited to one country', async () => {
-    const board = await rpc<Board>('leaderboard', [ANA, 'all', 'my']);
+    const board = await rpc<Board>('leaderboard', [ANA, 'one-piece', 'my']);
     expect(board.rows.map((r) => r.name)).toEqual(['Cam', 'Ana']);
     expect(board.me).toEqual({ rank: 2, value: 400 });
-    expect((await rpc<Board>('leaderboard', [BEN, 'all', 'MY'])).me).toBeNull();
-  });
-
-  it('have a weekly table that forgets earlier weeks', async () => {
-    await db.exec(`update encheres.profiles set week = encheres.current_week() - 7 where name = 'Ben'`);
-    const board = await rpc<Board>('leaderboard', [CAM, 'week', null]);
-    expect(board.rows.map((r) => [r.name, r.value])).toEqual([['Cam', 65], ['Ana', 40]]);
-    expect((await profile(BEN)).weekGain).toBe(0);
+    expect((await rpc<Board>('leaderboard', [BEN, 'one-piece', 'MY'])).me).toBeNull();
   });
 
   it('leave out players who never played, work without a token, and validate', async () => {
     await db.exec(`update encheres.profiles set games = 0 where name = 'Cam'`);
-    const board = await rpc<Board>('leaderboard', [null, 'all', null]);
+    const board = await rpc<Board>('leaderboard', [null, 'overall', null]);
     expect(board.rows.map((r) => r.name)).toEqual(['Ben', 'Ana']);
     expect(board.me).toBeNull();
     expect(await rpcError('leaderboard', [ANA, 'month', null])).toContain('INVALID_INPUT');
-    expect(await rpcError('leaderboard', [ANA, 'all', 'XYZ'])).toContain('INVALID_INPUT');
+    expect(await rpcError('leaderboard', [ANA, 'overall', 'XYZ'])).toContain('INVALID_INPUT');
+    // The weekly table no longer exists; apps that still ask for it get an empty one.
+    expect(await rpc<Board>('leaderboard', [ANA, 'week', null])).toEqual({ rows: [], total: 0, me: null });
   });
 });
 
@@ -393,14 +414,14 @@ describe('permissions', () => {
     for (const fn of [
       'public.get_profile(text)',
       'public.update_profile(text, text, text, integer)',
-      'public.leaderboard(text, text, text)',
+      'public.leaderboard(text, text, text, boolean)',
       'public.send_feedback(text, text, text, text, text)',
     ]) {
       expect(await check(`select has_function_privilege('anon', '${fn}', 'execute') as ok`)).toBe(true);
     }
     for (const fn of [
       'encheres.settle_match(text)',
-      'encheres.apply_result(uuid, text, integer, boolean)',
+      'encheres.apply_result(uuid, text, text, integer, boolean)',
       'encheres.hit(text, integer, interval)',
       'encheres.profile_for(text, text)',
     ]) {

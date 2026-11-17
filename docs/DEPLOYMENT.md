@@ -6,19 +6,20 @@ site; online play needs both.
 ## 1. Database (Supabase)
 
 1. Create a Supabase project (the free plan is enough).
-2. Open **SQL Editor** and run the five scripts in order:
+2. Open **SQL Editor** and run the six scripts in order:
    [`0001_init.sql`](../supabase/migrations/0001_init.sql),
    [`0002_matchmaking.sql`](../supabase/migrations/0002_matchmaking.sql),
    [`0003_ranking.sql`](../supabase/migrations/0003_ranking.sql),
-   [`0004_character_powers.sql`](../supabase/migrations/0004_character_powers.sql), then
-   [`0005_accounts_and_opponent.sql`](../supabase/migrations/0005_accounts_and_opponent.sql).
+   [`0004_character_powers.sql`](../supabase/migrations/0004_character_powers.sql),
+   [`0005_accounts_and_opponent.sql`](../supabase/migrations/0005_accounts_and_opponent.sql), then
+   [`0006_modes_and_friends.sql`](../supabase/migrations/0006_modes_and_friends.sql).
    The editor warns about "destructive operations" because the scripts contain `revoke`
    and `delete` statements inside function bodies; nothing is removed. All scripts are
    idempotent, so they can be run again after an update.
 
 After changing a power rating in `src/data/rosters.json`, run `npm run ratings` and run
 `0004_character_powers.sql` again, so that the server judges games with the same numbers
-as the app. A test fails if the two disagree.
+as the app and deals each mode from the same cards. A test fails if the two disagree.
 
 ### Switches
 

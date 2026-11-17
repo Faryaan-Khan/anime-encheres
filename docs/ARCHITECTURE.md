@@ -251,18 +251,53 @@ and gives the database its own copy of the power ratings.
 - **Match records.** Every action is appended to the room's log (`round, seat, action,
   value`) and copied to `matches` with the teams, powers and trophy changes. This is the
   data a future learning opponent, replays or rating reviews would need.
-- **Leaderboards.** World (trophies), this week (trophies gained since Monday, UTC) and
-  per country. Only the top 50 rows and the caller's own rank leave the database.
+- **Leaderboards.** The overall score or one mode, for the world, one country or the
+  caller's friends. Only the top 50 rows and the caller's own rank leave the database.
 - **Leagues and badges** are derived from the profile in `src/ranking.ts`; nothing about
   them is stored. Each kind of badge is earned once and then levels up.
 - **Abuse limits.** Functions that create rows count calls per caller in `rate_limits`:
   rooms and searches per network address (stored only as a hash), feedback per device and
   per address. Exceeding a limit raises `RATE_LIMITED`.
 
+### Modes, the overall score and seasons
+
+`supabase/migrations/0006_modes_and_friends.sql`.
+
+- **Modes.** A quick match is played in one mode: a universe, or `mix` for all of them.
+  Each mode is its own queue. The server builds the pool from `encheres.characters`
+  (which records every card's universe) and ignores any card list sent by the client, so
+  a modified client cannot play a ranked game with hand-picked cards.
+- **Ratings.** `encheres.ratings` holds one row per player and mode. Trophy changes,
+  leagues, pairing and the opponent's skill all use the rating of the mode being played.
+- **Overall score.** `profiles.trophies` now holds a derived number: the weighted average
+  of the player's ratings over every mode, with `mix` counting double because it asks
+  for knowledge of every series. A mode never played counts as zero, so the score rewards
+  breadth. `src/ranking.ts` has the same formula for display, and a test compares the
+  two.
+- **Seasons.** `roll_season` runs at the start of the calls that read or change ratings.
+  When the month differs from the one stored in `encheres.config`, every rating above
+  the Legend entrance (2200) is set back to it and the affected overall scores are
+  recomputed. There is no scheduler: the first call of the month does the work, under a
+  lock.
+- **Compatibility.** Apps opened before modes existed send a card list and no mode; the
+  server works the mode out from the cards. They also ask for a weekly leaderboard,
+  which now returns an empty table.
+
+### Friends and invitations
+
+Every profile has a seven-character tag. `add_friend` with someone's tag creates a
+request, which the other player accepts (asking back counts as accepting). Friends are a
+filter on every leaderboard. The host of a private room that has not started can call
+`invite_friend`; the friend's device shows the invitation the next time it asks for
+`get_friends`, which the home screen does every 15 seconds and the friends screen every
+6. An invitation disappears when the room fills, starts, is deleted, or after 30 minutes.
+Outcomes such as "unknown tag" are returned as a status, not raised, so that every
+attempt counts toward the daily limit.
+
 ### What is stored about a player
 
-A token hash, a display name, an optional country code, an avatar number, trophies and
-counters, the games played with their action logs, and any feedback sent (with a contact
+A token hash, a display name, a public tag, an optional country code, an avatar number,
+trophies per mode and counters, the list of friends, the games played with their action logs, and any feedback sent (with a contact
 only if the player typed one). Network addresses are never stored, only a hash used for
 rate limiting, deleted after a day. No email, password or device information.
 
@@ -291,6 +326,7 @@ job or extra infrastructure to maintain.
 | `supabase/tests/ranking.test.ts` | The server's verdict equals the app's on random teams and whole games, trophy amounts, the floor at zero, forfeits and timeouts, settling once, private rooms unranked, pairing by level, profile validation, the three leaderboards, feedback limits, rate limits, and that API roles can reach only the public functions |
 | `src/ranking.test.ts` | League thresholds and badges |
 | `supabase/tests/opponent.test.ts` | The computer sits down only after the wait, looks like any player, follows the player's trophies, makes the same decisions as the TypeScript player through whole games, never depends on a card it has not seen, finishes games that count, and wins by forfeit when the player leaves |
+| `supabase/tests/modes.test.ts` | The server's card list per mode equals the app's, separate queues, mode worked out for old apps, per-mode trophies and pairing, the overall score formula in both languages, the monthly reset, friend requests in every state, the friends leaderboard, and invitations |
 | `supabase/tests/accounts.test.ts` | Recovery codes (format, hashing, replacement, attempt limits), one profile on two devices, and sign-in linking |
 | `e2e/online.e2e.mjs` | Trophies appear on the final screen, the profile can be edited, the leaderboards list the players, feedback is stored, the computer joins from the server at any rank, and an account is recovered on a second browser with its code. Quick matches too: two searching browsers are paired, a forfeit and a timeout are announced, and a lone player gets an opponent from the server. Two isolated browser sessions play a whole online game through the real UI against the migration. Asserts that the hidden character never appears in the rival's page, that both players see every result, that only the host can start or restart, and that a reload keeps the seat. It runs without a Realtime server, so it also proves the polling fallback is sufficient on its own |
 

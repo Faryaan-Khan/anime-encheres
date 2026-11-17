@@ -10,6 +10,7 @@ export const MIGRATIONS = [
   '0003_ranking.sql',
   '0004_character_powers.sql',
   '0005_accounts_and_opponent.sql',
+  '0006_modes_and_friends.sql',
 ];
 
 export function readMigration(file: string): string {
