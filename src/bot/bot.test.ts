@@ -3,7 +3,7 @@ import { MIX_ID, poolFor } from '../data/characters';
 import { bid, createGame, draw, pass, toView } from '../game/engine';
 import { seeded } from '../game/testing';
 import type { Seat } from '../game/types';
-import { decide, emptyMemory, isBotTurn, learnedBluffRate, marketOf, observe, valuer } from './bot';
+import { decide, emptyMemory, isBotTurn, learnedBluffRate, marketOf, observe, valuer, styleForSkill } from './bot';
 import { simulate, winRate, type Player } from './simulate';
 
 const onePiece = poolFor('one-piece');
@@ -122,6 +122,14 @@ describe('strength', () => {
   it('normal clearly beats random and naive players', () => {
     expect(winRate('normal', 'random', onePiece, 400, seeded(21))).toBeGreaterThan(0.65);
     expect(winRate('normal', 'honest', onePiece, 400, seeded(22))).toBeGreaterThan(0.55);
+  });
+
+  it('the online opponent gets stronger with its skill setting', () => {
+    const [beginner, middle, expert] = [0, 0.5, 1].map(styleForSkill);
+    expect(winRate(beginner, 'normal', onePiece, 300, seeded(31))).toBeLessThan(0.42);
+    expect(winRate(middle, beginner, onePiece, 300, seeded(32))).toBeGreaterThan(0.58);
+    expect(winRate(expert, middle, onePiece, 300, seeded(33))).toBeGreaterThan(0.53);
+    expect(winRate(expert, beginner, onePiece, 300, seeded(34))).toBeGreaterThan(0.62);
   });
 
   it('hard clearly beats normal', () => {

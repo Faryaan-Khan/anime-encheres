@@ -240,7 +240,7 @@ function likelihood(view: GameView, rivalWorth: number, bluffRate: number): numb
 // Normal level: rules
 // ---------------------------------------------------------------------------
 
-interface Style {
+export interface Style {
   /** Count exactly which cards are left, or judge against the whole pool. */
   countsCards: boolean;
   /** Random error in valuations, as a fraction (0.15 = up to ±15%). */
@@ -251,6 +251,10 @@ interface Style {
   opensAtMinimum: boolean;
   /** Assumed chance that the rival is bluffing; `null` to learn it. */
   rivalBluffRate: number | null;
+  /** Multiplies what a card it has seen is worth to it (1 = sound, 2 = overpays). */
+  greed?: number;
+  /** Multiplies what it will pay for a card it has not seen. */
+  nerve?: number;
 }
 
 const NORMAL: Style = {
@@ -260,6 +264,35 @@ const NORMAL: Style = {
   opensAtMinimum: false,
   rivalBluffRate: 0.25,
 };
+
+/**
+ * The online opponent's style for a skill between 0 (beginner) and 1
+ * (expert). The database plays these same rules
+ * (supabase/migrations/0005_accounts_and_opponent.sql); they are kept here
+ * so that a test can check both make the same decisions, and so that their
+ * strength can be measured.
+ *
+ * A beginner is timid with cards it has seen and reckless with cards it has
+ * not, which is the classic mistake in this game. An expert prices what it
+ * sees soundly, rarely chases a hidden card, and counts the cards left.
+ */
+export function styleForSkill(skill: number): Style {
+  const s = Math.min(1, Math.max(0, skill));
+  return {
+    countsCards: s >= 0.7,
+    noise: 0.45 - 0.4 * s,
+    bluffChance: 0.15,
+    opensAtMinimum: false,
+    rivalBluffRate: 0.25,
+    greed: s >= 0.5 ? 1 : 0.4 + 1.2 * s,
+    nerve: s <= 0.5 ? 2.5 - 3.2 * s : 0.9 - 1.2 * (s - 0.5),
+  };
+}
+
+/** One decision of the rule-based player with an explicit style. */
+export function decideByRules(view: GameView, ctx: BotContext, style: Style): Decision {
+  return byRules(view, ctx, style, ctx.rng ?? Math.random);
+}
 
 /** The hard level's instinct, used when looking ahead cannot separate the options. */
 const SHARP: Style = {
@@ -300,7 +333,7 @@ function byRules(view: GameView, ctx: BotContext, style: Style, rng: () => numbe
   // ----- The bot drew the card and knows it --------------------------------
   if (view.card !== null) {
     const noise = 1 + (rng() * 2 - 1) * style.noise;
-    const limit = floor(Math.min(self.budget, myWorth(powerOf(view.card)) * noise));
+    const limit = floor(Math.min(self.budget, myWorth(powerOf(view.card)) * noise * (style.greed ?? 1)));
     // A bluff pretends the card is decent: half a slot's fair share at most.
     const bluffCeiling = floor(Math.min(self.budget, (self.budget / mySlots) * 0.5));
 
@@ -353,7 +386,7 @@ function byRules(view: GameView, ctx: BotContext, style: Style, rng: () => numbe
 
   const valueIfIWin = winValue / winWeight;
   const appetite = 1 + (rng() * 2 - 1) * style.noise;
-  return valueIfIWin * appetite >= required ? bids(required) : passes();
+  return valueIfIWin * appetite * (style.nerve ?? 1) >= required ? bids(required) : passes();
 }
 
 // ---------------------------------------------------------------------------
