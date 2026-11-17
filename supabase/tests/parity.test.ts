@@ -6,21 +6,16 @@
  *  2. Parity: random games are replayed through the SQL functions and the
  *     TypeScript engine at the same time, and every view must be identical.
  */
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { PGlite } from '@electric-sql/pglite';
+import type { PGlite } from '@electric-sql/pglite';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { bid, createGame, draw, next, pass, requiredBid, toView } from '../../src/game/engine';
 import { seeded } from '../../src/game/testing';
 import type { GameState, GameView, Seat } from '../../src/game/types';
-
-const migration = ['0001_init.sql', '0002_matchmaking.sql']
-  .map((file) => readFileSync(fileURLToPath(new URL(`../migrations/${file}`, import.meta.url)), 'utf8'))
-  .join('\n');
+import { createTestDb, type TestDb } from './helpers';
 
 /** Fields that only exist online; the engine has no equivalent. */
 function withoutOnlineFields(view: GameView): GameView {
-  const { matched: _matched, forfeit: _forfeit, idle: _idle, ...rest } = view;
+  const { matched: _matched, forfeit: _forfeit, idle: _idle, result: _result, ...rest } = view;
   return rest;
 }
 
@@ -30,21 +25,8 @@ const GUEST = 'guest-token-0123456789abcdef';
 const STRANGER = 'stranger-token-0123456789abcdef';
 
 let db: PGlite;
-
-async function rpc<T = GameView>(fn: string, args: unknown[]): Promise<T> {
-  const placeholders = args.map((_, i) => `$${i + 1}`).join(', ');
-  const res = await db.query<{ out: T }>(`select public.${fn}(${placeholders}) as out`, args);
-  return res.rows[0].out;
-}
-
-async function rpcError(fn: string, args: unknown[]): Promise<string> {
-  try {
-    await rpc(fn, args);
-  } catch (e) {
-    return (e as Error).message;
-  }
-  throw new Error(`${fn} should have failed`);
-}
+let rpc: TestDb['rpc'];
+let rpcError: TestDb['rpcError'];
 
 async function newRoom(budget = 500, teamSize = 5): Promise<string> {
   const view = await rpc('create_room', [HOST, 'Ana', budget, teamSize, 10, 10, pool]);
@@ -61,12 +43,7 @@ async function startedRoom(budget = 500, teamSize = 5): Promise<string> {
 const token = (seat: Seat) => (seat === 0 ? HOST : GUEST);
 
 beforeAll(async () => {
-  db = new PGlite();
-  // Roles that exist on Supabase and that the migration grants to.
-  await db.exec('create role anon nologin; create role authenticated nologin;');
-  await db.exec(migration);
-  // The migration must be safe to run twice.
-  await db.exec(migration);
+  ({ db, rpc, rpcError } = await createTestDb());
 });
 
 describe('rooms', () => {

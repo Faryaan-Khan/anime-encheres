@@ -1,35 +1,19 @@
 /** Quick matches: pairing, the waiting queue, resigning and the turn timer. */
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { PGlite } from '@electric-sql/pglite';
+import type { PGlite } from '@electric-sql/pglite';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import type { GameView, Seat } from '../../src/game/types';
+import { poolFor } from '../../src/data/characters';
+import type { Seat } from '../../src/game/types';
+import { createTestDb, type TestDb } from './helpers';
 
-const migration = ['0001_init.sql', '0002_matchmaking.sql']
-  .map((file) => readFileSync(fileURLToPath(new URL(`../migrations/${file}`, import.meta.url)), 'utf8'))
-  .join('\n');
-
-const pool = Array.from({ length: 24 }, (_, i) => `c${i + 1}`);
+// Ranked games are judged by the server, so the pool must be real characters.
+const pool = poolFor('one-piece').slice(0, 24);
 const ANA = 'ana-token-0123456789abcdef';
 const BEN = 'ben-token-0123456789abcdef';
 const CAM = 'cam-token-0123456789abcdef';
 
 let db: PGlite;
-
-async function rpc<T = GameView>(fn: string, args: unknown[]): Promise<T> {
-  const placeholders = args.map((_, i) => `$${i + 1}`).join(', ');
-  const res = await db.query<{ out: T }>(`select public.${fn}(${placeholders}) as out`, args);
-  return res.rows[0].out;
-}
-
-async function rpcError(fn: string, args: unknown[]): Promise<string> {
-  try {
-    await rpc(fn, args);
-  } catch (e) {
-    return (e as Error).message;
-  }
-  throw new Error(`${fn} should have failed`);
-}
+let rpc: TestDb['rpc'];
+let rpcError: TestDb['rpcError'];
 
 const search = (token: string, name: string, code: string | null = null) =>
   rpc('find_match', [token, name, 500, 5, 10, 10, pool, code]);
@@ -38,14 +22,11 @@ const waitingRooms = async () =>
   (await db.query<{ n: number }>(`select count(*)::int as n from encheres.rooms where matched and status = 'lobby'`)).rows[0].n;
 
 beforeAll(async () => {
-  db = new PGlite();
-  await db.exec('create role anon nologin; create role authenticated nologin;');
-  await db.exec(migration);
-  await db.exec(migration); // must be safe to run twice
+  ({ db, rpc, rpcError } = await createTestDb());
 });
 
 beforeEach(async () => {
-  await db.exec('delete from encheres.rooms');
+  await db.exec('delete from encheres.rooms; delete from encheres.matches; delete from encheres.profiles;');
 });
 
 describe('pairing', () => {
