@@ -61,7 +61,9 @@ them mixed. The rules are fixed so that anyone can be paired: 500M each, teams o
 have 30 seconds for each action. If you run out of time the game plays for you (draws the
 card, or passes) and counts it; the third time loses the match. Leaving the game, or
 closing the page and not coming back within a few seconds, gives the win to your
-opponent. To play with a friend instead, create
+opponent. Once you cannot buy anything more (your team is full, or you cannot afford the
+minimum bid), the rest of the game plays out by itself and your result counts even if you
+leave; against the computer it finishes straight away. To play with a friend instead, create
 a private room and share its code, or invite them from your friends list.
 
 ### Trophies and leagues
@@ -166,7 +168,9 @@ ou tous mélangés. Les règles sont fixes pour que tout le monde puisse être a
 chacun, équipes de 5. Tu as 30 secondes par action. Si le temps est écoulé, le jeu joue
 pour toi (tire la carte, ou passe) et le compte ; la troisième fois, la partie est perdue.
 Quitter la partie, ou fermer la page sans revenir dans les secondes qui suivent, donne la
-victoire à l'adversaire. Pour
+victoire à l'adversaire. Quand tu ne peux plus rien acheter (équipe complète, ou plus de
+quoi payer l'enchère minimale), la suite se joue toute seule et ton résultat compte même
+si tu pars ; contre l'ordinateur, elle se termine tout de suite. Pour
 jouer avec un ami, crée plutôt un salon privé et partage son code, ou invite-le depuis ta
 liste d'amis.
 

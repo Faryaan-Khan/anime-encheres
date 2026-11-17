@@ -195,6 +195,21 @@ has polled for 12 seconds is skipped.
   seconds since each seat was heard from; the board shows a countdown to the win after
   12 seconds of silence. Hidden tabs keep polling every 5 seconds so a player who only
   switched apps is not counted as gone. `resign` gives up at once.
+- **Finished players** (`0011_autopilot.sql`). A seat that cannot buy any more
+  (`encheres.can_buy`, mirror of `canStillBuy`) has nothing left to decide, so its result
+  stands: `enforce` never counts it as gone, `resign` from it is not a forfeit, and
+  `sweep_abandoned` finishes the game instead of forfeiting it. Against the computer,
+  `bot_step` calls `encheres.finish_for_bot` once the player's last result has left the
+  screen: the computer plays its remaining rounds in one go, with the SQL rule-based
+  player. Offline, `useLocalGame().finishForBot` does the same. Results move on by
+  themselves after a countdown on the button (5 s; 1.5 s for a player who is only
+  watching; 3 s before the final screen); between two people `enforce` moves on after
+  12 s if neither device did. The client skips straight to the final screen when more
+  than two results arrive at once after the end.
+- **The minute sweep.** `encheres.sweep_games()` runs `enforce` and `bot_step` on every
+  quick match idle for 5 seconds or more; pg_cron runs it every minute (job
+  `encheres-sweep`, scheduled by 0011 where pg_cron exists). This is what settles a game
+  when every player has gone.
 - **No waiting on a player who cannot buy.** When the next drawer's team is full or they
   cannot afford the minimum bid, the card is drawn for them and the other player bids at
   once (`next()` in `src/game/engine.ts`, the `next` branch of `encheres.play_as` in SQL;
