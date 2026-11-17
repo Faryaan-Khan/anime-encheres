@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LEAGUES, badgesOf, leagueOf, nextLeague } from './ranking';
+import { LEAGUES, OVERALL_SHARES, badgesOf, leagueOf, nextLeague, overallScore } from './ranking';
 
 describe('leagues', () => {
   it('are entered at their threshold', () => {
@@ -18,14 +18,14 @@ describe('leagues', () => {
 
 describe('badges', () => {
   it('start unearned, with the first milestone in sight', () => {
-    const none = badgesOf({ games: 0, wins: 0, best: 0, bestStreak: 0 });
+    const none = badgesOf({ games: 0, wins: 0, peak: 0, bestStreak: 0 });
     expect(none.map((b) => b.key)).toEqual(['badge.games', 'badge.wins', 'badge.streak', 'badge.league']);
     expect(none.every((b) => b.level === 0 && b.reached === null)).toBe(true);
     expect(none.map((b) => b.next)).toEqual([1, 1, 3, 300]);
   });
 
   it('level up in place instead of multiplying', () => {
-    const some = badgesOf({ games: 120, wins: 49, best: 640, bestStreak: 4 });
+    const some = badgesOf({ games: 120, wins: 49, peak: 640, bestStreak: 4 });
     expect(some).toHaveLength(4);
     expect(some.map((b) => [b.level, b.reached, b.next])).toEqual([
       [4, 100, 500],
@@ -36,7 +36,17 @@ describe('badges', () => {
   });
 
   it('stop at the top level', () => {
-    const top = badgesOf({ games: 9999, wins: 9999, best: 9999, bestStreak: 99 });
+    const top = badgesOf({ games: 9999, wins: 9999, peak: 9999, bestStreak: 99 });
     expect(top.every((b) => b.level === b.levels && b.next === null)).toBe(true);
+  });
+});
+
+describe('the overall score', () => {
+  it('averages every mode, counting mixed double and unplayed modes as zero', () => {
+    expect(OVERALL_SHARES).toBe(9);
+    expect(overallScore({})).toBe(0);
+    expect(overallScore({ naruto: 900 })).toBe(100);
+    expect(overallScore({ mix: 900 })).toBe(200);
+    expect(overallScore({ naruto: 900, mix: 450 })).toBe(200);
   });
 });

@@ -8,6 +8,7 @@ export type Route =
   | { name: 'profile' }
   | { name: 'leaderboard' }
   | { name: 'feedback' }
+  | { name: 'friends' }
   | { name: 'online' }
   | { name: 'rules' }
   | { name: 'room'; code: string };
@@ -20,6 +21,7 @@ export function parseRoute(hash: string): Route {
   if (parts[0] === 'profile') return { name: 'profile' };
   if (parts[0] === 'leaderboard') return { name: 'leaderboard' };
   if (parts[0] === 'feedback') return { name: 'feedback' };
+  if (parts[0] === 'friends') return { name: 'friends' };
   if (parts[0] === 'online') return { name: 'online' };
   if (parts[0] === 'rules') return { name: 'rules' };
   if (parts[0] === 'room' && parts[1]) {

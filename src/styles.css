@@ -1143,6 +1143,63 @@ input {
   resize: vertical;
 }
 
+.modes {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.modes__choice {
+  position: relative;
+  display: block;
+  cursor: pointer;
+}
+
+.modes__choice input {
+  position: absolute;
+  opacity: 0;
+}
+
+.modes__choice > span {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.8rem;
+  border: var(--line);
+  border-radius: var(--radius);
+  background: var(--white);
+}
+
+.modes__choice small {
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-align: right;
+}
+
+.modes__choice input:checked + span {
+  background: var(--sticker);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+.modes__choice input:checked + span small {
+  color: var(--ink);
+}
+
+.modes__choice input:focus-visible + span {
+  outline: 4px solid var(--seat1);
+}
+
+.people__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-left: auto;
+}
+
+.invite {
+  background: var(--sticker);
+}
+
 /* ---------- Lobby ---------- */
 
 .lobby__share {

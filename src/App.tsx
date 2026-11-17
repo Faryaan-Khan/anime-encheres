@@ -13,6 +13,7 @@ const Match = lazy(() => import('./screens/Match').then((m) => ({ default: m.Mat
 const Profile = lazy(() => import('./screens/Profile').then((m) => ({ default: m.Profile })));
 const Leaderboard = lazy(() => import('./screens/Leaderboard').then((m) => ({ default: m.Leaderboard })));
 const Feedback = lazy(() => import('./screens/Feedback').then((m) => ({ default: m.Feedback })));
+const Friends = lazy(() => import('./screens/Friends').then((m) => ({ default: m.Friends })));
 
 export function App() {
   const route = useRoute();
@@ -44,6 +45,7 @@ export function App() {
         {route.name === 'profile' && <Profile />}
         {route.name === 'leaderboard' && <Leaderboard />}
         {route.name === 'feedback' && <Feedback />}
+        {route.name === 'friends' && <Friends />}
         {route.name === 'room' && <Room key={route.code} code={route.code} />}
       </Suspense>
     </div>

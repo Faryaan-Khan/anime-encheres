@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { Avatar } from '../components/Avatar';
 import { Board } from '../components/Board';
 import { Final } from '../components/Final';
 import type { GameView, Seat } from '../game/types';
@@ -6,6 +7,7 @@ import { useNow } from '../hooks';
 import { useI18n } from '../i18n';
 import type { StringKey } from '../i18n/strings';
 import { ONLINE_AVAILABLE } from '../online/config';
+import { getFriends, inviteFriend, type Person } from '../online/profile';
 import { useOnlineRoom, type OnlineRoom } from '../online/useOnlineRoom';
 import { navigate } from '../router';
 import { readStored, writeStored } from '../storage';
@@ -166,8 +168,8 @@ function Game({ view, room, matched }: { view: GameView; room: OnlineRoom; match
         onFindAnother={matched?.onFindAnother}
         forfeit={view.forfeit ?? null}
         trophies={
-          view.you !== null && view.result?.deltas && view.result.trophies
-            ? { delta: view.result.deltas[view.you], total: view.result.trophies[view.you] }
+          view.you !== null && view.result?.deltas && typeof view.result.trophies?.[view.you] === 'number'
+            ? { delta: view.result.deltas[view.you], total: view.result.trophies[view.you] as number }
             : null
         }
         busy={room.busy}
@@ -293,6 +295,8 @@ function Lobby({ view, room }: { view: GameView; room: OnlineRoom }) {
         })}
       </p>
 
+      {isHost && !ready && view.code && <InviteFriends code={view.code} />}
+
       {room.actionError && (
         <p className="alert" role="alert">
           {t(`error.${room.actionError}` as StringKey)}
@@ -316,5 +320,61 @@ function Lobby({ view, room }: { view: GameView; room: OnlineRoom }) {
         {t('lobby.leave')}
       </button>
     </main>
+  );
+}
+
+/** The host's friends, each with a button that sends them this room. */
+function InviteFriends({ code }: { code: string }) {
+  const { t } = useI18n();
+  const [friends, setFriends] = useState<Person[] | null>(null);
+  const [invited, setInvited] = useState<string[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getFriends()
+      .then((f) => !cancelled && setFriends(f.friends))
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const invite = (id: string) => {
+    setInvited((ids) => [...ids, id]);
+    inviteFriend(code, id).catch(() => setInvited((ids) => ids.filter((other) => other !== id)));
+  };
+
+  if (!friends) return null;
+  return (
+    <section>
+      <h2 className="page__subhead">{t('lobby.invite')}</h2>
+      {friends.length === 0 ? (
+        <p className="note">
+          {t('lobby.invite.none')}{' '}
+          <button type="button" className="link" onClick={() => navigate('/friends')}>
+            {t('home.friends')}
+          </button>
+        </p>
+      ) : (
+        <ul className="leaders">
+          {friends.map((friend) => (
+            <li key={friend.id} className="leaders__row">
+              <Avatar index={friend.avatar} size="sm" />
+              <span className="leaders__name">{friend.name}</span>
+              <span className="people__actions">
+                <button
+                  type="button"
+                  className="link"
+                  disabled={invited.includes(friend.id)}
+                  onClick={() => invite(friend.id)}
+                >
+                  {t(invited.includes(friend.id) ? 'lobby.invite.sent' : 'lobby.invite.action')}
+                </button>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

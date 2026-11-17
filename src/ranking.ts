@@ -1,4 +1,5 @@
 /** Leagues and badges, derived from a profile. Nothing here is stored. */
+import { MIX_ID, UNIVERSES } from './data/characters';
 import type { StringKey } from './i18n/strings';
 import type { Profile } from './online/profile';
 
@@ -28,7 +29,24 @@ export function nextLeague(trophies: number): { league: League; missing: number 
   return next ? { league: next, missing: next.from - trophies } : null;
 }
 
-type Stats = Pick<Profile, 'games' | 'wins' | 'best' | 'bestStreak'>;
+/**
+ * The overall score: a weighted average of the trophies in every mode. Mixed
+ * counts double because it asks for knowledge of every series, and a mode
+ * never played counts as zero. Mirrors `encheres.overall` in the database,
+ * which is the one that counts; this copy explains the number to the player.
+ */
+export const MIX_SHARES = 2;
+export const OVERALL_SHARES = UNIVERSES.length + MIX_SHARES;
+
+export function overallScore(trophies: Record<string, number>): number {
+  const total = Object.entries(trophies).reduce(
+    (sum, [mode, value]) => sum + value * (mode === MIX_ID ? MIX_SHARES : 1),
+    0,
+  );
+  return Math.round(total / OVERALL_SHARES);
+}
+
+type Stats = Pick<Profile, 'games' | 'wins' | 'peak' | 'bestStreak'>;
 
 /**
  * One badge per kind of achievement. It is earned once and then levels up,
@@ -38,7 +56,7 @@ const FAMILIES: Array<{ key: StringKey; steps: number[]; value(p: Stats): number
   { key: 'badge.games', steps: [1, 10, 50, 100, 500], value: (p) => p.games },
   { key: 'badge.wins', steps: [1, 10, 50, 200, 1000], value: (p) => p.wins },
   { key: 'badge.streak', steps: [3, 5, 7, 10, 15], value: (p) => p.bestStreak },
-  { key: 'badge.league', steps: LEAGUES.slice(1).map((league) => league.from), value: (p) => p.best },
+  { key: 'badge.league', steps: LEAGUES.slice(1).map((league) => league.from), value: (p) => p.peak },
 ];
 
 export interface Badge {

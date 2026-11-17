@@ -47,10 +47,14 @@ rival, during the same auction.
   that follows the player's trophies
 - Saved accounts: a recovery code opens a profile on another device; Google sign-in is
   built and waits for the provider to be configured
-- Ranked play: trophies won and lost by rank difference, six leagues, pairing with
-  players of a similar level, and the winner decided by the server
-- Player profiles with statistics, badges, an avatar and a country; world, weekly and
-  country leaderboards
+- Ranked play in eight modes (each universe, or all mixed): trophies won and lost by
+  rank difference, six leagues, pairing with players of a similar level, and the winner
+  decided by the server
+- An overall score across all modes, in which the mixed mode counts double, and a
+  monthly reset of the Legend league
+- Player profiles with statistics, badges, an avatar and a country; leaderboards for the
+  overall score and for each mode, worldwide, by country or among friends
+- Friends by player tag, and invitations to private rooms
 - Every finished online game is recorded with its full action log
 - A feedback form for ideas, bugs and rating disputes
 - French and English, remembered per device
@@ -97,8 +101,8 @@ Same-device play works immediately. Online play uses the Supabase project config
 | Command | What it does |
 | --- | --- |
 | `npm run dev` | Development server with hot reload |
-| `npm test` | Runs the 157 unit, database, parity, ranking, account and bot tests |
-| `npm run test:e2e` | Plays private rooms, quick matches and the profile, leaderboard and feedback screens in headless browser sessions (needs Chrome) |
+| `npm test` | Runs the 179 unit, database, parity, ranking, account, mode and bot tests |
+| `npm run test:e2e` | Plays private rooms, quick matches, modes, friends and the account screens in headless browser sessions (needs Chrome) |
 | `npm run ratings` | Rebuilds the power-ratings document, the CSV and the database seed (`0004`) from `src/data/rosters.json` |
 | `npm run typecheck` | TypeScript in strict mode, no output |
 | `npm run build` | Type check, then production build into `dist/` |
@@ -126,6 +130,8 @@ docs/              Architecture, rules, deployment, portfolio notes
 
 ## Documentation
 
+- [docs/HANDOFF.md](docs/HANDOFF.md): start here to continue the project. Where everything
+  lives, how to change it safely, what is done and what is open
 - [Game rules](docs/GAME_RULES.md) (English and French)
 - [Power ratings](docs/POWER_RATINGS.md): the scale and every character's rating
 - [Architecture](docs/ARCHITECTURE.md)

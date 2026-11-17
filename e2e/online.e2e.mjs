@@ -44,7 +44,7 @@ if (!chromePath) {
 
 const db = new PGlite();
 await db.exec('create role anon nologin; create role authenticated nologin;');
-for (const file of ['0001_init.sql', '0002_matchmaking.sql', '0003_ranking.sql', '0004_character_powers.sql', '0005_accounts_and_opponent.sql']) {
+for (const file of ['0001_init.sql', '0002_matchmaking.sql', '0003_ranking.sql', '0004_character_powers.sql', '0005_accounts_and_opponent.sql', '0006_modes_and_friends.sql']) {
   await db.exec(readFileSync(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8'));
 }
 
@@ -354,7 +354,9 @@ try {
 
   // --- The computer plays at every rank ---------------------------------------
 
-  await db.query(`update encheres.profiles set trophies = 400 where name = 'Cam'`);
+  await db.query(`
+    update encheres.ratings set trophies = 400, best = 400
+     where mode = 'mix' and profile = (select id from encheres.profiles where name = 'Cam')`);
   await solo.goto(`${base}#/match`, { waitUntil: 'networkidle2' });
   await until(solo, async () => (await text(solo)).includes('Silver League, 400 trophies'), 'the level on the match page');
   await click(solo, 'Find an opponent');
@@ -383,9 +385,84 @@ try {
   await laptop.type('input[placeholder^=XXXX]', recovery.toLowerCase());
   await click(laptop, 'Open my account');
   await until(laptop, async () => (await laptop.$eval('h1', (e) => e.textContent)) === 'Cam', 'the recovered profile');
-  assert((await text(laptop)).includes('374 trophies'), 'the trophies came along');
-  assert(pageErrors.length === 0, `no page errors (${pageErrors.join('; ')})`);
+  assert(/All mixed\s+Silver League\s+374/.test(await text(laptop)), 'the trophies came along');
   console.log('PASS  account recovered on a second device with its code');
+
+  // --- Modes -------------------------------------------------------------------
+
+  // Ana queues for Naruto, Ben for One Piece: different queues, so nobody is paired
+  // until the computer arrives; each mode keeps its own trophies.
+  for (const page of [ana, ben]) await click(page, 'Back to home'); // leave the finished match
+  await ana.goto(`${base}#/match`, { waitUntil: 'networkidle2' });
+  await until(ana, () => sees(ana, '.modes'), 'the mode list');
+  const modeLabels = await ana.$$eval('.modes__choice strong', (els) => els.map((e) => e.textContent));
+  assert(modeLabels[0] === 'All mixed' && modeLabels.includes('Naruto') && modeLabels.length === 8, `modes offered (${modeLabels})`);
+  await ana.evaluate(() => [...document.querySelectorAll('.modes__choice')].find((l) => l.textContent.includes('Naruto')).click());
+  await click(ana, 'Find an opponent');
+  await until(ana, async () => (await text(ana)).includes('Looking for an opponent in Naruto'), 'the Naruto search');
+  await until(ana, () => sees(ana, '.scoreboard'), 'a Naruto match', 25000);
+  const narutoRoom = await db.query(`select mode, array_length(pool, 1) as cards from encheres.rooms where mode = 'naruto'`);
+  assert(narutoRoom.rows.length === 1 && narutoRoom.rows[0].cards === 58, 'the server dealt the Naruto cards');
+  await click(ana, 'Forfeit');
+  await until(ana, () => click(ana, 'Confirm forfeit'), 'the confirmation');
+  await until(ana, () => sees(ana, '.final'), 'the final screen');
+  await ana.goto(`${base}#/leaderboard`, { waitUntil: 'networkidle2' });
+  await until(ana, () => sees(ana, 'select'), 'the ranking picker');
+  await ana.select('select', 'naruto');
+  await until(
+    ana,
+    async () => (await ana.$$('.leaders__row')).length === 1 && (await sees(ana, '.leaders__row--you')),
+    'the Naruto ranking',
+  );
+  console.log('PASS  modes: separate queue, server-dealt cards and a ranking per mode');
+
+  // --- Friends and invitations -------------------------------------------------
+
+  await ana.goto(`${base}#/friends`, { waitUntil: 'networkidle2' });
+  await until(ana, () => sees(ana, '.code'), 'the player tag');
+  const tag = await ana.$eval('.code', (e) => e.textContent.trim());
+  assert(/^[A-Z2-9]{7}$/.test(tag), `the tag is readable (${tag})`);
+
+  await ben.goto(`${base}#/friends`, { waitUntil: 'networkidle2' });
+  await until(ben, () => sees(ben, 'form input[type=text]'), 'the add-friend form');
+  await ben.type('form input[type=text]', tag.toLowerCase());
+  await click(ben, 'Send request');
+  await until(ben, async () => (await text(ben)).includes('Request sent.'), 'the request');
+  await until(ana, () => click(ana, 'Accept'), 'the request to arrive', 20000);
+  await until(ana, async () => (await text(ana)).includes('My friends (1)'), 'the friendship');
+  await snap(ana, 'friends');
+
+  // Friends ranking: the two of them only.
+  await ana.goto(`${base}#/leaderboard`, { waitUntil: 'networkidle2' });
+  await until(ana, () => sees(ana, '.options input'), 'the leaderboard');
+  await ana.evaluate(() => document.querySelectorAll('.options input')[1].click());
+  await until(ana, async () => (await ana.$$('.leaders__row')).length === 2, 'the friends ranking');
+
+  // Ana opens a private room and invites Ben, who joins from his home screen.
+  await ana.goto(`${base}#/online`, { waitUntil: 'networkidle2' });
+  await until(ana, () => click(ana, 'Create the room'), 'the create button');
+  await until(ana, () => sees(ana, '.lobby__code'), 'the lobby');
+  await snap(ana, 'lobby-invite');
+  await until(ana, () => click(ana, 'Invite'), 'the invite button');
+  await until(ana, async () => (await text(ana)).includes('Invited'), 'the invitation to be sent');
+  await ben.goto(`${base}#/`, { waitUntil: 'networkidle2' });
+  await ben.reload({ waitUntil: 'networkidle2' });
+  await until(ben, () => click(ben, 'Ana invites you to a room'), 'the invitation on the home screen');
+  await until(ben, () => sees(ben, 'input[autocomplete=nickname]'), 'the join form');
+  await click(ben, 'Join');
+  await until(ben, () => sees(ben, '.lobby__code'), 'the lobby');
+  await until(ana, async () => (await ana.$$('.lobby__players li')).length === 2 && !(await sees(ana, '.lobby__empty')), 'Ben in the lobby');
+  console.log('PASS  friends: request by tag, friends ranking, invitation to a private room');
+
+  // --- Home ---------------------------------------------------------------------
+
+  await solo.goto(`${base}#/`, { waitUntil: 'networkidle2' });
+  const buttons = await solo.$$eval('.home__modes .btn--mode', (els) => els.map((e) => e.firstChild.textContent));
+  assert(buttons.join('|') === 'Play online|Play offline', `home offers online first, then offline (${buttons})`);
+  assert(await solo.$eval('.home__modes .btn--mode', (e) => e.classList.contains('btn--primary')), 'online is highlighted');
+  await snap(solo, 'home');
+  assert(pageErrors.length === 0, `no page errors (${pageErrors.join('; ')})`);
+  console.log('PASS  home: play online first, one offline entry');
 } catch (error) {
   failed = true;
   console.error(`FAIL  ${error.message}`);

@@ -100,7 +100,8 @@ describe('pairing', () => {
 
   it('validates the name and the settings of a new waiting room', async () => {
     expect(await rpcError('find_match', [ANA, '', 500, 5, 10, 10, pool, null])).toContain('INVALID_INPUT');
-    expect(await rpcError('find_match', [ANA, 'Ana', 500, 5, 10, 10, pool.slice(0, 5), null])).toContain('INVALID_INPUT');
+    expect(await rpcError('find_match', [ANA, 'Ana', 500, 5, 10, 10, pool, null, 'no-such-mode'])).toContain('INVALID_INPUT');
+    expect(await rpcError('find_match', [ANA, 'Ana', 5, 5, 10, 10, pool, null])).toContain('INVALID_INPUT');
     expect(await rpcError('find_match', ['short', 'Ana', 500, 5, 10, 10, pool, null])).toContain('INVALID_INPUT');
   });
 });
@@ -211,7 +212,7 @@ describe('permissions', () => {
   it('exposes the new functions to the API roles and nothing else', async () => {
     const check = async (sql: string) => (await db.query<{ ok: boolean }>(sql)).rows[0].ok;
     for (const fn of [
-      'public.find_match(text, text, integer, integer, integer, integer, text[], text)',
+      'public.find_match(text, text, integer, integer, integer, integer, text[], text, text)',
       'public.leave_queue(text, text)',
       'public.resign(text, text)',
       'public.claim_forfeit(text, text)',

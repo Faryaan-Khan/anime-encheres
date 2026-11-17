@@ -48,12 +48,12 @@ Pick three or four.
 - Reduced the initial JavaScript for offline players by about half through route-level
   code splitting of the backend client.
 - Built a ranked ladder in PostgreSQL: Elo-style trophy changes, level-based matchmaking
-  with a widening window, weekly and per-country leaderboards, and a server-side verdict
+  with a widening window, per-mode, per-country and friends leaderboards, and a server-side verdict
   so that a modified client cannot claim a win.
 - Added abuse controls without accounts: per-device and per-address rate limits (addresses
   stored only as hashes), input validation in every function, and a strict Content
   Security Policy on the site.
-- Set up CI with GitHub Actions (type check, 157 tests, production build) and continuous
+- Set up CI with GitHub Actions (type check, 179 tests, production build) and continuous
   deployment to Netlify.
 
 ## Skills demonstrated

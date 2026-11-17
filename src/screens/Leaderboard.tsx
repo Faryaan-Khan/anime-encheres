@@ -3,17 +3,24 @@ import { Avatar } from '../components/Avatar';
 import { countryFlag, countryName } from '../data/countries';
 import { useI18n } from '../i18n';
 import type { StringKey } from '../i18n/strings';
+import { MODES } from '../match/config';
+import { modeName } from '../modes';
 import { toOnlineError } from '../online/api';
 import { ONLINE_AVAILABLE } from '../online/config';
 import { getLeaderboard, getProfile, type Leaderboard as Board } from '../online/profile';
 import { navigate } from '../router';
 
-type Tab = 'world' | 'week' | 'country';
+type Audience = 'world' | 'friends' | 'country';
+const OVERALL = 'overall';
 
-/** World ranking, this week's climbers, and the ranking of the player's own country. */
+/**
+ * One ranking per mode, plus the overall score. Each can be narrowed to the
+ * player's friends or to their country.
+ */
 export function Leaderboard() {
   const { t, lang } = useI18n();
-  const [tab, setTab] = useState<Tab>('world');
+  const [scope, setScope] = useState<string>(OVERALL);
+  const [audience, setAudience] = useState<Audience>('world');
   const [country, setCountry] = useState<string | null>(null);
   const [board, setBoard] = useState<Board | null>(null);
   const [error, setError] = useState<StringKey | null>(null);
@@ -30,17 +37,17 @@ export function Leaderboard() {
     let cancelled = false;
     setBoard(null);
     setError(null);
-    getLeaderboard(tab === 'week' ? 'week' : 'all', tab === 'country' ? country : null)
+    getLeaderboard(scope, audience === 'country' ? country : null, audience === 'friends')
       .then((b) => !cancelled && setBoard(b))
       .catch((e) => !cancelled && setError(`error.${toOnlineError(e).code}` as StringKey));
     return () => {
       cancelled = true;
     };
-  }, [tab, country]);
+  }, [scope, audience, country]);
 
-  const tabs: Array<{ id: Tab; label: string; disabled?: boolean }> = [
+  const audiences: Array<{ id: Audience; label: string; disabled?: boolean }> = [
     { id: 'world', label: t('board.tab.world') },
-    { id: 'week', label: t('board.tab.week') },
+    { id: 'friends', label: t('board.tab.friends') },
     {
       id: 'country',
       label: country ? `${countryFlag(country)} ${countryName(country, lang)}` : t('board.tab.country'),
@@ -56,22 +63,33 @@ export function Leaderboard() {
         <p className="alert">{t('online.unavailable')}</p>
       ) : (
         <>
+          <label className="field">
+            <span>{t('board.scope')}</span>
+            <select value={scope} onChange={(e) => setScope(e.target.value)}>
+              <option value={OVERALL}>{t('board.overall')}</option>
+              {MODES.map((id) => (
+                <option key={id} value={id}>
+                  {modeName(id, t)}
+                </option>
+              ))}
+            </select>
+          </label>
           <div className="options" role="tablist">
-            {tabs.map((item) => (
+            {audiences.map((item) => (
               <label key={item.id} className="option">
                 <input
                   type="radio"
-                  name="leaderboard"
-                  checked={tab === item.id}
+                  name="audience"
+                  checked={audience === item.id}
                   disabled={item.disabled}
-                  onChange={() => setTab(item.id)}
+                  onChange={() => setAudience(item.id)}
                 />
                 <span>{item.label}</span>
               </label>
             ))}
           </div>
+          {scope === OVERALL && <p className="note">{t('board.overall.hint')}</p>}
           {!country && <p className="note">{t('board.country.hint')}</p>}
-          {tab === 'week' && <p className="note">{t('board.week.hint')}</p>}
 
           {error && (
             <p className="alert" role="alert">
@@ -79,7 +97,9 @@ export function Leaderboard() {
             </p>
           )}
           {!board && !error && <p className="waiting">{t('online.connecting')}</p>}
-          {board && board.rows.length === 0 && <p className="waiting">{t('board.empty')}</p>}
+          {board && board.rows.length === 0 && (
+            <p className="waiting">{t(audience === 'friends' ? 'board.empty.friends' : 'board.empty')}</p>
+          )}
           {board && board.rows.length > 0 && (
             <ol className="leaders">
               {board.rows.map((row) => (
@@ -90,9 +110,7 @@ export function Leaderboard() {
                     {row.country && <span title={countryName(row.country, lang)}>{countryFlag(row.country)} </span>}
                     {row.name}
                   </span>
-                  <span className="leaders__value">
-                    {tab === 'week' && row.value > 0 ? `+${row.value}` : row.value}
-                  </span>
+                  <span className="leaders__value">{row.value}</span>
                 </li>
               ))}
             </ol>
@@ -107,8 +125,8 @@ export function Leaderboard() {
         <button type="button" className="btn" onClick={() => navigate('/')}>
           {t('setup.back')}
         </button>
-        <button type="button" className="btn btn--primary" onClick={() => navigate('/profile')}>
-          {t('home.profile')}
+        <button type="button" className="btn btn--primary" onClick={() => navigate('/friends')}>
+          {t('home.friends')}
         </button>
       </div>
     </main>
