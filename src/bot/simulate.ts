@@ -23,7 +23,7 @@ import {
  * is a naive but sensible player: it pays more for better-ranked cards,
  * splits its budget evenly across its open slots and never bluffs.
  */
-export type Player = BotLevel | 'random' | 'honest' | Style;
+export type Player = BotLevel | 'random' | 'honest' | Style | { lookahead: true; rollouts: number; playout: Style; instinct: Style };
 
 export interface SimulationResult {
   state: GameState;
@@ -82,6 +82,18 @@ export function simulate(
       let action: BotAction;
       if (kind === 'random' || kind === 'honest') {
         action = baseline(kind, state, seat, pool, rng);
+      } else if (typeof kind === 'object' && 'lookahead' in kind) {
+        const result = decide(toView(state, seat), {
+          pool,
+          level: 'hard',
+          memory: memory[seat],
+          rng,
+          rollouts: kind.rollouts,
+          playoutStyle: kind.playout,
+          instinctStyle: kind.instinct,
+        });
+        action = result.action;
+        memory[seat] = result.memory;
       } else if (typeof kind === 'object') {
         const result = decideByRules(toView(state, seat), { pool, level: 'normal', memory: memory[seat], rng }, kind);
         action = result.action;

@@ -4,6 +4,9 @@ import { judge } from '../game/verdict';
 import { useI18n } from '../i18n';
 import type { StringKey } from '../i18n/strings';
 import { CharacterCard } from './CharacterCard';
+import { useEffect } from 'react';
+import { play } from '../sound';
+import { Confetti, CountUp } from './Effects';
 
 interface Props {
   view: GameView;
@@ -43,9 +46,17 @@ export function Final({
   const verdict = judge(powers(0), powers(1));
   // A forfeit decides the game whatever the teams look like.
   const winner: Seat | null = forfeit !== null ? (forfeit === 0 ? 1 : 0) : verdict.winner;
+  // On a shared screen (you = null) any win is celebrated.
+  const outcome = winner === null ? 'tie' : view.you === null || view.you === winner ? 'win' : 'loss';
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => play(outcome === 'win' ? 'victory' : outcome === 'loss' ? 'defeat' : 'tie'), 250);
+    return () => window.clearTimeout(timer);
+  }, [outcome]);
 
   return (
     <main className="final">
+      {outcome === 'win' && <Confetti />}
       <header className="final__head">
         <h1 className="display">
           {forfeit !== null && winner !== null
@@ -64,12 +75,27 @@ export function Final({
           </p>
         )}
         {trophies && (
-          <p className="trophies">
-            {trophies.delta > 0
-              ? t('final.trophies.up', { n: trophies.delta, total: trophies.total })
-              : trophies.delta < 0
-                ? t('final.trophies.down', { n: trophies.delta, total: trophies.total })
-                : t('final.trophies.same', { total: trophies.total })}
+          <p
+            className={`trophies${trophies.delta > 0 ? ' trophies--up' : trophies.delta < 0 ? ' trophies--down' : ''}`}
+          >
+            {(() => {
+              const key =
+                trophies.delta > 0 ? 'final.trophies.up' : trophies.delta < 0 ? 'final.trophies.down' : 'final.trophies.same';
+              // The total counts up inside the sentence.
+              const [before, after = ''] = t(key, { n: trophies.delta, total: '\u0000' }).split('\u0000');
+              return (
+                <>
+                  {before}
+                  <CountUp
+                    from={trophies.total - trophies.delta}
+                    to={trophies.total}
+                    ms={1100}
+                    onDone={() => trophies.delta > 0 && play('trophy')}
+                  />
+                  {after}
+                </>
+              );
+            })()}
           </p>
         )}
       </header>

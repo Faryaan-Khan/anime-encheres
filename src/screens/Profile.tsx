@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from 'react';
 import { AVATARS, Avatar } from '../components/Avatar';
 import { countryFlag, countryName, countryOptions } from '../data/countries';
 import { useI18n } from '../i18n';
@@ -14,7 +14,8 @@ import {
 } from '../online/profile';
 import { MODES } from '../match/config';
 import { modeName } from '../modes';
-import { badgesOf, leagueOf } from '../ranking';
+import { badgesOf, leagueOf, nextLeague } from '../ranking';
+import { CountUp } from '../components/Effects';
 import { navigate } from '../router';
 import { writeStored } from '../storage';
 
@@ -106,7 +107,6 @@ export function Profile() {
     );
   }
 
-  const trophiesIn = (mode: string) => profile.modes.find((m) => m.mode === mode)?.trophies ?? 0;
   const winRate = profile.games > 0 ? Math.round((profile.wins / profile.games) * 100) : 0;
   const stats: Array<[StringKey, string | number]> = [
     ['profile.stat.games', profile.games],
@@ -120,30 +120,55 @@ export function Profile() {
     ['profile.stat.forfeits', profile.forfeits],
   ];
 
+  const overall = leagueOf(profile.trophies);
+  const peakLeague = leagueOf(profile.peak);
+  const daysLeft = (() => {
+    const now = new Date();
+    const end = Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1);
+    return Math.max(1, Math.ceil((end - now.getTime()) / 86400000));
+  })();
+  const seasonLabel = (season: string | null) => {
+    if (!season) return '';
+    const [y, m] = season.split('-').map(Number);
+    return new Intl.DateTimeFormat(lang, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(Date.UTC(y, m - 1, 1));
+  };
+
   return (
     <main className="page">
-      <header className="profile__head">
-        <Avatar index={profile.avatar} size="lg" />
-        <div>
-          <h1 className="display">{profile.name}</h1>
-          {profile.country && (
-            <p>
-              {countryFlag(profile.country)} {countryName(profile.country, lang)}
+      <section className="hero-card" style={{ '--league': overall.color } as CSSProperties}>
+        <div className="hero-card__top">
+          <Avatar index={profile.avatar} size="lg" />
+          <div>
+            <h1 className="hero-card__name">{profile.name}</h1>
+            <p className="hero-card__sub">
+              {profile.country && (
+                <span>
+                  {countryFlag(profile.country)} {countryName(profile.country, lang)}
+                </span>
+              )}
+              <span>#{profile.tag}</span>
             </p>
-          )}
+          </div>
         </div>
-      </header>
-
-      <section className="panel rank">
-        <p className="rank__league">{t('profile.overall')}</p>
-        <p className="rank__trophies">{profile.trophies}</p>
-        <p className="note">
-          {profile.rank === null
-            ? t('profile.unranked')
-            : t('profile.rank', { rank: profile.rank, players: profile.players })}{' '}
-          {t('profile.overall.hint')}
+        <div className="hero-card__score">
+          <div>
+            <small>{t('profile.overall')}</small>
+            <strong>
+              <CountUp to={profile.trophies} />
+            </strong>
+            <small>
+              {profile.rank === null
+                ? t('profile.unranked')
+                : t('profile.rank', { rank: profile.rank, players: profile.players })}
+            </small>
+          </div>
+          <LeagueEmblem trophies={profile.trophies} />
+        </div>
+        <p className="hero-card__sub">
+          <span>{t('profile.season', { season: seasonLabel(profile.season) })}</span>
+          <span>{daysLeft === 1 ? t('profile.season.endsOne') : t('profile.season.ends', { n: daysLeft })}</span>
+          <span>{t('profile.overall.hint')}</span>
         </p>
-        <p className="note">{t('profile.tag', { tag: profile.tag })}</p>
         <div className="form__actions">
           <button type="button" className="btn" onClick={() => navigate('/leaderboard')}>
             {t('home.leaderboard')}
@@ -156,18 +181,76 @@ export function Profile() {
 
       <section>
         <h2 className="page__subhead">{t('profile.modes')}</h2>
-        <ul className="recent">
+        <ul className="mode-tiles">
           {MODES.map((mode) => {
-            const league = leagueOf(trophiesIn(mode));
+            const rating = profile.modes.find((m) => m.mode === mode);
+            const trophies = rating?.trophies ?? 0;
+            const league = leagueOf(trophies);
+            const next = nextLeague(trophies);
+            const progress = next ? ((trophies - league.from) / (next.league.from - league.from)) * 100 : 100;
             return (
-              <li key={mode} style={{ borderLeftColor: league.color }}>
-                <strong>{modeName(mode, t)}</strong>
-                <span>{t(league.key)}</span>
-                <span className="recent__delta">{trophiesIn(mode)}</span>
+              <li key={mode} className="mode-tile" style={{ '--league': league.color } as CSSProperties}>
+                <div className="mode-tile__head">
+                  <span className="mode-tile__name">{modeName(mode, t)}</span>
+                  <LeagueEmblem trophies={trophies} small />
+                </div>
+                <span className="mode-tile__trophies">{trophies}</span>
+                <span className="mode-tile__league">{t(league.key)}</span>
+                <span className="meter" aria-hidden="true">
+                  <i style={{ width: `${progress}%` }} />
+                </span>
+                <span className="mode-tile__meta">
+                  {next
+                    ? t('profile.mode.next', { n: next.missing, league: t(next.league.key) })
+                    : t('profile.mode.top')}
+                  {rating && rating.best > 0 && `, ${t('profile.mode.best', { n: rating.best })}`}
+                  {rating?.bestRank && `, ${t('profile.mode.bestRank', { n: rating.bestRank })}`}
+                </span>
               </li>
             );
           })}
         </ul>
+      </section>
+
+      <section>
+        <h2 className="page__subhead">{t('profile.records')}</h2>
+        <dl className="records">
+          <div>
+            <dt>{t('profile.record.peak')}</dt>
+            <dd>{profile.peak}</dd>
+          </div>
+          <div style={{ '--league': peakLeague.color } as CSSProperties}>
+            <dt>{t('profile.record.league')}</dt>
+            <LeagueEmblem trophies={profile.peak} small />
+            <dd className="mode-tile__league">{t(peakLeague.key)}</dd>
+          </div>
+          <div>
+            <dt>{t('profile.record.rank')}</dt>
+            <dd>{profile.bestRank ? `#${profile.bestRank}` : '–'}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section>
+        <h2 className="page__subhead">{t('profile.history')}</h2>
+        {profile.history.length === 0 ? (
+          <p className="note">{t('profile.history.empty')}</p>
+        ) : (
+          <ul className="seasons">
+            {profile.history.map((season) => (
+              <li key={season.season} style={{ '--league': leagueOf(season.best).color } as CSSProperties}>
+                <LeagueEmblem trophies={season.best} small />
+                <span>
+                  <strong>{seasonLabel(season.season)}</strong>
+                  <small>
+                    {t('profile.history.row', { trophies: season.trophies, rank: season.rank, players: season.players })}
+                  </small>
+                </span>
+                <span className="recent__delta">{season.best}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <section>
@@ -381,5 +464,21 @@ function Account({ profile, onOpened }: { profile: ProfileData; onOpened(profile
         </button>
       </form>
     </section>
+  );
+}
+
+/** A shield in the colour of the league these trophies belong to. */
+function LeagueEmblem({ trophies, small }: { trophies: number; small?: boolean }) {
+  const { t } = useI18n();
+  const league = leagueOf(trophies);
+  return (
+    <span
+      className={`emblem${small ? ' emblem--sm' : ''}${league.key === 'league.legend' ? ' emblem--legend' : ''}`}
+      style={{ '--league': league.color } as CSSProperties}
+      title={t(league.key)}
+      aria-hidden="true"
+    >
+      {t(league.key).replace(/^(Ligue |League )?/, '').replace(/ League$/, '').charAt(0)}
+    </span>
   );
 }

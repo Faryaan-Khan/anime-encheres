@@ -10,6 +10,7 @@ const CATEGORIES: Array<{ id: FeedbackCategory; label: StringKey }> = [
   { id: 'idea', label: 'feedback.idea' },
   { id: 'bug', label: 'feedback.bug' },
   { id: 'ratings', label: 'feedback.ratings' },
+  { id: 'rights', label: 'feedback.rights' },
   { id: 'other', label: 'feedback.other' },
 ];
 
@@ -18,7 +19,9 @@ const MAX_LENGTH = 1000;
 /** Ideas, bug reports and rating disputes from players. */
 export function Feedback() {
   const { t, lang } = useI18n();
-  const [category, setCategory] = useState<FeedbackCategory>('idea');
+  const [category, setCategory] = useState<FeedbackCategory>(() =>
+    new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('topic') === 'rights' ? 'rights' : 'idea',
+  );
   const [message, setMessage] = useState('');
   const [contact, setContact] = useState('');
   const [busy, setBusy] = useState(false);

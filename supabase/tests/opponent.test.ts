@@ -1,6 +1,6 @@
 /** The computer opponent that the database seats and plays when nobody else is looking for a match. */
 import type { PGlite } from '@electric-sql/pglite';
-import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { decideByRules, emptyMemory, observe, styleForSkill, type BotMemory } from '../../src/bot/bot';
 import { poolFor } from '../../src/data/characters';
 import { seeded } from '../../src/game/testing';
@@ -41,13 +41,16 @@ const idle = (code: string, seconds: number) =>
   db.query(`update encheres.rooms set updated_at = now() - make_interval(secs => $2) where code = $1`, [code, seconds]);
 const setTrophies = async (who: string, trophies: number, mode = 'one-piece') => {
   await db.query(
-    `insert into encheres.ratings (profile, mode, trophies, best, games)
-     select id, $3, $2, $2, 1 from encheres.profiles where token_hash = encheres.token_hash($1)
-     on conflict (profile, mode) do update set trophies = excluded.trophies, best = excluded.trophies`,
+    `insert into encheres.ratings (profile, mode, trophies, best, games, season_best, season_games)
+     select id, $3, $2, $2, 1, $2, 1 from encheres.profiles where token_hash = encheres.token_hash($1)
+     on conflict (profile, mode) do update
+       set trophies = excluded.trophies, best = excluded.trophies,
+           season_best = excluded.trophies, season_games = greatest(encheres.ratings.season_games, 1)`,
     [who, trophies, mode],
   );
   await db.query(
-    `update encheres.profiles set games = greatest(games, 1), trophies = encheres.overall(id)
+    `update encheres.profiles set games = greatest(games, 1), season_games = greatest(season_games, 1),
+            trophies = encheres.overall(id)
       where token_hash = encheres.token_hash($1)`,
     [who],
   );
@@ -371,5 +374,107 @@ describe('trust', () => {
       expect(await check(`select has_table_privilege('anon', 'encheres.${table}', 'select') as ok`)).toBe(false);
       expect(await check(`select relrowsecurity as ok from pg_class where oid = 'encheres.${table}'::regclass`)).toBe(true);
     }
+  });
+});
+
+describe('the stronger brain in the Edge Function', () => {
+  // A stand-in for pg_net that records the requests instead of sending them.
+  beforeAll(async () => {
+    await db.exec(`
+      create schema if not exists net;
+      create table if not exists net.sent (url text, body jsonb);
+      create or replace function net.http_post(url text, body jsonb, headers jsonb, timeout_milliseconds integer)
+      returns bigint language sql as $$ insert into net.sent values (url, body); select 1::bigint; $$;`);
+  });
+  beforeEach(async () => {
+    await db.exec(`
+      delete from net.sent;
+      update encheres.config set value = '"https://example.test/functions/v1/opponent"'
+       where key = 'opponent_function_url';`);
+  });
+  afterAll(async () => {
+    await db.exec(`update encheres.config set value = 'null' where key = 'opponent_function_url'`);
+  });
+
+  /** A game in which it is the computer's turn to bid, after its pause. */
+  async function computerToBid(skill: number): Promise<string> {
+    const code = await againstComputer();
+    await db.query('update encheres.rooms set bot_skill = $2 where code = $1', [code, skill]);
+    for (let step = 0; step < 80; step++) {
+      const r = await room(code);
+      if (r.phase === 'bidding' && r.turn === 1) {
+        await idle(code, 12);
+        return code;
+      }
+      if (r.phase === 'reveal' || (r.phase === 'draw' ? r.drawer : r.turn) === 1) {
+        await idle(code, 12);
+        await rpc('get_room', [code, ANA]);
+      } else {
+        await playerMove(code, seeded(step + 1));
+      }
+    }
+    throw new Error('the computer never had to bid');
+  }
+  const sent = async () => (await db.query<{ url: string; body: { code: string; nonce: string } }>('select * from net.sent')).rows;
+  const claim = (code: string, nonce: string) =>
+    rpc<{ view: GameView; pool: string[]; token: string; skill: number } | null>('opponent_claim', [code, nonce]);
+
+  it('is asked once for a strong opponent, which then waits for it', async () => {
+    const code = await computerToBid(0.9);
+    const before = (await room(code)).version;
+    await rpc('get_room', [code, ANA]);
+    await rpc('get_room', [code, ANA]);
+    const requests = await sent();
+    expect(requests).toHaveLength(1);
+    expect(requests[0].url).toBe('https://example.test/functions/v1/opponent');
+    expect(requests[0].body.code).toBe(code);
+    expect(requests[0].body.nonce).toMatch(/^[0-9a-f]{64}$/);
+    expect((await room(code)).version).toBe(before);
+  });
+
+  it("gives the computer's own view, once, for the secret it issued", async () => {
+    const code = await computerToBid(0.9);
+    await rpc('get_room', [code, ANA]);
+    const { nonce } = (await sent())[0].body;
+    expect(await claim(code, 'x'.repeat(64))).toBeNull();
+    const got = (await claim(code, nonce))!;
+    expect(got.view.you).toBe(1);
+    expect(got.skill).toBe(0.9);
+    expect([...got.pool].sort()).toEqual([...pool].sort());
+    const r = await room(code);
+    expect(got.token).toBe(r.bot_token);
+    // A card the player drew stays hidden from the computer.
+    if (r.drawer === 0) expect(got.view.card).toBeNull();
+    expect(await claim(code, nonce)).toBeNull();
+    // The function then moves like any player.
+    const after = await rpc('play', [code, got.token, 'pass', null]);
+    expect(after.version).toBe(r.version + 1);
+  });
+
+  it('is not trusted to answer: the database moves after six seconds', async () => {
+    const code = await computerToBid(0.9);
+    await rpc('get_room', [code, ANA]);
+    const before = (await room(code)).version;
+    await db.query(`update encheres.rooms set bot_requested_at = now() - interval '7 seconds' where code = $1`, [code]);
+    await rpc('get_room', [code, ANA]);
+    expect((await room(code)).version).toBe(before + 1);
+    expect(await sent()).toHaveLength(1);
+  });
+
+  it('is not used for weaker opponents', async () => {
+    const code = await computerToBid(0.3);
+    const before = (await room(code)).version;
+    await rpc('get_room', [code, ANA]);
+    expect(await sent()).toHaveLength(0);
+    expect((await room(code)).version).toBe(before + 1);
+  });
+
+  it('is not used when no function is configured', async () => {
+    await db.exec(`update encheres.config set value = 'null' where key = 'opponent_function_url'`);
+    const code = await computerToBid(0.9);
+    const before = (await room(code)).version;
+    await rpc('get_room', [code, ANA]);
+    expect(await sent()).toHaveLength(0);
+    expect((await room(code)).version).toBe(before + 1);
   });
 });

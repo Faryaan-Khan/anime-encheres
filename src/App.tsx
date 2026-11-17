@@ -1,7 +1,10 @@
 import { Suspense, lazy } from 'react';
 import { useI18n } from './i18n';
 import { navigate, useRoute } from './router';
+import { setSoundOn, useSoundOn } from './sound';
+import { setTheme, useTheme } from './theme';
 import { Home } from './screens/Home';
+import { Legal } from './screens/Legal';
 import { LocalGame } from './screens/LocalGame';
 import { Rules } from './screens/Rules';
 
@@ -18,6 +21,8 @@ const Friends = lazy(() => import('./screens/Friends').then((m) => ({ default: m
 export function App() {
   const route = useRoute();
   const { lang, setLang, t } = useI18n();
+  const theme = useTheme();
+  const sound = useSoundOn();
 
   return (
     <div className="app">
@@ -25,14 +30,34 @@ export function App() {
         <button type="button" className="topbar__brand" onClick={() => navigate('/')}>
           {t('app.title')}
         </button>
-        <button
-          type="button"
-          className="link"
-          lang={lang === 'fr' ? 'en' : 'fr'}
-          onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')}
-        >
-          {t('lang.switch')}
-        </button>
+        <div className="topbar__tools">
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label={t(sound ? 'tools.sound.off' : 'tools.sound.on')}
+            title={t(sound ? 'tools.sound.off' : 'tools.sound.on')}
+            onClick={() => setSoundOn(!sound)}
+          >
+            {sound ? '♪' : '✕'}
+          </button>
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label={t(theme === 'dark' ? 'tools.theme.light' : 'tools.theme.dark')}
+            title={t(theme === 'dark' ? 'tools.theme.light' : 'tools.theme.dark')}
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          >
+            {theme === 'dark' ? '☀' : '☾'}
+          </button>
+          <button
+            type="button"
+            className="link"
+            lang={lang === 'fr' ? 'en' : 'fr'}
+            onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')}
+          >
+            {t('lang.switch')}
+          </button>
+        </div>
       </header>
 
       {route.name === 'home' && <Home />}
@@ -48,6 +73,14 @@ export function App() {
         {route.name === 'friends' && <Friends />}
         {route.name === 'room' && <Room key={route.code} code={route.code} />}
       </Suspense>
+      {route.name === 'legal' && <Legal />}
+
+      <footer className="footer">
+        <span>{t('footer.fan')}</span>
+        <button type="button" className="link" onClick={() => navigate('/legal')}>
+          {t('footer.legal')}
+        </button>
+      </footer>
     </div>
   );
 }

@@ -97,6 +97,19 @@ export function tierOf(character: Character): Tier {
   return 'D';
 }
 
+/**
+ * How a card is framed: by its tier within its universe, and "apex" for the
+ * strongest character of each universe. Purely visual.
+ */
+export type Rarity = 'common' | 'rare' | 'epic' | 'legendary' | 'mythic' | 'apex';
+
+const RARITY: Record<Tier, Rarity> = { D: 'common', C: 'rare', B: 'epic', A: 'legendary', S: 'mythic' };
+
+export function rarityOf(character: Character): Rarity {
+  if (character.power > 0 && character.power === topPower.get(character.universe)) return 'apex';
+  return RARITY[tierOf(character)];
+}
+
 export function getUniverse(id: string): Universe {
   return universeById.get(id) ?? { id, name: '', color: '#b9b9b0' };
 }
