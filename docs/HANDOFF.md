@@ -36,7 +36,7 @@ built from. The only manual step in the whole system is applying a new database 
 npm install
 npm run dev          # local site, talks to the live database through .env
 npm run typecheck    # TypeScript strict
-npm test             # 191 unit and database tests (no external service needed)
+npm test             # 198 unit and database tests (no external service needed)
 npm run test:e2e     # real browsers against the real SQL; needs Chrome (CHROME_PATH)
 npm run ratings      # after editing src/data/rosters.json
 npm run build:opponent  # after editing src/bot/: rebuild the Edge Function bundle
