@@ -88,6 +88,19 @@ export interface GameView {
   forfeit?: Seat | null;
   /** Online only: seconds since the last change, as of when this view was read. */
   idle?: number;
+  /** Online only: the server's verdict, once the game is over. */
+  result?: MatchResult | null;
+}
+
+/** How the server judged a finished online game. */
+export interface MatchResult {
+  winner: Seat | null;
+  /** Team power of each seat. */
+  power: [number, number];
+  /** Trophy change of each seat; `null` outside ranked games. */
+  deltas: [number, number] | null;
+  /** Trophy count of each seat after the game; `null` outside ranked games. */
+  trophies: [number, number] | null;
 }
 
 export type GameErrorCode =
