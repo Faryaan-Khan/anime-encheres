@@ -53,7 +53,8 @@ export function Confetti({ pieces = 70 }: { pieces?: number }) {
 export function CountUp({ from = 0, to, ms = 900, onDone }: { from?: number; to: number; ms?: number; onDone?(): void }) {
   const [value, setValue] = useState(reducedMotion() ? to : from);
   useEffect(() => {
-    if (reducedMotion()) {
+    // No animation frames arrive in a hidden tab: show the result at once.
+    if (reducedMotion() || document.hidden) {
       setValue(to);
       onDone?.();
       return;
