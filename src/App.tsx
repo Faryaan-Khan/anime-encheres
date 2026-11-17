@@ -77,9 +77,17 @@ export function App() {
 
       <footer className="footer">
         <span>{t('footer.fan')}</span>
-        <button type="button" className="link" onClick={() => navigate('/legal')}>
-          {t('footer.legal')}
-        </button>
+        <span className="footer__links">
+          <button type="button" className="link" onClick={() => navigate('/legal')}>
+            {t('footer.legal')}
+          </button>
+          <a className="link" href="/privacy.html">
+            {t('footer.privacy')}
+          </a>
+          <a className="link" href="/terms.html">
+            {t('footer.terms')}
+          </a>
+        </span>
       </footer>
     </div>
   );

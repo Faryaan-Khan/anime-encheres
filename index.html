@@ -1,16 +1,49 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#eceee8" />
-    <meta name="description" content="Enchères Animés — bid on a hidden anime character, bluff your rival, build the best team." />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>Anime Auction Draft (Enchères Animés): bid on a hidden anime character</title>
+    <meta name="application-name" content="Anime Auction Draft" />
+    <meta name="apple-mobile-web-app-title" content="Anime Auction Draft" />
+    <meta
+      name="description"
+      content="Anime Auction Draft is a free 1v1 anime character auction game. One player sees the card, both bid from the same budget, bluff your rival and build the strongest team."
+    />
+    <meta property="og:site_name" content="Anime Auction Draft" />
+    <meta property="og:title" content="Anime Auction Draft" />
+    <meta
+      property="og:description"
+      content="A free 1v1 anime character auction game: one player sees the card, both bid, bluff your way to the strongest team."
+    />
+    <meta property="og:image" content="https://anime-encheres.netlify.app/logo-512.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/logo-192.png" />
+    <link rel="apple-touch-icon" href="/logo-192.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <title>Enchères Animés</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Shown until the game loads, and to anything that reads the page without running it. -->
+      <main class="page static-intro">
+        <img src="/logo-120.png" width="120" height="120" alt="Anime Auction Draft logo" />
+        <h1>Anime Auction Draft</h1>
+        <p>
+          Anime Auction Draft (Enchères Animés in French) is a free game in which two players build teams of anime
+          characters by auction. Each round one player draws a character card and sees it, the other does not, and both
+          bid from the same fictional budget. The player who drew the card can bluff. When the cards run out, the stronger
+          team wins.
+        </p>
+        <p>
+          Play on one device against the computer or a friend, in a private online room, or in ranked quick matches with
+          trophies, leagues, leaderboards and friends. Signing in with Google is optional and only keeps your profile
+          across devices.
+        </p>
+        <p>
+          <a href="/privacy.html">Privacy policy</a> · <a href="/terms.html">Terms of use</a>
+        </p>
+      </main>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

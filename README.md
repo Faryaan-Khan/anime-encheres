@@ -1,4 +1,4 @@
-# Enchères Animés
+# Anime Auction Draft (Enchères Animés)
 
 A two-player bluffing game for anime fans, playable in the browser. One player draws a
 character card and is the only one who sees it; both players then bid for it with a

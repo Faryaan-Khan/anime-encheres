@@ -1,10 +1,13 @@
 {
-  "name": "Enchères Animés",
-  "short_name": "Enchères",
-  "description": "Hidden-card anime character auction game.",
+  "name": "Anime Auction Draft",
+  "short_name": "Auction Draft",
+  "description": "A free 1v1 anime character auction game: one player sees the card, both bid, bluff your way to the strongest team.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#eceee8",
   "theme_color": "#eceee8",
-  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+  "icons": [
+    { "src": "/logo-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/logo-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
 }

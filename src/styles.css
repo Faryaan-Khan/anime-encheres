@@ -2098,6 +2098,22 @@ input {
   color: var(--ink);
 }
 
+.footer__links a {
+  color: inherit;
+}
+
+.footer__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1rem;
+}
+
+.static-intro {
+  display: grid;
+  gap: 1rem;
+  max-width: 40rem;
+}
+
 /* ---------- Footer ---------- */
 
 .footer {

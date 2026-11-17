@@ -43,9 +43,14 @@ export function Home() {
           <span className="sticker">{money(500)}</span>
         </div>
         <h1 className="hero__title display">
-          Enchères
-          <br />
-          Animés
+          {t('app.title')
+            .split(' ')
+            .map((word, i) => (
+              <span key={i}>
+                {i > 0 && <br />}
+                {word}
+              </span>
+            ))}
         </h1>
         <p className="hero__tagline">{t('app.tagline')}</p>
       </section>
