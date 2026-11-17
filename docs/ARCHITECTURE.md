@@ -274,11 +274,15 @@ and gives the database its own copy of the power ratings.
   for knowledge of every series. A mode never played counts as zero, so the score rewards
   breadth. `src/ranking.ts` has the same formula for display, and a test compares the
   two.
-- **Seasons.** `roll_season` runs at the start of the calls that read or change ratings.
-  When the month differs from the one stored in `encheres.config`, every rating above
-  the Legend entrance (2200) is set back to it and the affected overall scores are
-  recomputed. There is no scheduler: the first call of the month does the work, under a
-  lock.
+- **Seasons** (`0007_seasons.sql`). `roll_season` runs at the start of the calls that
+  read or change ratings. When the month differs from the one stored in
+  `encheres.config`, it first files every player's result for the month that ended in
+  `season_results` (final trophies, best of the month, final rank and number of players,
+  per mode and for the overall score), then sets every rating and overall score back to
+  0. There is no scheduler: the first call of the month does the work, under a lock.
+  All-time bests (`ratings.best`, `profiles.best_trophies`) are never reset; the profile
+  shows them with the best league and best rank ever reached and the last twelve seasons.
+  Leaderboards and world rank count only players who have played this season.
 - **Compatibility.** Apps opened before modes existed send a card list and no mode; the
   server works the mode out from the cards. They also ask for a weekly leaderboard,
   which now returns an empty table.
@@ -300,6 +304,49 @@ A token hash, a display name, a public tag, an optional country code, an avatar 
 trophies per mode and counters, the list of friends, the games played with their action logs, and any feedback sent (with a contact
 only if the player typed one). Network addresses are never stored, only a hash used for
 rate limiting, deleted after a day. No email, password or device information.
+
+### The stronger opponent (Edge Function)
+
+`0008_opponent_brain.sql` and `supabase/functions/opponent/`.
+
+The rule-based player in SQL tops out around the strength of the offline "hard" level.
+A look-ahead player that imagines dozens of continuations per decision is clearly
+stronger, especially when its imagined opponents play with the expert's rules: in
+simulation it beats the offline hard level about 63% of the time (180 games, six
+universes). It is too heavy for a database function, so it runs in a Supabase Edge
+Function, which is the TypeScript of `src/bot/bot.ts` bundled into one file.
+
+- **When.** From a skill of 0.6 (about 720 trophies in the mode), for bidding decisions.
+  Draws, reveals and weaker opponents stay in SQL.
+- **How.** When the computer's pause is over, `bot_step` stores a one-time secret in the
+  room, records which position it is for, and sends the room code and the secret to the
+  function with `pg_net` (asynchronous HTTP from the database). The function exchanges
+  the secret for the computer's own view of the room (`opponent_claim`, which only
+  answers once, for that position, while it is the computer's turn), decides, and plays
+  through `play` with the computer's token like any player.
+- **Safety.** Players never see the secret or the computer's token; without both, the
+  function can do nothing. The function itself holds no secret and runs without JWT
+  verification. Its view is the filtered seat view, so it cannot see a card the player
+  drew.
+- **Fallback.** If the function has not moved six seconds after being asked (not
+  deployed, cold, failing), `bot_step` plays the rule-based move. Setting
+  `opponent_function_url` to `null` in `encheres.config` turns the function off.
+
+### Presentation: rarity, theme, sound, effects
+
+- **Rarity** is visual only (`rarityOf` in `src/data/characters.ts`): the tier within the
+  universe maps to Common, Rare, Epic, Legendary and Mythic, and the strongest character
+  of each universe is Apex. Frames, glow, the holographic sheen and the pointer tilt are
+  CSS in `src/styles.css`; no image is involved.
+- **Theme** (`src/theme.ts`): light or dark, following the device until the player
+  chooses, applied before the first render. Dark mode redefines the colour variables;
+  anything on an accent colour keeps dark text.
+- **Sound** (`src/sound.ts`): every effect is synthesized with the Web Audio API, so
+  there are no audio files. The board compares each view with the previous one to play
+  draws, bids, being outbid, passes, wins and losses; the clock ticks in the last ten
+  seconds; the final screen plays a fanfare. A header button mutes it.
+- **Effects** (`src/components/Effects.tsx`): confetti on a win and numbers that count
+  up. Everything respects the reduced-motion setting.
 
 ### Never missing a result
 
@@ -327,6 +374,7 @@ job or extra infrastructure to maintain.
 | `src/ranking.test.ts` | League thresholds and badges |
 | `supabase/tests/opponent.test.ts` | The computer sits down only after the wait, looks like any player, follows the player's trophies, makes the same decisions as the TypeScript player through whole games, never depends on a card it has not seen, finishes games that count, and wins by forfeit when the player leaves |
 | `supabase/tests/modes.test.ts` | The server's card list per mode equals the app's, separate queues, mode worked out for old apps, per-mode trophies and pairing, the overall score formula in both languages, the monthly reset, friend requests in every state, the friends leaderboard, and invitations |
+| `supabase/tests/opponent.test.ts` (second part) | The hand-off to the Edge Function: asked once per position, waits for it, one-time claim of the computer's own view, the six-second fallback, and that weak opponents or an unconfigured function never use it |
 | `supabase/tests/accounts.test.ts` | Recovery codes (format, hashing, replacement, attempt limits), one profile on two devices, and sign-in linking |
 | `e2e/online.e2e.mjs` | Trophies appear on the final screen, the profile can be edited, the leaderboards list the players, feedback is stored, the computer joins from the server at any rank, and an account is recovered on a second browser with its code. Quick matches too: two searching browsers are paired, a forfeit and a timeout are announced, and a lone player gets an opponent from the server. Two isolated browser sessions play a whole online game through the real UI against the migration. Asserts that the hidden character never appears in the rival's page, that both players see every result, that only the host can start or restart, and that a reload keeps the seat. It runs without a Realtime server, so it also proves the polling fallback is sufficient on its own |
 

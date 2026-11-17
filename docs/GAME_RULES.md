@@ -74,8 +74,16 @@ Your overall score is the average of your trophies in every mode, with the mixed
 counting double because it is the hardest: you need to know every series. A mode you have
 never played counts as zero.
 
-On the first day of each month, everyone above 2200 trophies in a mode starts again from
-2200, the entrance of the Legend league.
+Each month is a season. On the first day of the month everyone starts again from 0
+trophies in every mode. Your profile keeps each past season's result, your highest
+trophies, the best league and the best rank you have ever reached.
+
+### Card rarity
+
+Each card's frame shows where the character stands in their universe: Common, Rare,
+Epic, Legendary or Mythic, and a turning rainbow frame, Apex, for the strongest
+character of each series. Rarity is only a picture of the power rating; the rating is
+what counts.
 
 ### Friends
 
@@ -171,8 +179,16 @@ Ton score global est la moyenne de tes trophées dans tous les modes ; le mode T
 compte double, car c'est le plus difficile : il faut connaître toutes les séries. Un mode
 jamais joué compte pour zéro.
 
-Le premier jour de chaque mois, tous ceux qui dépassent 2200 trophées dans un mode
-repartent de 2200, l'entrée de la ligue Légende.
+Chaque mois est une saison. Le premier jour du mois, tout le monde repart de 0 trophée
+dans chaque mode. Ton profil garde le résultat de chaque saison passée, ton record de
+trophées, la meilleure ligue et le meilleur rang que tu as atteints.
+
+### Rareté des cartes
+
+Le cadre de chaque carte montre la place du personnage dans son univers : Commune, Rare,
+Épique, Légendaire ou Mythique, et un cadre arc-en-ciel tournant, Sommet, pour le plus
+fort de chaque série. La rareté n'est qu'une image de la note de puissance ; c'est la
+note qui compte.
 
 ### Amis
 

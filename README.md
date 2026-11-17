@@ -51,7 +51,13 @@ rival, during the same auction.
   rank difference, six leagues, pairing with players of a similar level, and the winner
   decided by the server
 - An overall score across all modes, in which the mixed mode counts double, and a
-  monthly reset of the Legend league
+  monthly season: everyone starts again from zero, and each season's result is kept
+- Cards framed by rarity (Common to Mythic, and Apex for the strongest of each series)
+  with glow, holographic sheen, tilt and a flip on reveal
+- A computer opponent online whose strength follows the player's rank; the strongest
+  ones think ahead in a Supabase Edge Function
+- Light and dark themes, sound effects synthesized in the browser, confetti and
+  count-ups
 - Player profiles with statistics, badges, an avatar and a country; leaderboards for the
   overall score and for each mode, worldwide, by country or among friends
 - Friends by player tag, and invitations to private rooms
@@ -101,8 +107,9 @@ Same-device play works immediately. Online play uses the Supabase project config
 | Command | What it does |
 | --- | --- |
 | `npm run dev` | Development server with hot reload |
-| `npm test` | Runs the 179 unit, database, parity, ranking, account, mode and bot tests |
+| `npm test` | Runs the 186 unit, database, parity, ranking, account, mode, season and bot tests |
 | `npm run test:e2e` | Plays private rooms, quick matches, modes, friends and the account screens in headless browser sessions (needs Chrome) |
+| `npm run build:opponent` | Bundles the opponent Edge Function into one file for the Supabase dashboard |
 | `npm run ratings` | Rebuilds the power-ratings document, the CSV and the database seed (`0004`) from `src/data/rosters.json` |
 | `npm run typecheck` | TypeScript in strict mode, no output |
 | `npm run build` | Type check, then production build into `dist/` |
