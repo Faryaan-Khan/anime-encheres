@@ -144,6 +144,24 @@ export function leaveQueue(code: string): Promise<GameView | null> {
   return rpc<GameView | null>('leave_queue', { p_code: code, p_token: getPlayerToken() });
 }
 
+/**
+ * Tells the server this page is closing, so that a player who really left
+ * loses within seconds instead of after the full absence limit. Sent as a
+ * beacon, which survives the page going away; a form body keeps it a simple
+ * request, with no CORS preflight that a closing page could not wait for.
+ */
+export function sendLeaving(code: string): void {
+  if (!ONLINE_AVAILABLE) return;
+  const url = `${SUPABASE_URL}/rest/v1/rpc/leaving?apikey=${encodeURIComponent(SUPABASE_PUBLISHABLE_KEY)}`;
+  const body = new URLSearchParams({ p_code: code, p_token: getPlayerToken() });
+  try {
+    if (navigator.sendBeacon?.(url, body)) return;
+  } catch {
+    // Fall through to fetch.
+  }
+  void fetch(url, { method: 'POST', body, keepalive: true }).catch(() => undefined);
+}
+
 /** Gives up a matched game. */
 export function resign(code: string): Promise<GameView> {
   return rpc('resign', { p_code: code, p_token: getPlayerToken() });

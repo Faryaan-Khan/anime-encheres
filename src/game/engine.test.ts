@@ -177,11 +177,27 @@ describe('bidding', () => {
     g = pass(g, 0); // Ana passes; Ben is full → discard
     expect(g.phase).toBe('reveal');
     expect(g.history[1].winner).toBeNull();
-    g = next(g); // Ben draws but cannot bid: Ana speaks first
+    g = next(g); // Ben is full: his card is drawn for him and Ana speaks first
     expect(g.drawer).toBe(1);
-    g = draw(g, 1);
+    expect(g.phase).toBe('bidding');
+    expect(g.card).not.toBeNull();
     expect(g.turn).toBe(0);
     expect(g.passed).toEqual([false, true]);
+  });
+
+  it('never makes the player who can still buy wait for one who cannot', () => {
+    let g = game({ teamSize: 1 }, 1);
+    g = draw(g, 1);
+    g = bid(g, 1, 10);
+    g = pass(g, 0); // Ben is full
+    for (let round = 0; round < 6 && g.phase !== 'finished'; round++) {
+      g = next(g);
+      if (g.phase === 'finished') break;
+      // Whenever play reaches a decision, it is Ana's.
+      if (g.phase === 'draw') expect(g.drawer).toBe(0);
+      else expect(g.turn).toBe(0);
+      g = g.phase === 'draw' ? pass(draw(g, 0), 0) : pass(g, 0);
+    }
   });
 });
 

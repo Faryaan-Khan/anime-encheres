@@ -44,10 +44,11 @@ if (!chromePath) {
 
 const db = new PGlite();
 await db.exec('create role anon nologin; create role authenticated nologin;');
-for (const file of ['0001_init.sql', '0002_matchmaking.sql', '0003_ranking.sql', '0004_character_powers.sql', '0005_accounts_and_opponent.sql', '0006_modes_and_friends.sql', '0007_seasons.sql', '0008_opponent_brain.sql', '0009_google_accounts.sql']) {
+for (const file of ['0001_init.sql', '0002_matchmaking.sql', '0003_ranking.sql', '0004_character_powers.sql', '0005_accounts_and_opponent.sql', '0006_modes_and_friends.sql', '0007_seasons.sql', '0008_opponent_brain.sql', '0009_google_accounts.sql', '0010_fair_play.sql']) {
   await db.exec(readFileSync(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8'));
 }
 
+const calls = { leaving: 0 };
 const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': '*',
@@ -55,11 +56,14 @@ const cors = {
 };
 const api = http.createServer(async (req, res) => {
   if (req.method === 'OPTIONS') return res.writeHead(204, cors).end();
-  const match = req.url.match(/^\/rest\/v1\/rpc\/(\w+)$/);
+  const match = req.url.match(/^\/rest\/v1\/rpc\/(\w+)(\?.*)?$/);
   if (!match || req.method !== 'POST') return res.writeHead(404, cors).end('{}');
   let body = '';
   for await (const chunk of req) body += chunk;
-  const args = JSON.parse(body || '{}');
+  // The leaving note is a beacon with a form body, as PostgREST accepts.
+  const form = (req.headers['content-type'] ?? '').startsWith('application/x-www-form-urlencoded');
+  const args = form ? Object.fromEntries(new URLSearchParams(body)) : JSON.parse(body || '{}');
+  if (match[1] === 'leaving') calls.leaving += 1;
   const names = Object.keys(args);
   try {
     const call = names.map((name, i) => `${name} => $${i + 1}`).join(', ');
@@ -206,7 +210,12 @@ try {
   await until(host, () => sees(host, '.final'), 'the final screen');
   await until(guest, () => sees(guest, '.final'), 'the final screen');
   assert(rounds > 0 && secrecyChecks > 0, 'the game was actually played');
-  assert(results.host === rounds && results.guest === rounds, 'both players saw every result');
+  // Some rounds start without a click: a player who can no longer buy has
+  // their card drawn for them.
+  const played = (
+    await db.query(`select coalesce(jsonb_array_length(history), 0) as n from encheres.rooms where not matched order by updated_at desc limit 1`)
+  ).rows[0].n;
+  assert(results.host === played && results.guest === played && played >= rounds, 'both players saw every result');
   assert(!(await click(guest, 'Rematch')), 'guest cannot start a rematch');
 
   await click(host, 'Rematch');
@@ -257,18 +266,56 @@ try {
   const waiter = idler === ana ? ben : ana;
   const idleFor = (seconds) =>
     db.query(`update encheres.rooms set updated_at = now() - make_interval(secs => $1) where matched and status = 'playing'`, [seconds]);
-  await idleFor(45);
+  const idlerSeat = () =>
+    db.query(
+      `select case r.phase when 'draw' then r.drawer else r.turn end as seat
+         from encheres.rooms r where r.matched and r.status = 'playing'`,
+    );
+  await idleFor(20);
   await until(idler, async () => (await text(idler)).includes('left to play'), 'the clock on the idle side');
   await until(waiter, async () => (await text(waiter)).includes('left to play'), 'the clock on the waiting side');
   assert((await text(idler)).includes('You have'), 'the idle player is warned');
-  assert(!(await click(waiter, 'Claim the win')), 'the win cannot be claimed early');
+  assert(!(await click(waiter, 'Claim the win')), 'there is nothing to claim');
   await snap(waiter, 'match-clock');
-  await idleFor(62);
-  await until(waiter, () => click(waiter, 'Claim the win'), 'the claim button');
+  // Time runs out: the server draws for the idle player and counts it.
+  await idleFor(31);
+  await until(idler, async () => (await text(idler)).includes('Out of time 1/3'), 'the first time-out on the idle side');
+  await until(waiter, async () => (await text(waiter)).includes('Out of time 1/3'), 'the first time-out on the waiting side');
+  assert(await sees(waiter, '.scoreboard'), 'the game goes on after one time-out');
+  await snap(idler, 'match-strike');
+  // The third time-out loses the match, with nobody pressing anything.
+  const seat = (await idlerSeat()).rows[0].seat;
+  await db.query(
+    `update encheres.room_players p set strikes = 2 from encheres.rooms r
+      where p.room_code = r.code and r.matched and r.status = 'playing' and p.seat = $1`,
+    [seat],
+  );
+  await idleFor(31);
   await until(waiter, () => sees(waiter, '.final'), 'the final screen');
   await until(idler, () => sees(idler, '.final'), 'the final screen');
   assert((await text(idler)).includes('left the game'), 'the timeout is announced to the idle player');
-  console.log('PASS  quick match: turn clock shown, win claimed after the limit');
+  console.log('PASS  quick match: the server plays for a slow player and the third time-out loses');
+
+  // --- Closing the page in the middle of a quick match ------------------------
+
+  const dee = await phone('dee');
+  const eve = await phone('eve');
+  for (const [page, name] of [[dee, 'Dee'], [eve, 'Eve']]) {
+    await page.goto(`${base}#/match`, { waitUntil: 'networkidle2' });
+    await page.type('input[autocomplete=nickname]', name);
+    await click(page, 'Find an opponent');
+  }
+  await until(dee, () => sees(dee, '.scoreboard'), 'a match for Dee', 20000);
+  await until(eve, () => sees(eve, '.scoreboard'), 'a match for Eve', 20000);
+  // The game started long enough ago that only the leaving note matters.
+  await db.query(`update encheres.rooms set seen_at = now() - interval '2 minutes' where matched and status = 'playing'`);
+  await eve.close();
+  await until(dee, async () => calls.leaving > 0, 'the leaving note from the closed page', 5000);
+  await until(dee, async () => (await text(dee)).includes('Eve left the game. You win in'), 'the countdown', 20000);
+  await snap(dee, 'match-left');
+  await until(dee, () => sees(dee, '.final'), 'the win over a player who left', 30000);
+  assert((await text(dee)).includes('Dee wins'), 'the player who stayed wins');
+  console.log('PASS  quick match: closing the page loses within seconds');
 
   // --- Quick match when nobody else is looking ------------------------------
 

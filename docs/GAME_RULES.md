@@ -58,8 +58,10 @@ the game in its head before every bid.
 
 "Quick match" finds you an opponent online. You choose a mode: one universe, or all of
 them mixed. The rules are fixed so that anyone can be paired: 500M each, teams of 5. You
-have 60 seconds for each action; if your opponent runs out of time you can claim the win,
-and leaving the game gives the win to your opponent. To play with a friend instead, create
+have 30 seconds for each action. If you run out of time the game plays for you (draws the
+card, or passes) and counts it; the third time loses the match. Leaving the game, or
+closing the page and not coming back within a few seconds, gives the win to your
+opponent. To play with a friend instead, create
 a private room and share its code, or invite them from your friends list.
 
 ### Trophies and leagues
@@ -161,8 +163,10 @@ partie avant chaque mise.
 
 « Partie rapide » te trouve un adversaire en ligne. Tu choisis un mode : un seul univers,
 ou tous mélangés. Les règles sont fixes pour que tout le monde puisse être associé : 500M
-chacun, équipes de 5. Tu as 60 secondes par action ; si ton adversaire dépasse ce temps,
-tu peux réclamer la victoire, et quitter la partie donne la victoire à l'adversaire. Pour
+chacun, équipes de 5. Tu as 30 secondes par action. Si le temps est écoulé, le jeu joue
+pour toi (tire la carte, ou passe) et le compte ; la troisième fois, la partie est perdue.
+Quitter la partie, ou fermer la page sans revenir dans les secondes qui suivent, donne la
+victoire à l'adversaire. Pour
 jouer avec un ami, crée plutôt un salon privé et partage son code, ou invite-le depuis ta
 liste d'amis.
 

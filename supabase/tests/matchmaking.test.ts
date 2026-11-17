@@ -161,50 +161,179 @@ describe('turn timer', () => {
   const backdate = (code: string, seconds: number) =>
     db.query(`update encheres.rooms set updated_at = now() - make_interval(secs => $2) where code = $1`, [code, seconds]);
 
-  it('reports how long the player to act has been idle', async () => {
+  const strikes = async (code: string) =>
+    (
+      await db.query<{ strikes: number }>(
+        'select strikes from encheres.room_players where room_code = $1 order by seat',
+        [code],
+      )
+    ).rows.map((r) => r.strikes);
+
+  it('reports how long the player to act has been idle, and the limits', async () => {
     const ana = await search(ANA, 'Ana');
     await search(BEN, 'Ben');
-    await backdate(ana.code!, 42);
+    await backdate(ana.code!, 22);
     const view = await rpc('get_room', [ana.code, ANA]);
-    expect(view.idle).toBeGreaterThanOrEqual(42);
-    expect(view.idle).toBeLessThan(45);
+    expect(view.idle).toBeGreaterThanOrEqual(22);
+    expect(view.idle).toBeLessThan(25);
+    expect(view).toMatchObject({ turnSeconds: 30, maxStrikes: 3, awaySeconds: 40, strikes: [0, 0] });
   });
 
-  it('lets the waiting player claim the win only after the limit', async () => {
-    const ana = await search(ANA, 'Ana');
+  it('plays for the slow player when time runs out, without anyone claiming', async () => {
+    await search(ANA, 'Ana');
     const game = await search(BEN, 'Ben');
     const actor = game.drawer;
     const waiter: Seat = actor === 0 ? 1 : 0;
 
-    expect(await rpcError('claim_forfeit', [game.code, token(waiter)])).toContain('TOO_EARLY');
-    await backdate(game.code!, 59);
-    expect(await rpcError('claim_forfeit', [game.code, token(waiter)])).toContain('TOO_EARLY');
-    await backdate(game.code!, 61);
-    // The idle player cannot claim against the one who is waiting for them.
-    expect(await rpcError('claim_forfeit', [game.code, token(actor)])).toContain('TOO_EARLY');
+    await backdate(game.code!, 29);
+    expect((await rpc('get_room', [game.code, token(waiter)])).phase).toBe('draw');
+    await backdate(game.code!, 31);
+    // Either player's poll applies the clock: the card is drawn for them.
+    const drawn = await rpc('get_room', [game.code, token(waiter)]);
+    expect(drawn.phase).toBe('bidding');
+    expect(drawn.turn).toBe(actor);
+    expect(drawn.strikes?.[actor]).toBe(1);
+    expect(drawn.status).toBe('playing');
 
-    const won = await rpc('claim_forfeit', [game.code, token(waiter)]);
-    expect(won.status).toBe('finished');
-    expect(won.forfeit).toBe(actor);
-    expect(ana.code).toBe(game.code);
+    // Bidding: the slow player passes.
+    await backdate(game.code!, 31);
+    const passed = await rpc('get_room', [game.code, token(actor)]);
+    expect(passed.passed[actor]).toBe(true);
+    expect(await strikes(game.code!)).toEqual(actor === 0 ? [2, 0] : [0, 2]);
+  });
+
+  it('ends the match on the third time out', async () => {
+    await search(ANA, 'Ana');
+    const game = await search(BEN, 'Ben');
+    const actor = game.drawer;
+    const waiter: Seat = actor === 0 ? 1 : 0;
+    await db.query('update encheres.room_players set strikes = 2 where room_code = $1 and seat = $2', [game.code, actor]);
+    await backdate(game.code!, 31);
+    const view = await rpc('get_room', [game.code, token(waiter)]);
+    expect(view.status).toBe('finished');
+    expect(view.forfeit).toBe(actor);
+    expect(view.result?.winner).toBe(waiter);
+  });
+
+  it('still answers old clients that claim the win', async () => {
+    await search(ANA, 'Ana');
+    const game = await search(BEN, 'Ben');
+    const actor = game.drawer;
+    const waiter: Seat = actor === 0 ? 1 : 0;
+    expect(await rpcError('claim_forfeit', [game.code, token(waiter)])).toContain('TOO_EARLY');
+    await backdate(game.code!, 29);
+    expect(await rpcError('claim_forfeit', [game.code, token(waiter)])).toContain('TOO_EARLY');
   });
 
   it('restarts the clock with every action and never runs during a reveal', async () => {
-    const ana = await search(ANA, 'Ana');
+    await search(ANA, 'Ana');
     const game = await search(BEN, 'Ben');
     const drawer = game.drawer;
     const rival: Seat = drawer === 0 ? 1 : 0;
-    await backdate(game.code!, 61);
+    await backdate(game.code!, 25);
     await rpc('play', [game.code, token(drawer), 'draw', null]); // acting resets the clock
-    expect(await rpcError('claim_forfeit', [game.code, token(rival)])).toContain('TOO_EARLY');
+    await backdate(game.code!, 25);
+    expect((await rpc('get_room', [game.code, token(rival)])).strikes).toEqual([0, 0]);
 
     await rpc('play', [game.code, token(drawer), 'pass', null]);
     const reveal = await rpc('play', [game.code, token(rival), 'pass', null]);
     expect(reveal.phase).toBe('reveal');
     await backdate(game.code!, 300);
-    expect(await rpcError('claim_forfeit', [game.code, token(drawer)])).toContain('TOO_EARLY');
-    expect(await rpcError('claim_forfeit', [game.code, token(rival)])).toContain('TOO_EARLY');
-    expect(ana.code).toBe(game.code);
+    const still = await rpc('get_room', [game.code, token(rival)]);
+    expect(still.phase).toBe('reveal');
+    expect(still.strikes).toEqual([0, 0]);
+  });
+});
+
+describe('leaving', () => {
+  const token = (seat: Seat) => (seat === 0 ? ANA : BEN);
+  const seenAgo = (code: string, seat: Seat, seconds: number) =>
+    db.query(
+      `update encheres.room_players set seen_at = now() - make_interval(secs => $3) where room_code = $1 and seat = $2`,
+      [code, seat, seconds],
+    );
+  const roomSeenAgo = (code: string, seconds: number) =>
+    db.query(`update encheres.rooms set seen_at = now() - make_interval(secs => $2) where code = $1`, [code, seconds]);
+
+  it('gives the win to the player who stayed when the other is gone for 40 seconds', async () => {
+    await search(ANA, 'Ana');
+    const game = await search(BEN, 'Ben');
+    await roomSeenAgo(game.code!, 120);
+    await seenAgo(game.code!, 1, 39);
+    const view = await rpc('get_room', [game.code, ANA]);
+    expect(view.status).toBe('playing');
+    expect(view.absent?.[1]).toBeGreaterThanOrEqual(39);
+    expect(view.absent?.[0]).toBe(0);
+
+    await seenAgo(game.code!, 1, 41);
+    const won = await rpc('get_room', [game.code, ANA]);
+    expect(won.status).toBe('finished');
+    expect(won.forfeit).toBe(1);
+    expect(won.result?.winner).toBe(0);
+  });
+
+  it('counts a closed page as gone after a few seconds, unless the player comes back', async () => {
+    await search(ANA, 'Ana');
+    const game = await search(BEN, 'Ben');
+    await roomSeenAgo(game.code!, 120);
+    await rpc('leaving', [game.code, BEN]);
+    // A reload comes back in time.
+    expect((await rpc('get_room', [game.code, BEN])).status).toBe('playing');
+
+    await rpc('leaving', [game.code, BEN]);
+    await db.query(
+      `update encheres.room_players set seen_at = seen_at - interval '9 seconds' where room_code = $1 and seat = 1`,
+      [game.code],
+    );
+    const won = await rpc('get_room', [game.code, ANA]);
+    expect(won.status).toBe('finished');
+    expect(won.forfeit).toBe(1);
+  });
+
+  it('ignores leaving notes from strangers and never counts the computer as gone', async () => {
+    expect(await rpc('leaving', ['NOPE', CAM])).toBeFalsy();
+    const waiting = await search(ANA, 'Ana');
+    await db.query(`update encheres.rooms set created_at = now() - interval '20 seconds' where code = $1`, [waiting.code]);
+    const game = await search(ANA, 'Ana', waiting.code);
+    expect(game.status).toBe('playing');
+    await roomSeenAgo(game.code!, 600);
+    await seenAgo(game.code!, 1, 600);
+    expect((await rpc('get_room', [game.code, ANA])).status).toBe('playing');
+    void token;
+  });
+});
+
+describe('automatic draw', () => {
+  const token = (seat: Seat) => (seat === 0 ? ANA : BEN);
+
+  it('draws for a player with a full team, so the other bids at once', async () => {
+    await search(ANA, 'Ana');
+    const game = await search(BEN, 'Ben');
+    const drawer = game.drawer;
+    const rival: Seat = drawer === 0 ? 1 : 0;
+    // The rival's team is already full.
+    await db.query(
+      `update encheres.room_players set team = array_fill('x'::text, array[5]) where room_code = $1 and seat = $2`,
+      [game.code, rival],
+    );
+    await rpc('play', [game.code, token(drawer), 'draw', null]);
+    const reveal = await rpc('play', [game.code, token(drawer), 'bid', 10]);
+    expect(reveal.phase).toBe('reveal');
+    const after = await rpc('play', [game.code, token(rival), 'next', null]);
+    // The rival never has to draw: the next card is already up for bidding,
+    // and it is the other player's turn to bid straight away.
+    expect(after.phase).toBe('bidding');
+    expect(after.drawer).toBe(rival);
+    expect(after.turn).toBe(drawer);
+    expect(after.passed[rival]).toBe(true);
+    const mine = await rpc('get_room', [game.code, token(drawer)]);
+    expect(mine).toMatchObject({ phase: 'bidding', turn: drawer, you: drawer, card: null });
+    const log = (await db.query<{ log: Array<{ a: string; s: number }> }>('select log from encheres.rooms where code = $1', [game.code]))
+      .rows[0].log;
+    expect(log.slice(-2)).toMatchObject([
+      { a: 'next', s: rival },
+      { a: 'draw', s: rival },
+    ]);
   });
 });
 
@@ -216,6 +345,7 @@ describe('permissions', () => {
       'public.leave_queue(text, text)',
       'public.resign(text, text)',
       'public.claim_forfeit(text, text)',
+      'public.leaving(text, text)',
     ]) {
       expect(await check(`select has_function_privilege('anon', '${fn}', 'execute') as ok`)).toBe(true);
     }

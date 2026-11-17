@@ -28,14 +28,18 @@ export interface BoardProps {
    * says so and asks for a second tap.
    */
   quitForfeits?: boolean;
-  /** Quick matches: time left for the player who has to act. */
-  clock?: { seat: Seat; secondsLeft: number };
-  /** Quick matches: called to take the win once the opponent's time is up. */
-  onClaim?: () => void;
+  /**
+   * Quick matches: time left for the player who has to act, and how many
+   * times each player has run out of time. When time runs out the server
+   * moves for the slow player; the last time-out loses the match.
+   */
+  clock?: { seat: Seat; secondsLeft: number; strikes: [number, number]; maxStrikes: number };
+  /** Quick matches: the rival's device has gone quiet; they lose when this runs out. */
+  away?: { seat: Seat; secondsLeft: number };
 }
 
 /** The clock stays out of the way until this many seconds are left. */
-const CLOCK_VISIBLE_FROM = 30;
+const CLOCK_VISIBLE_FROM = 15;
 
 const rivalOf = (seat: Seat): Seat => (seat === 0 ? 1 : 0);
 
@@ -51,7 +55,7 @@ export function Board({
   onQuit,
   quitForfeits,
   clock,
-  onClaim,
+  away,
 }: BoardProps) {
   const { t, money } = useI18n();
   const [peeking, setPeeking] = useState(false);
@@ -206,23 +210,31 @@ export function Board({
         </p>
       )}
 
-      {clock && clock.secondsLeft <= CLOCK_VISIBLE_FROM && (
-        <div className={`clock${clock.secondsLeft <= 10 ? ' clock--urgent' : ''}`} role="status">
-          {mine(clock.seat) ? (
-            <p className="alert">{t('board.timer.you', { n: Math.max(0, clock.secondsLeft) })}</p>
-          ) : clock.secondsLeft > 0 ? (
+      {away && (
+        <div className="clock clock--away" role="status">
+          <p className="note">
+            {away.secondsLeft > 0
+              ? t('board.away.counting', { name: player(away.seat).name, n: away.secondsLeft })
+              : t('board.away.done', { name: player(away.seat).name })}
+          </p>
+        </div>
+      )}
+
+      {clock && !away && clock.secondsLeft <= CLOCK_VISIBLE_FROM && (
+        <div className={`clock${clock.secondsLeft <= 5 ? ' clock--urgent' : ''}`} role="status">
+          {clock.secondsLeft <= 0 ? (
             <p className="note">
-              {t('board.timer.rival', { name: player(clock.seat).name, n: clock.secondsLeft })}
+              {mine(clock.seat) ? t('board.timer.youExpired') : t('board.timer.expired', { name: player(clock.seat).name })}
             </p>
+          ) : mine(clock.seat) ? (
+            <p className="alert">{t('board.timer.you', { n: clock.secondsLeft })}</p>
           ) : (
-            <>
-              <p className="note">{t('board.timer.expired', { name: player(clock.seat).name })}</p>
-              {onClaim && (
-                <button type="button" className="btn btn--wide" onClick={onClaim} disabled={busy}>
-                  {t('board.timer.claim')}
-                </button>
-              )}
-            </>
+            <p className="note">{t('board.timer.rival', { name: player(clock.seat).name, n: clock.secondsLeft })}</p>
+          )}
+          {mine(clock.seat) && clock.strikes[clock.seat] > 0 && (
+            <p className="clock__strikes">
+              {t('board.timer.strikes', { n: clock.strikes[clock.seat], max: clock.maxStrikes })}
+            </p>
           )}
         </div>
       )}

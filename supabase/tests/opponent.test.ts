@@ -325,18 +325,35 @@ describe('playing', () => {
     expect(view.result).toMatchObject({ winner: 1, deltas: [-26, 0], trophies: [474, null] });
   });
 
-  it('wins when the player runs out of time', async () => {
+  it('plays for a player whose time is up, and the third time loses the match', async () => {
     const code = await againstComputer();
-    for (let step = 0; step < 50; step++) {
-      const r = await room(code);
-      if (r.phase !== 'reveal' && (r.phase === 'draw' ? r.drawer : r.turn) === 0) break;
-      await idle(code, 12);
-      await rpc('get_room', [code, ANA]);
+    const myMove = async () => {
+      for (let step = 0; step < 60; step++) {
+        const r = await room(code);
+        if (r.status !== 'playing') return;
+        if (r.phase !== 'reveal' && (r.phase === 'draw' ? r.drawer : r.turn) === 0) return;
+        await idle(code, 12);
+        await rpc('get_room', [code, ANA]);
+      }
+    };
+    const strikes = async () =>
+      (await db.query<{ strikes: number }>('select strikes from encheres.room_players where room_code = $1 and seat = 0', [code]))
+        .rows[0].strikes;
+
+    await myMove();
+    await idle(code, 29);
+    expect((await rpc('get_room', [code, ANA])).strikes).toEqual([0, 0]);
+    for (const strike of [1, 2]) {
+      await myMove();
+      await idle(code, 31);
+      const view = await rpc('get_room', [code, ANA]);
+      expect(view.status).toBe('playing');
+      expect(view.strikes?.[0]).toBe(strike);
     }
-    await idle(code, 61);
-    expect((await rpc('get_room', [code, ANA])).status).toBe('playing');
-    await idle(code, 66);
+    await myMove();
+    await idle(code, 31);
     const view = await rpc('get_room', [code, ANA]);
+    expect(await strikes()).toBe(3);
     expect(view.status).toBe('finished');
     expect(view.forfeit).toBe(0);
     expect((await rpc<{ forfeits: number; losses: number }>('get_profile', [ANA]))).toMatchObject({ forfeits: 1, losses: 1 });

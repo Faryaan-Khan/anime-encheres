@@ -13,7 +13,11 @@ import { navigate } from '../router';
 import { readStored, writeStored } from '../storage';
 
 /** Seconds a player has for one action in a quick match. Enforced by the server. */
-export const TURN_SECONDS = 60;
+/** Used until the server says otherwise (see 0010_fair_play). */
+export const TURN_SECONDS = 30;
+const AWAY_SECONDS = 40;
+/** Normal polling leaves a few seconds of silence; past this, say the rival is gone. */
+const AWAY_SHOWN_AFTER = 12;
 
 /** What a quick match needs from the screen that hosts it. */
 export interface MatchedHandlers {
@@ -115,10 +119,26 @@ function Game({ view, room, matched }: { view: GameView; room: OnlineRoom; match
 
   const actor: Seat | null =
     view.phase === 'draw' ? view.drawer : view.phase === 'bidding' ? view.turn : null;
-  const timed = Boolean(matched) && view.status === 'playing' && actor !== null;
-  const now = useNow(timed ? 1000 : null);
-  const idle = (view.idle ?? 0) + Math.max(0, now - room.receivedAt) / 1000;
-  const clock = timed && actor !== null ? { seat: actor, secondsLeft: Math.ceil(TURN_SECONDS - idle) } : undefined;
+  const live = Boolean(matched) && view.status === 'playing';
+  const timed = live && actor !== null;
+  const now = useNow(live ? 1000 : null);
+  const elapsed = Math.max(0, now - room.receivedAt) / 1000;
+  const idle = (view.idle ?? 0) + elapsed;
+  const clock =
+    timed && actor !== null
+      ? {
+          seat: actor,
+          secondsLeft: Math.ceil((view.turnSeconds ?? TURN_SECONDS) - idle),
+          strikes: view.strikes ?? ([0, 0] as [number, number]),
+          maxStrikes: view.maxStrikes ?? 3,
+        }
+      : undefined;
+  const rivalSeat: Seat | null = view.you === null ? null : view.you === 0 ? 1 : 0;
+  const rivalAbsent = rivalSeat === null ? 0 : (view.absent?.[rivalSeat] ?? 0) + elapsed;
+  const away =
+    live && rivalSeat !== null && rivalAbsent >= AWAY_SHOWN_AFTER
+      ? { seat: rivalSeat, secondsLeft: Math.max(0, Math.ceil((view.awaySeconds ?? AWAY_SECONDS) - rivalAbsent)) }
+      : undefined;
 
   const [shown, setShown] = useState(() =>
     view.phase === 'reveal' ? view.history.length - 1 : view.history.length,
@@ -191,7 +211,7 @@ function Game({ view, room, matched }: { view: GameView; room: OnlineRoom; match
       onQuit={quit}
       quitForfeits={Boolean(matched)}
       clock={clock}
-      onClaim={() => void room.claim()}
+      away={away}
     />
   );
 }

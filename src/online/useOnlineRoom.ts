@@ -3,12 +3,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { GameView } from '../game/types';
 import {
   OnlineError,
-  claimForfeit,
   getClient,
   getRoom,
   joinRoom,
   play,
   resign,
+  sendLeaving,
   startGame,
   toOnlineError,
   type OnlineErrorCode,
@@ -17,6 +17,9 @@ import {
 
 // Also the pace at which a computer opponent is given its turn (see bot_step in 0005).
 const POLL_MS = 1500;
+// A hidden tab still checks in now and then: the server counts a player who
+// is never heard from as gone (see 0010_fair_play).
+const HIDDEN_POLL_MS = 5000;
 
 export interface OnlineRoom {
   view: GameView | null;
@@ -30,8 +33,6 @@ export interface OnlineRoom {
   act(action: PlayAction, amount?: number): Promise<void>;
   /** Matched games: give up. */
   resign(): Promise<void>;
-  /** Matched games: win because the opponent ran out of time. */
-  claim(): Promise<void>;
   /** When the current view arrived, in milliseconds; `view.idle` is as of then. */
   receivedAt: number;
 }
@@ -53,12 +54,14 @@ export function useOnlineRoom(code: string): OnlineRoom {
   const [receivedAt, setReceivedAt] = useState(() => Date.now());
   const channelRef = useRef<RealtimeChannel | null>(null);
   const memberRef = useRef(false);
+  const matchedPlayingRef = useRef(false);
 
   /** Never lets an older response overwrite a newer one. */
   const accept = useCallback((next: GameView) => {
     memberRef.current = true;
     setLoadError(null);
     setView((prev) => (!prev || next.version >= prev.version ? next : prev));
+    matchedPlayingRef.current = Boolean(next.matched) && next.status === 'playing';
     setReceivedAt(Date.now());
   }, []);
 
@@ -93,18 +96,32 @@ export function useOnlineRoom(code: string): OnlineRoom {
       .subscribe();
     channelRef.current = channel;
 
+    let lastPoll = 0;
     const timer = window.setInterval(() => {
-      if (document.visibilityState === 'visible' && memberRef.current) void refresh();
+      if (!memberRef.current) return;
+      const every = document.visibilityState === 'visible' ? POLL_MS : HIDDEN_POLL_MS;
+      if (Date.now() - lastPoll < every - 100) return;
+      lastPoll = Date.now();
+      void refresh();
     }, POLL_MS);
     const onVisible = () => {
       if (document.visibilityState === 'visible' && memberRef.current) void refresh();
     };
     document.addEventListener('visibilitychange', onVisible);
+    // Closing the page in the middle of a quick match: the opponent should
+    // not have to wait long. Coming back quickly (a reload) still counts.
+    const onLeave = () => {
+      if (matchedPlayingRef.current) sendLeaving(code);
+    };
+    window.addEventListener('pagehide', onLeave);
 
     return () => {
+      onLeave();
       window.clearInterval(timer);
       document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('pagehide', onLeave);
       channelRef.current = null;
+      matchedPlayingRef.current = false;
       void getClient().removeChannel(channel);
     };
   }, [code, refresh]);
@@ -139,8 +156,5 @@ export function useOnlineRoom(code: string): OnlineRoom {
   );
 
   const giveUp = useCallback(() => run(() => resign(code)), [code, run]);
-  // Claiming a moment too early is harmless: the button simply stays.
-  const claim = useCallback(() => run(() => claimForfeit(code), ['TOO_EARLY']), [code, run]);
-
-  return { view, loadError, actionError, busy, join, start, act, resign: giveUp, claim, receivedAt };
+  return { view, loadError, actionError, busy, join, start, act, resign: giveUp, receivedAt };
 }

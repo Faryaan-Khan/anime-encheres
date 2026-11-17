@@ -103,6 +103,7 @@ Migrations, to be run in this order in the Supabase SQL editor. All are idempote
 | `0007_seasons.sql` | Monthly seasons from zero, `season_results` history, rights-request feedback |
 | `0008_opponent_brain.sql` | pg_net hand-off of strong opponents' bids to the Edge Function, with fallback |
 | `0009_google_accounts.sql` | Guest to Google: keep the guest or start fresh |
+| `0010_fair_play.sql` | Automatic draw for a player who cannot buy, presence (`seen_at`, `leaving`), 30 s clock with 3 strikes enforced in `get_room`; `play` split into `encheres.play_as` |
 
 Functions the client calls:
 
@@ -110,7 +111,9 @@ Functions the client calls:
 | --- | --- |
 | `create_room`, `join_room`, `start_game` | Private rooms |
 | `get_room`, `play` | Read the room as one seat sees it; draw, bid, pass, next |
-| `find_match`, `leave_queue`, `resign`, `claim_forfeit` | Quick match in a mode |
+| `find_match`, `leave_queue`, `resign` | Quick match in a mode |
+| `leaving` | Beacon from a closing page: the player counts as gone after about 8 s |
+| `claim_forfeit` | Old clients only; the server now ends timed-out and abandoned games itself |
 | `get_profile`, `update_profile` | The player's profile, per-mode trophies, recent games |
 | `leaderboard` | Overall or one mode; world, one country, or friends |
 | `get_friends`, `add_friend`, `answer_friend`, `remove_friend` | Friends by player tag |
@@ -153,7 +156,11 @@ Things that have bitten this project, so that they do not again:
   (`redeem_code`, `add_friend`) return a status instead of raising.
 - **A statement does not see its own writes.** In `roll_season`, updating ratings and
   recomputing overall scores in one statement used the old ratings. Use two statements.
-- **Rules exist in two languages.** The auction (TypeScript engine and SQL `play`) and
+- **Where the latest version of a function lives.** Later migrations replace functions
+  from earlier ones. As of 0010: the auction rules are `encheres.play_as` (0010; `public.play`
+  only maps the token to a seat), `room_view`, `get_room` and `bot_step` are in 0010,
+  `end_by_forfeit` and `settle_match` in 0003. Copy from the newest file when replacing one.
+- **Rules exist in two languages.** The auction (TypeScript engine and SQL `play_as`) and
   the rule-based opponent (TypeScript `byRules` and SQL `bot_choice`) are each kept in
   step by a test that plays whole games and compares every step. If you change one side,
   change the other; the test will tell you.
@@ -192,6 +199,13 @@ Short versions; details and reasons are in `docs/ARCHITECTURE.md`.
 - **Cards and presentation.** Rarity frames (Common to Mythic, Apex for each universe's
   strongest) are CSS only. Dark theme, synthesized sounds and effects are described in
   `docs/ARCHITECTURE.md`.
+- **Fair play in quick matches.** 30 seconds per move; when time is up the server moves
+  for the slow player (draw or pass) and gives a strike, and the third strike loses. A
+  player not heard from for 40 seconds has left and loses; closing the page sends a
+  `leaving` beacon that cuts this to about 8 seconds. All of it runs inside `get_room`, so
+  no scheduler is needed and nobody has to claim a win. A player who can no longer buy
+  (full team, or less than the minimum bid) never holds the other up: their card is drawn
+  for them, in every kind of game.
 - **Friends.** Players exchange a seven-character tag. A request must be accepted. There
   is a friends leaderboard, and the host of a private room can invite a friend, who sees
   the invitation on the home screen.
@@ -199,7 +213,7 @@ Short versions; details and reasons are in `docs/ARCHITECTURE.md`.
 ## State of things
 
 Done and live: same-device and offline play against two computer levels; private online
-rooms; quick matches in eight modes with a turn clock; server-played opponent; profiles
+rooms; quick matches in eight modes with a 30-second clock, strikes and automatic wins over players who leave; server-played opponent; profiles
 with statistics, badges, avatar and country; leaderboards (overall, per mode, friends,
 country); monthly seasons from zero with history; recovery codes; friends and
 invitations; feedback form with rights requests; match recording; stronger opponent in

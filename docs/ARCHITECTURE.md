@@ -180,10 +180,25 @@ has polled for 12 seconds is skipped.
   next poll the one in the newer room moves into the older one.
 - **Closed rooms.** A matched room cannot be joined by code, started by hand or
   restarted, and the client never shows its code.
-- **Turn clock.** Strangers leave. Room views carry `idle`, the seconds since the last
-  change. After 60 seconds without an action, the waiting player may call
-  `claim_forfeit`; the server checks the time itself. `resign` gives up at once. The clock
-  does not run during a reveal, since either player can move on from it.
+- **Turn clock with strikes** (`0010_fair_play.sql`). Each move has 30 seconds. Room views
+  carry `idle` (seconds since the last change), `turnSeconds`, `strikes` and `maxStrikes`.
+  When time is up, `encheres.enforce` plays the default move for the slow player (draw, or
+  pass) and adds a strike; the third strike ends the match as a forfeit. Nobody has to
+  claim anything: `enforce` runs inside `get_room`, so either player's next poll applies
+  it (the computer's own clock is `bot_step`'s). The clock does not run during a reveal,
+  since either player can move on from it. `claim_forfeit` stays for old clients.
+- **Presence.** `room_players.seen_at` is touched by every `get_room` and `play`. A human
+  not heard from for 40 seconds (`awaySeconds`) has left, and `enforce` gives the match to
+  the other player. A page that closes sends `public.leaving` as a beacon (form body, key
+  in the query string, so no CORS preflight), which backdates `seen_at` so the player is
+  gone after about 8 seconds unless they come back (a reload). Views carry `absent`, the
+  seconds since each seat was heard from; the board shows a countdown to the win after
+  12 seconds of silence. Hidden tabs keep polling every 5 seconds so a player who only
+  switched apps is not counted as gone. `resign` gives up at once.
+- **No waiting on a player who cannot buy.** When the next drawer's team is full or they
+  cannot afford the minimum bid, the card is drawn for them and the other player bids at
+  once (`next()` in `src/game/engine.ts`, the `next` branch of `encheres.play_as` in SQL;
+  the log records both the `next` and the automatic `draw`).
 - **When nobody is there.** After 12 to 18 seconds the database seats an opponent itself
   and plays its moves (next section). The player's device does nothing different.
 
