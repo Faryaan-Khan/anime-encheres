@@ -7,14 +7,23 @@ import { getCharacter } from '../data/characters';
 import { bid, createGame, draw, next, pass, requiredBid, toView } from '../game/engine';
 import type { GameState, Seat, Settings } from '../game/types';
 import { judge, type Verdict } from '../game/verdict';
-import { decide, emptyMemory, observe, type BotAction, type BotLevel, type BotMemory } from './bot';
+import {
+  decide,
+  decideByRules,
+  emptyMemory,
+  observe,
+  type BotAction,
+  type BotLevel,
+  type BotMemory,
+  type Style,
+} from './bot';
 
 /**
  * Baselines to measure the bots against. `random` bids at random. `honest`
  * is a naive but sensible player: it pays more for better-ranked cards,
  * splits its budget evenly across its open slots and never bluffs.
  */
-export type Player = BotLevel | 'random' | 'honest';
+export type Player = BotLevel | 'random' | 'honest' | Style;
 
 export interface SimulationResult {
   state: GameState;
@@ -73,6 +82,10 @@ export function simulate(
       let action: BotAction;
       if (kind === 'random' || kind === 'honest') {
         action = baseline(kind, state, seat, pool, rng);
+      } else if (typeof kind === 'object') {
+        const result = decideByRules(toView(state, seat), { pool, level: 'normal', memory: memory[seat], rng }, kind);
+        action = result.action;
+        memory[seat] = result.memory;
       } else {
         const result = decide(toView(state, seat), { pool, level: kind, memory: memory[seat], rng, rollouts });
         action = result.action;

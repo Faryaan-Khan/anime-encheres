@@ -1,4 +1,4 @@
-/** Ranked play: server-side verdict, trophies, profiles, leaderboards, feedback, limits. */
+/** Ranked play between people: server-side verdict, trophies, profiles, leaderboards, feedback, limits. */
 import type { PGlite } from '@electric-sql/pglite';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { CHARACTERS, getCharacter, poolFor } from '../../src/data/characters';
@@ -32,7 +32,6 @@ interface Profile {
   weekGain: number;
   rank: number | null;
   players: number;
-  practiceBelow: number;
   recent: Array<{ kind: string; opponent: string; outcome: string; delta: number; forfeit: boolean }>;
 }
 
@@ -88,7 +87,8 @@ beforeAll(async () => {
 beforeEach(async () => {
   await db.exec(`
     delete from encheres.rooms; delete from encheres.matches; delete from encheres.feedback;
-    delete from encheres.profiles; delete from encheres.rate_limits;`);
+    delete from encheres.profiles; delete from encheres.rate_limits;
+    update encheres.config set value = 'true' where key = 'opponent_enabled';`);
 });
 
 describe('the server knows the ratings', () => {
@@ -255,6 +255,8 @@ describe('pairing by level', () => {
   });
 
   it('pairs distant players once one of them has waited long enough', async () => {
+    // With the computer opponent switched off, so that the wait can run on.
+    await db.exec(`update encheres.config set value = 'false' where key = 'opponent_enabled'`);
     const ana = await search(ANA, 'Ana');
     await setTrophies(ANA, 1000);
     expect((await search(BEN, 'Ben')).status).toBe('lobby');
@@ -274,7 +276,7 @@ describe('profiles', () => {
   it('start empty and unranked', async () => {
     const p = await profile(ANA);
     expect(p).toMatchObject({
-      name: 'Player', country: null, avatar: 0, trophies: 0, games: 0, rank: null, players: 0, practiceBelow: 300, recent: [],
+      name: 'Player', country: null, avatar: 0, trophies: 0, games: 0, rank: null, players: 0, recent: [],
     });
   });
 
@@ -358,44 +360,6 @@ describe('feedback', () => {
   });
 });
 
-describe('games against the computer', () => {
-  const report = (who: string, outcome: string) =>
-    rpc<{ delta: number; trophies: number; counted: boolean }>('report_practice', [
-      who, outcome, ['Ana', 'Lina'], [['monkey-d-luffy'], ['usopp']],
-    ]);
-
-  it('count for small amounts below the ceiling', async () => {
-    expect(await report(ANA, 'win')).toEqual({ delta: 20, trophies: 20, counted: true });
-    expect(await report(ANA, 'loss')).toEqual({ delta: -10, trophies: 10, counted: true });
-    expect(await report(ANA, 'loss')).toEqual({ delta: -10, trophies: 0, counted: true });
-    expect(await report(ANA, 'loss')).toEqual({ delta: 0, trophies: 0, counted: true });
-    const p = await profile(ANA);
-    expect(p).toMatchObject({ games: 4, wins: 1, losses: 3 });
-    expect(p.recent[0]).toMatchObject({ kind: 'practice', opponent: 'Lina', outcome: 'loss' });
-  });
-
-  it('cannot push anyone past the ceiling', async () => {
-    await rpc('get_profile', [ANA]);
-    await setTrophies(ANA, 295);
-    expect(await report(ANA, 'win')).toEqual({ delta: 5, trophies: 300, counted: true });
-    expect(await report(ANA, 'win')).toEqual({ delta: 0, trophies: 300, counted: false });
-  });
-
-  it('stop counting after ten a day', async () => {
-    for (let i = 0; i < 10; i++) expect((await report(ANA, 'tie')).counted).toBe(true);
-    expect(await report(ANA, 'win')).toEqual({ delta: 0, trophies: 0, counted: false });
-    // A new day starts the count again.
-    await db.exec(`update encheres.profiles set practice_day = practice_day - 1`);
-    expect((await report(ANA, 'win')).counted).toBe(true);
-  });
-
-  it('is validated', async () => {
-    expect(await rpcError('report_practice', [ANA, 'draw', ['A', 'B'], [[], []]])).toContain('INVALID_INPUT');
-    expect(await rpcError('report_practice', [ANA, 'win', ['A'], [[], []]])).toContain('INVALID_INPUT');
-    expect(await rpcError('report_practice', [ANA, 'win', ['A', 'B'], [[]]])).toContain('INVALID_INPUT');
-  });
-});
-
 describe('abuse limits', () => {
   it('refuse calls beyond the limit within a window', async () => {
     const hit = () => db.query(`select encheres.hit('test-key', 2, interval '1 hour')`);
@@ -431,7 +395,6 @@ describe('permissions', () => {
       'public.update_profile(text, text, text, integer)',
       'public.leaderboard(text, text, text)',
       'public.send_feedback(text, text, text, text, text)',
-      'public.report_practice(text, text, text[], jsonb)',
     ]) {
       expect(await check(`select has_function_privilege('anon', '${fn}', 'execute') as ok`)).toBe(true);
     }
