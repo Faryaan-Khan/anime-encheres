@@ -36,7 +36,7 @@ built from. The only manual step in the whole system is applying a new database 
 npm install
 npm run dev          # local site, talks to the live database through .env
 npm run typecheck    # TypeScript strict
-npm test             # 186 unit and database tests (no external service needed)
+npm test             # 191 unit and database tests (no external service needed)
 npm run test:e2e     # real browsers against the real SQL; needs Chrome (CHROME_PATH)
 npm run ratings      # after editing src/data/rosters.json
 npm run build:opponent  # after editing src/bot/: rebuild the Edge Function bundle
@@ -102,6 +102,7 @@ Migrations, to be run in this order in the Supabase SQL editor. All are idempote
 | `0006_modes_and_friends.sql` | One queue, rating and leaderboard per mode, overall score, friends, invitations |
 | `0007_seasons.sql` | Monthly seasons from zero, `season_results` history, rights-request feedback |
 | `0008_opponent_brain.sql` | pg_net hand-off of strong opponents' bids to the Edge Function, with fallback |
+| `0009_google_accounts.sql` | Guest to Google: keep the guest or start fresh |
 
 Functions the client calls:
 
@@ -114,7 +115,8 @@ Functions the client calls:
 | `leaderboard` | Overall or one mode; world, one country, or friends |
 | `get_friends`, `add_friend`, `answer_friend`, `remove_friend` | Friends by player tag |
 | `invite_friend`, `dismiss_invite` | Invitations to a private room |
-| `recovery_code`, `redeem_code`, `link_account` | Keeping a profile across devices |
+| `recovery_code`, `redeem_code` | Keeping a profile across devices with a code |
+| `link_account(token, intent)` | After Google sign-in: `link` keeps the guest, `fresh` starts a new account; answers `linked`, `created`, `switched` or `already` |
 | `send_feedback` | The feedback form (also rights requests) |
 | `opponent_claim` | Used only by the Edge Function, with a one-time secret from the database |
 
@@ -167,7 +169,7 @@ Short versions; details and reasons are in `docs/ARCHITECTURE.md`.
 
 - **Identity.** Each browser generates a random token and the server stores only its
   hash. A profile is created on first use. More devices are attached to a profile with a
-  recovery code, or with a one-time Google sign-in once that provider is configured.
+  recovery code, or with a one-time Google sign-in (guest kept, or a fresh account).
 - **Ranked modes.** A quick match is played in one mode: a single universe, or `mix`. The
   server deals from its own card list. Trophies, leagues and leaderboards are per mode.
 - **Trophies.** +30 for a win against an equal, between +10 and +50 depending on the gap;
@@ -203,10 +205,12 @@ country); monthly seasons from zero with history; recovery codes; friends and
 invitations; feedback form with rights requests; match recording; stronger opponent in
 an Edge Function; rarity cards; dark theme; sound; security headers; French and English.
 
-Built but switched off: Google sign-in. It needs an OAuth client created in the owner's
-Google Cloud account and its id and secret entered in Supabase (steps in
-`docs/DEPLOYMENT.md`), then `VITE_GOOGLE_SIGN_IN=true` in `.env`. It has database tests
-but has not been exercised against the live provider.
+Google sign-in is on. Everyone starts as a guest; a guest can keep their progress with
+Google (`link`) or start a new Google account and delete the guest (`fresh`), and a
+Google account that already has a profile simply opens on the device. "Sign out on this
+device" starts a new guest and leaves the account untouched. The redirect to Google and
+the provider settings were checked live; a full sign-in needs a person to choose a
+Google account, so test it by hand after changes.
 
 ### Open decisions (the owner's)
 

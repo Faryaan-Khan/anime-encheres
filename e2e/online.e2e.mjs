@@ -44,7 +44,7 @@ if (!chromePath) {
 
 const db = new PGlite();
 await db.exec('create role anon nologin; create role authenticated nologin;');
-for (const file of ['0001_init.sql', '0002_matchmaking.sql', '0003_ranking.sql', '0004_character_powers.sql', '0005_accounts_and_opponent.sql', '0006_modes_and_friends.sql', '0007_seasons.sql', '0008_opponent_brain.sql']) {
+for (const file of ['0001_init.sql', '0002_matchmaking.sql', '0003_ranking.sql', '0004_character_powers.sql', '0005_accounts_and_opponent.sql', '0006_modes_and_friends.sql', '0007_seasons.sql', '0008_opponent_brain.sql', '0009_google_accounts.sql']) {
   await db.exec(readFileSync(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8'));
 }
 
@@ -370,6 +370,9 @@ try {
   // --- Recovering an account on another device --------------------------------
 
   await solo.goto(`${base}#/profile`, { waitUntil: 'networkidle2' });
+  // A guest with progress is offered both ways to sign in with Google.
+  await until(solo, async () => (await text(solo)).includes('Keep my progress with Google'), 'the Google choices');
+  assert((await text(solo)).includes('New Google account, without my progress'), 'starting fresh is offered');
   await until(solo, () => click(solo, 'Get a recovery code'), 'the recovery button');
   await until(solo, () => sees(solo, '.code'), 'the recovery code');
   const recovery = await solo.$eval('.code', (e) => e.textContent.trim());

@@ -2069,6 +2069,35 @@ input {
   color: var(--muted);
 }
 
+.signin {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.btn.btn--google {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+}
+
+.google-mark {
+  flex: none;
+  width: 1.15rem;
+  height: 1.15rem;
+  padding: 2px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.signin-note {
+  padding: 0.6rem 0.8rem;
+  border: 2px solid #3fc46b;
+  border-radius: var(--radius);
+  color: var(--ink);
+}
+
 /* ---------- Footer ---------- */
 
 .footer {

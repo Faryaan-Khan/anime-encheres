@@ -13,6 +13,7 @@ export const MIGRATIONS = [
   '0006_modes_and_friends.sql',
   '0007_seasons.sql',
   '0008_opponent_brain.sql',
+  '0009_google_accounts.sql',
 ];
 
 export function readMigration(file: string): string {

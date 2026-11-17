@@ -167,6 +167,69 @@ describe('signing in', () => {
     expect(bob.id).not.toBe((await profile(PHONE)).id);
   });
 
+  type Linked = Profile & { outcome: string; tag: string };
+  const link = (who: string, intent?: string) =>
+    rpc<Linked>('link_account', intent === undefined ? [who] : [who, intent]);
+  const exists = async (id: string) =>
+    (await db.query('select 1 from encheres.profiles where id = $1', [id])).rows.length === 1;
+  const withGames = (who: string) =>
+    db.query(`update encheres.profiles set games = 3 where token_hash = encheres.token_hash($1)`, [who]);
+
+  it('turns a guest into the Google account, keeping everything', async () => {
+    const guest = await rpc<Profile>('update_profile', [PHONE, 'Ana', 'MY', 2]);
+    await withGames(PHONE);
+    await signedInAs(ALICE);
+    const linked = await link(PHONE, 'link');
+    expect(linked).toMatchObject({ id: guest.id, name: 'Ana', games: 3, saved: true, outcome: 'linked' });
+    expect((await link(PHONE, 'link')).outcome).toBe('already');
+  });
+
+  it('starts a new profile when the guest chooses to, deleting the guest', async () => {
+    const guest = await rpc<Profile>('update_profile', [PHONE, 'Ana', 'MY', 2]);
+    await withGames(PHONE);
+    await signedInAs(ALICE);
+    const fresh = await link(PHONE, 'fresh');
+    expect(fresh).toMatchObject({ name: 'Player', games: 0, saved: true, outcome: 'created' });
+    expect(fresh.id).not.toBe(guest.id);
+    expect(fresh.tag).toMatch(/^[A-HJ-NP-Z2-9]{7}$/);
+    expect(await exists(guest.id)).toBe(false);
+    await signedInAs(null);
+    expect((await profile(PHONE)).id).toBe(fresh.id);
+    // The account is found again on another device.
+    await signedInAs(ALICE);
+    expect(await link(LAPTOP, 'fresh')).toMatchObject({ id: fresh.id, outcome: 'switched' });
+  });
+
+  it('opens the existing account and leaves a guest with progress behind', async () => {
+    const account = await rpc<Profile>('update_profile', [PHONE, 'Ana', null, 2]);
+    await signedInAs(ALICE);
+    await link(PHONE, 'link');
+    await signedInAs(null);
+    const guest = await rpc<Profile>('update_profile', [LAPTOP, 'Guest', null, 0]);
+    await withGames(LAPTOP);
+    await signedInAs(ALICE);
+    expect(await link(LAPTOP, 'link')).toMatchObject({ id: account.id, outcome: 'switched' });
+    expect(await exists(guest.id)).toBe(true);
+    await signedInAs(null);
+    expect((await profile(LAPTOP)).id).toBe(account.id);
+  });
+
+  it('cleans up an empty guest when switching', async () => {
+    await profile(PHONE);
+    await signedInAs(ALICE);
+    await link(PHONE, 'link');
+    await signedInAs(null);
+    const empty = await profile(LAPTOP);
+    await signedInAs(ALICE);
+    expect((await link(LAPTOP, 'link')).outcome).toBe('switched');
+    expect(await exists(empty.id)).toBe(false);
+  });
+
+  it('rejects an unknown choice', async () => {
+    await signedInAs(ALICE);
+    expect(await rpcError('link_account', [PHONE, 'merge'])).toContain('INVALID_INPUT');
+  });
+
   it('ignores a malformed sign-in', async () => {
     await db.query(`select set_config('request.jwt.claims', 'not json', false)`);
     expect(await rpcError('link_account', [PHONE])).toContain('NOT_ALLOWED');

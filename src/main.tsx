@@ -16,7 +16,8 @@ initTheme();
 initSound();
 
 // Google sends the player back to the site root with a one-time code: show the profile, which completes it.
-if (GOOGLE_SIGN_IN && new URLSearchParams(window.location.search).has('code') && !window.location.hash) {
+const returning = new URLSearchParams(window.location.search);
+if (GOOGLE_SIGN_IN && (returning.has('code') || returning.has('error')) && !window.location.hash) {
   window.location.hash = '#/profile';
 }
 

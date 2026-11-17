@@ -35,6 +35,8 @@ export function Profile() {
   const [avatar, setAvatar] = useState(0);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  // What happened on the way back from Google, shown in the account section.
+  const [signIn, setSignIn] = useState<{ note?: StringKey; error?: StringKey } | null>(null);
   const countries = useMemo(() => countryOptions(lang), [lang]);
 
   const show = (p: ProfileData) => {
@@ -51,18 +53,26 @@ export function Profile() {
       if (GOOGLE_SIGN_IN) {
         // Coming back from Google: finish the sign-in before showing the profile.
         const account = await import('../online/account');
-        if (account.returningFromSignIn()) return account.finishGoogleSignIn();
+        if (account.returningFromSignIn()) {
+          try {
+            const { profile: opened, outcome } = await account.finishGoogleSignIn();
+            if (!cancelled) setSignIn({ note: `account.outcome.${outcome}` as StringKey });
+            return opened;
+          } catch (e) {
+            // A failed sign-in must not hide the profile itself.
+            if (!cancelled) setSignIn({ error: `error.${toOnlineError(e).code}` as StringKey });
+          }
+        }
       }
       return getProfile();
     };
     load()
-      .then((p) => !cancelled && show(p))
-      .catch(async (e) => {
+      .then((p) => {
         if (cancelled) return;
-        setError(`error.${toOnlineError(e).code}` as StringKey);
-        // A failed sign-in must not hide the profile itself.
-        if (GOOGLE_SIGN_IN) await getProfile().then((p) => !cancelled && show(p)).catch(() => undefined);
-      });
+        show(p);
+        if (p.name !== 'Player') writeStored('ae.name', p.name);
+      })
+      .catch((e) => !cancelled && setError(`error.${toOnlineError(e).code}` as StringKey));
     return () => {
       cancelled = true;
     };
@@ -86,7 +96,7 @@ export function Profile() {
     }
   };
 
-  if (!ONLINE_AVAILABLE || (!profile && error && error !== 'error.ALREADY_LINKED')) {
+  if (!ONLINE_AVAILABLE || (!profile && error)) {
     return (
       <main className="page">
         <h1 className="display">{t('profile.title')}</h1>
@@ -359,7 +369,7 @@ export function Profile() {
         </button>
       </form>
 
-      <Account profile={profile} onOpened={show} />
+      <Account profile={profile} onOpened={show} signIn={signIn} />
       <button type="button" className="btn" onClick={() => navigate('/')}>
         {t('setup.back')}
       </button>
@@ -367,14 +377,30 @@ export function Profile() {
   );
 }
 
-/** Ways to keep a profile beyond this device: a recovery code, and Google when it is set up. */
-function Account({ profile, onOpened }: { profile: ProfileData; onOpened(profile: ProfileData): void }) {
+/** Ways to keep a profile beyond this device: Google, and a recovery code. */
+function Account({
+  profile,
+  onOpened,
+  signIn,
+}: {
+  profile: ProfileData;
+  onOpened(profile: ProfileData): void;
+  signIn: { note?: StringKey; error?: StringKey } | null;
+}) {
   const { t } = useI18n();
   const [code, setCode] = useState<string | null>(null);
   const [typed, setTyped] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<StringKey | null>(null);
   const [opened, setOpened] = useState(false);
+  // Second tap needed for the choices that lose something.
+  const [confirm, setConfirm] = useState<'fresh' | 'signout' | null>(null);
+
+  useEffect(() => {
+    if (!confirm) return;
+    const timer = window.setTimeout(() => setConfirm(null), 5000);
+    return () => window.clearTimeout(timer);
+  }, [confirm]);
 
   const run = async (task: () => Promise<void>) => {
     setBusy(true);
@@ -405,24 +431,69 @@ function Account({ profile, onOpened }: { profile: ProfileData; onOpened(profile
     });
   };
 
-  const google = () =>
-    run(async () => {
+  const google = (intent: 'link' | 'fresh') => {
+    if (intent === 'fresh' && confirm !== 'fresh') return setConfirm('fresh');
+    void run(async () => {
       const account = await import('../online/account');
-      await account.startGoogleSignIn();
+      await account.startGoogleSignIn(intent);
     });
+  };
+
+  const signOut = () => {
+    if (confirm !== 'signout') return setConfirm('signout');
+    setConfirm(null);
+    void run(async () => {
+      const account = await import('../online/account');
+      account.signOutHere();
+      onOpened(await getProfile());
+    });
+  };
+
+  const hasProgress = profile.games > 0;
 
   return (
     <section className="panel">
       <h2>{t('account.title')}</h2>
       <p className="note">{t('account.intro')}</p>
 
+      {signIn?.note && (
+        <p className="note signin-note" role="status">
+          {t(signIn.note)}
+        </p>
+      )}
+      {signIn?.error && (
+        <p className="alert" role="alert">
+          {t(signIn.error)}
+        </p>
+      )}
+
       {GOOGLE_SIGN_IN &&
         (profile.saved ? (
-          <p className="note">{t('account.google.saved')}</p>
+          <>
+            <p className="note">{t('account.google.saved')}</p>
+            <button type="button" className="btn" disabled={busy} onClick={signOut}>
+              {t(confirm === 'signout' ? 'account.signout.confirm' : 'account.signout')}
+            </button>
+            {confirm === 'signout' && <p className="note">{t('account.signout.hint')}</p>}
+          </>
         ) : (
-          <button type="button" className="btn btn--primary" disabled={busy} onClick={google}>
-            {t('account.google')}
-          </button>
+          <div className="signin">
+            <p className="note">{t(hasProgress ? 'account.guest.progress' : 'account.guest.empty')}</p>
+            <button type="button" className="btn btn--primary btn--google" disabled={busy} onClick={() => google('link')}>
+              <GoogleMark />
+              {t(hasProgress ? 'account.google.link' : 'account.google')}
+            </button>
+            {hasProgress && (
+              <>
+                <button type="button" className="btn btn--google" disabled={busy} onClick={() => google('fresh')}>
+                  <GoogleMark />
+                  {t(confirm === 'fresh' ? 'account.google.fresh.confirm' : 'account.google.fresh')}
+                </button>
+                <p className={confirm === 'fresh' ? 'alert' : 'note'}>{t('account.google.fresh.hint')}</p>
+              </>
+            )}
+            <p className="note">{t('account.google.existing')}</p>
+          </div>
         ))}
 
       {code ? (
@@ -480,5 +551,17 @@ function LeagueEmblem({ trophies, small }: { trophies: number; small?: boolean }
     >
       {t(league.key).replace(/^(Ligue |League )?/, '').replace(/ League$/, '').charAt(0)}
     </span>
+  );
+}
+
+/** Google's "G", drawn in four colours. */
+function GoogleMark() {
+  return (
+    <svg className="google-mark" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+      <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.5l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.8 6.1C12.4 13.6 17.7 9.5 24 9.5z" />
+      <path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.5 5.8c4.4-4 6.8-10 6.8-17.2z" />
+      <path fill="#FBBC05" d="M10.5 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.8-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.8-6.1z" />
+      <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.8 6.1C6.6 42.6 14.6 48 24 48z" />
+    </svg>
   );
 }

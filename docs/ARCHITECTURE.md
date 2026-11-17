@@ -221,9 +221,14 @@ rank.
 
 A profile starts on one device. `encheres.devices` attaches more devices to it, in two
 ways: a recovery code (16 characters, stored only as a hash, limited attempts), or a
-one-time Google sign-in through Supabase Auth, after which `link_account` ties the profile
-to that Google account. In both cases the device token remains the identity for every
-other call; no session is kept in the browser.
+one-time Google sign-in through Supabase Auth. Everyone starts as a guest. Before leaving
+for Google, a guest with progress chooses to keep it (`link`: the guest profile becomes
+the Google account's) or to start a new account (`fresh`: a new empty profile, and the
+guest profile is deleted). If the Google account already has a profile, the device simply
+opens it. A guest with no games and no recovery code is deleted whenever its device moves
+to another profile. In every case the device token remains the identity for every other
+call; the Supabase session exists only for the `link_account` call and is signed out at
+once. Signing out on a device gives it a new token, so it becomes a new guest.
 
 ### Ranking
 

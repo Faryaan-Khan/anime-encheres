@@ -56,19 +56,27 @@ Optional; without it the rule-based opponent plays every move.
 
 Redeploy the function (steps 1 and 2) whenever `src/bot/` changes.
 
-### Google sign-in (optional)
+### Google sign-in
 
-The code is in place and switched off. To turn it on:
+Switched on for the live site (`VITE_GOOGLE_SIGN_IN=true` in `.env`). To set it up on
+another project:
 
 1. In the Google Cloud console, create an OAuth client of type "Web application" with the
    redirect address `https://<project-ref>.supabase.co/auth/v1/callback`.
 2. In Supabase, open **Authentication → Sign In / Providers → Google**, enable it and
    paste the client id and secret.
-3. In **Authentication → URL Configuration**, set the site URL to the deployed address.
+3. In **Authentication → URL Configuration**, set the site URL to the deployed address
+   and add redirect URLs for it and for local development
+   (`https://<site>/**`, `http://localhost:5173/**`).
 4. Add `VITE_GOOGLE_SIGN_IN=true` to `.env` and deploy.
 
-Until then, players keep or move their profile with a recovery code, which needs no
-setup.
+Leave **Skip nonce checks** off. The website signs in with a redirect and PKCE, which
+does not need it. It only matters for a future native app that signs in with Google's own
+SDK and cannot pass a nonce (some iOS setups); turn it on then only if that sign-in fails.
+A native app will also need its own Android and iOS client IDs added to the **Client IDs**
+list.
+
+Without Google, players keep or move their profile with a recovery code.
 
 To read what players sent through the feedback form, open **Table Editor**, choose the
 `encheres` schema and the `feedback` table.

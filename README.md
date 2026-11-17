@@ -45,8 +45,8 @@ rival, during the same auction.
 - Quick matches: a matchmaking queue, a 60-second turn clock, forfeits, and an opponent
   played by the database itself when nobody else is looking for a game, with a strength
   that follows the player's trophies
-- Saved accounts: a recovery code opens a profile on another device; Google sign-in is
-  built and waits for the provider to be configured
+- Guest play by default; sign in with Google to keep the guest's progress or start a new
+  account, and a recovery code as a second way back in
 - Ranked play in eight modes (each universe, or all mixed): trophies won and lost by
   rank difference, six leagues, pairing with players of a similar level, and the winner
   decided by the server
@@ -107,7 +107,7 @@ Same-device play works immediately. Online play uses the Supabase project config
 | Command | What it does |
 | --- | --- |
 | `npm run dev` | Development server with hot reload |
-| `npm test` | Runs the 186 unit, database, parity, ranking, account, mode, season and bot tests |
+| `npm test` | Runs the 191 unit, database, parity, ranking, account, mode, season and bot tests |
 | `npm run test:e2e` | Plays private rooms, quick matches, modes, friends and the account screens in headless browser sessions (needs Chrome) |
 | `npm run build:opponent` | Bundles the opponent Edge Function into one file for the Supabase dashboard |
 | `npm run ratings` | Rebuilds the power-ratings document, the CSV and the database seed (`0004`) from `src/data/rosters.json` |
