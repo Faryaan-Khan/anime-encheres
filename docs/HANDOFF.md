@@ -207,10 +207,16 @@ an Edge Function; rarity cards; dark theme; sound; security headers; French and 
 
 Google sign-in is on and the Google app is published (not "Testing"). Branding: app name
 "Anime Auction Draft", logo `public/logo.svg` (PNG sizes made by `npm run logo`), home
-page, `public/privacy.html` and `public/terms.html`. Google shows the name and logo only
-after brand verification; until then it shows the supabase.co callback address. The
-site is verified in Google Search Console with an HTML file in `public/`, which must stay
-there.
+page, `public/privacy.html` and `public/terms.html`. Authorized domains: only
+`anime-encheres.netlify.app` (the Supabase callback host was removed so that every listed
+domain can be verified; sign-in was checked to still reach Google's account chooser).
+Google shows the name and logo only after brand verification; until then it shows the
+supabase.co callback address. The site is verified in Google Search Console with
+`public/google5ef95c3ea69c5ef4.html`, which must stay. The first brand check (17 Nov 2026)
+only reported that the home page was not yet registered to the owner, because Search
+Console needs 24 hours to propagate; re-request verification on the Branding page ("View
+issues", "I have fixed the issues"). If Google later objects to the supabase.co address
+on the sign-in screen, the remaining fix is a Supabase custom domain (paid).
 
 Google sign-in details: Everyone starts as a guest; a guest can keep their progress with
 Google (`link`) or start a new Google account and delete the guest (`fresh`), and a
