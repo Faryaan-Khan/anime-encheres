@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { Board } from '../components/Board';
 import { Final } from '../components/Final';
+import { getCharacter } from '../data/characters';
 import { toView } from '../game/engine';
-import type { Seat } from '../game/types';
+import type { GameView, Seat } from '../game/types';
+import { judge } from '../game/verdict';
 import { useNow } from '../hooks';
 import { useI18n } from '../i18n';
 import { BOT_SEAT, useLocalGame } from '../local/useLocalGame';
@@ -17,6 +19,8 @@ import {
 } from '../match/config';
 import { findMatch, leaveQueue, resign } from '../online/api';
 import { ONLINE_AVAILABLE } from '../online/config';
+import { getProfile, reportPractice, type PracticeReward, type Profile } from '../online/profile';
+import { leagueOf } from '../ranking';
 import { navigate } from '../router';
 import { readStored, removeStored, writeStored } from '../storage';
 import { ConnectedRoom, TURN_SECONDS } from './Room';
@@ -26,7 +30,14 @@ const GAME_KEY = 'ae.match.game';
 const POLL_MS = 2500;
 
 /** The match in progress, kept so that a reload returns to it. */
-type Session = { kind: 'online'; code: string } | { kind: 'standIn'; forfeit: Seat | null };
+type Session =
+  | { kind: 'online'; code: string }
+  | {
+      kind: 'standIn';
+      forfeit: Seat | null;
+      /** Trophy change for this game: absent until it ends, 'pending' while it is being filed. */
+      reward?: PracticeReward | 'pending';
+    };
 
 function loadSession(): Session | null {
   try {
@@ -47,6 +58,20 @@ export function Match() {
   const [name, setName] = useState(() => readStored('ae.name') ?? '');
   const [searching, setSearching] = useState(false);
   const [invalid, setInvalid] = useState(false);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const idle = session === null && !searching;
+
+  // Refreshed whenever the player is back on this screen, so trophies are current.
+  useEffect(() => {
+    if (!ONLINE_AVAILABLE || !idle) return;
+    let cancelled = false;
+    getProfile()
+      .then((p) => !cancelled && setProfile(p))
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [idle]);
 
   const setSession = (next: Session | null) => {
     setSessionState(next);
@@ -81,7 +106,9 @@ export function Match() {
       <StandInMatch
         playerName={name.trim() || 'Player'}
         forfeit={session.forfeit}
-        onForfeit={(seat) => setSession({ kind: 'standIn', forfeit: seat })}
+        reward={session.reward}
+        onForfeit={(seat) => setSession({ ...session, forfeit: seat })}
+        onReward={(reward) => setSession({ ...session, reward })}
         onExit={exit}
         onFindAnother={findAnother}
       />
@@ -92,6 +119,7 @@ export function Match() {
     return (
       <Searching
         name={name.trim()}
+        standInAllowed={!profile || profile.trophies < profile.practiceBelow}
         onFound={(code) => {
           setSearching(false);
           setSession({ kind: 'online', code });
@@ -119,6 +147,11 @@ export function Match() {
     <main className="page">
       <h1 className="display">{t('match.title')}</h1>
       <p>{t('match.rules')}</p>
+      {profile && (
+        <p className="trophies">
+          {t('match.level', { league: t(leagueOf(profile.trophies).key), n: profile.trophies })}
+        </p>
+      )}
       <form className="form" onSubmit={submit} noValidate>
         <label className="field">
           <span>{t('setup.name')}</span>
@@ -150,20 +183,23 @@ export function Match() {
 
 interface SearchingProps {
   name: string;
+  /** Whether the computer may take the other seat when nobody turns up. */
+  standInAllowed: boolean;
   onFound(code: string): void;
   onNobody(): void;
   onCancel(): void;
 }
 
 /** Polls the matchmaking queue until an opponent is found or time runs out. */
-function Searching({ name, onFound, onNobody, onCancel }: SearchingProps) {
+function Searching({ name, standInAllowed, onFound, onNobody, onCancel }: SearchingProps) {
   const { t } = useI18n();
   const pool = useMemo(() => randomMatchPool(), []);
   const handlers = useRef({ onFound, onNobody });
   handlers.current = { onFound, onNobody };
 
   useEffect(() => {
-    const deadline = Date.now() + standInDelayMs();
+    // Above the practice ceiling only people count: keep looking, the server widens the range.
+    const deadline = standInAllowed ? Date.now() + standInDelayMs() : Infinity;
     let waitingCode: string | null = null;
     let stopped = false;
     let settled = false;
@@ -207,12 +243,12 @@ function Searching({ name, onFound, onNobody, onCancel }: SearchingProps) {
       window.clearTimeout(timer);
       if (!settled && waitingCode) void leaveQueue(waitingCode).catch(() => undefined);
     };
-  }, [name, pool]);
+  }, [name, pool, standInAllowed]);
 
   return (
     <main className="page">
       <h1 className="display">{t('match.title')}</h1>
-      <p className="waiting searching">{t('match.searching')}</p>
+      <p className="waiting searching">{t(standInAllowed ? 'match.searching' : 'match.searching.level')}</p>
       <button type="button" className="btn" onClick={onCancel}>
         {t('match.cancel')}
       </button>
@@ -223,13 +259,22 @@ function Searching({ name, onFound, onNobody, onCancel }: SearchingProps) {
 interface StandInProps {
   playerName: string;
   forfeit: Seat | null;
+  reward: PracticeReward | 'pending' | undefined;
   onForfeit(seat: Seat): void;
+  onReward(reward: PracticeReward | 'pending'): void;
   onExit(): void;
   onFindAnother(): void;
 }
 
 /** A quick match in which the computer plays the other seat. Looks and behaves like any other. */
-function StandInMatch({ playerName, forfeit, onForfeit, onExit, onFindAnother }: StandInProps) {
+function outcomeOf(view: GameView, forfeit: Seat | null): 'win' | 'loss' | 'tie' {
+  if (forfeit !== null) return forfeit === 0 ? 'loss' : 'win';
+  const [mine, theirs] = view.players.map((p) => p.team.map((id) => getCharacter(id).power));
+  const { winner } = judge(mine, theirs);
+  return winner === null ? 'tie' : winner === 0 ? 'win' : 'loss';
+}
+
+function StandInMatch({ playerName, forfeit, reward, onForfeit, onReward, onExit, onFindAnother }: StandInProps) {
   const { t } = useI18n();
   const game = useLocalGame(GAME_KEY);
   const { state, start, playBot } = game;
@@ -273,6 +318,19 @@ function StandInMatch({ playerName, forfeit, onForfeit, onExit, onFindAnother }:
     if (timedOut) onForfeit(0);
   }, [timedOut, onForfeit]);
 
+  // File the result once, when the game ends.
+  const over = state !== null && (forfeit !== null || state.phase === 'finished');
+  const rewardHandler = useRef(onReward);
+  rewardHandler.current = onReward;
+  useEffect(() => {
+    if (!over || !state || reward !== undefined || !ONLINE_AVAILABLE) return;
+    const final = toView(state, 0, {});
+    rewardHandler.current('pending');
+    reportPractice(outcomeOf(final, forfeit), final)
+      .then((r) => rewardHandler.current(r))
+      .catch(() => undefined);
+  }, [over, state, forfeit, reward]);
+
   if (!state) {
     return (
       <main className="page">
@@ -289,6 +347,11 @@ function StandInMatch({ playerName, forfeit, onForfeit, onExit, onFindAnother }:
       <Final
         view={view}
         forfeit={forfeit}
+        trophies={
+          reward && reward !== 'pending' && reward.counted
+            ? { delta: reward.delta, total: reward.trophies }
+            : null
+        }
         onFindAnother={onFindAnother}
         footnote={DISCLOSE_STAND_IN_AFTER_MATCH ? t('final.standIn') : undefined}
         onHome={onExit}

@@ -10,6 +10,9 @@ import { Rules } from './screens/Rules';
 const Online = lazy(() => import('./screens/Online').then((m) => ({ default: m.Online })));
 const Room = lazy(() => import('./screens/Room').then((m) => ({ default: m.Room })));
 const Match = lazy(() => import('./screens/Match').then((m) => ({ default: m.Match })));
+const Profile = lazy(() => import('./screens/Profile').then((m) => ({ default: m.Profile })));
+const Leaderboard = lazy(() => import('./screens/Leaderboard').then((m) => ({ default: m.Leaderboard })));
+const Feedback = lazy(() => import('./screens/Feedback').then((m) => ({ default: m.Feedback })));
 
 export function App() {
   const route = useRoute();
@@ -38,6 +41,9 @@ export function App() {
       <Suspense fallback={<p className="waiting">{t('online.connecting')}</p>}>
         {route.name === 'online' && <Online />}
         {route.name === 'match' && <Match />}
+        {route.name === 'profile' && <Profile />}
+        {route.name === 'leaderboard' && <Leaderboard />}
+        {route.name === 'feedback' && <Feedback />}
         {route.name === 'room' && <Room key={route.code} code={route.code} />}
       </Suspense>
     </div>

@@ -5,6 +5,9 @@ export type Route =
   | { name: 'local' }
   | { name: 'solo' }
   | { name: 'match' }
+  | { name: 'profile' }
+  | { name: 'leaderboard' }
+  | { name: 'feedback' }
   | { name: 'online' }
   | { name: 'rules' }
   | { name: 'room'; code: string };
@@ -14,6 +17,9 @@ export function parseRoute(hash: string): Route {
   if (parts[0] === 'local') return { name: 'local' };
   if (parts[0] === 'solo') return { name: 'solo' };
   if (parts[0] === 'match') return { name: 'match' };
+  if (parts[0] === 'profile') return { name: 'profile' };
+  if (parts[0] === 'leaderboard') return { name: 'leaderboard' };
+  if (parts[0] === 'feedback') return { name: 'feedback' };
   if (parts[0] === 'online') return { name: 'online' };
   if (parts[0] === 'rules') return { name: 'rules' };
   if (parts[0] === 'room' && parts[1]) {

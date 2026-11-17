@@ -15,6 +15,8 @@ interface Props {
   forfeit?: Seat | null;
   /** Extra line under the explanation. */
   footnote?: string;
+  /** Ranked games: this player's trophy change and new total. */
+  trophies?: { delta: number; total: number } | null;
   busy?: boolean;
   onHome(): void;
 }
@@ -26,7 +28,16 @@ const VERDICT: Record<'narrow' | 'clear' | 'crushing', StringKey> = {
 };
 
 /** Both teams side by side with the verdict computed from the power ratings. */
-export function Final({ view, onRematch, onFindAnother, forfeit = null, footnote, busy, onHome }: Props) {
+export function Final({
+  view,
+  onRematch,
+  onFindAnother,
+  forfeit = null,
+  footnote,
+  trophies,
+  busy,
+  onHome,
+}: Props) {
   const { t, money } = useI18n();
   const powers = (seat: Seat) => view.players[seat].team.map((id) => getCharacter(id).power);
   const verdict = judge(powers(0), powers(1));
@@ -50,6 +61,15 @@ export function Final({ view, onRematch, onFindAnother, forfeit = null, footnote
               : t('final.ratio', {
                   n: verdict.ratio < 10 ? verdict.ratio.toFixed(1) : Math.round(verdict.ratio),
                 })}
+          </p>
+        )}
+        {trophies && (
+          <p className="trophies">
+            {trophies.delta > 0
+              ? t('final.trophies.up', { n: trophies.delta, total: trophies.total })
+              : trophies.delta < 0
+                ? t('final.trophies.down', { n: trophies.delta, total: trophies.total })
+                : t('final.trophies.same', { total: trophies.total })}
           </p>
         )}
       </header>
