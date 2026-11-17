@@ -44,7 +44,7 @@ if (!chromePath) {
 
 const db = new PGlite();
 await db.exec('create role anon nologin; create role authenticated nologin;');
-for (const file of ['0001_init.sql', '0002_matchmaking.sql', '0003_ranking.sql', '0004_character_powers.sql']) {
+for (const file of ['0001_init.sql', '0002_matchmaking.sql', '0003_ranking.sql', '0004_character_powers.sql', '0005_accounts_and_opponent.sql']) {
   await db.exec(readFileSync(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8'));
 }
 
@@ -271,6 +271,10 @@ try {
 
   // --- Quick match when nobody else is looking ------------------------------
 
+  // The computer sits down sooner and thinks faster here than in production.
+  await db.exec(`
+    update encheres.config set value = '[1, 2]' where key = 'opponent_after_seconds';
+    update encheres.config set value = '0.05' where key = 'opponent_pace';`);
   const solo = await phone('solo');
   await solo.goto(`${base}#/online`, { waitUntil: 'networkidle2' });
   await snap(solo, 'online');
@@ -286,7 +290,7 @@ try {
   assert(names.length === 2 && names[0].startsWith('Cam'), 'the player sits in the first seat');
   assert(!/cpu|computer|ordi|bot/i.test(names[1]), `the opponent has an ordinary name (${names[1]})`);
   let moves = 0;
-  for (let step = 0; step < 900 && !(await sees(solo, '.final')); step++) {
+  for (let step = 0; step < 2400 && !(await sees(solo, '.final')); step++) {
     if (await click(solo, 'Draw a card')) moves++;
     else if (await sees(solo, '.bid__actions button:not(:disabled)')) {
       await click(solo, Math.random() < 0.6 ? 'Bid ' : 'Pass');
@@ -297,12 +301,17 @@ try {
   await until(solo, () => sees(solo, '.final'), 'the end of the game', 5000);
   assert(moves > 0, 'the game was played');
   assert(!/computer|ordinateur/i.test(await text(solo)), 'the final screen does not mention the computer');
+  const judged = await db.query(`select kind, profile1 from encheres.matches where names[1] = 'Cam'`);
+  assert(
+    judged.rows.length === 1 && judged.rows[0].kind === 'ranked' && judged.rows[0].profile1 === null,
+    'the game was played and judged on the server',
+  );
   await until(solo, async () => /trophies/i.test(await text(solo)), 'the trophy line');
   await snap(solo, 'match-final');
   assert(await click(solo, 'Find another opponent'), 'a new search can be started');
   await until(solo, async () => (await text(solo)).includes('Looking for an opponent'), 'the new search');
   await click(solo, 'Cancel');
-  console.log(`PASS  quick match without players: stand-in "${names[1]}" joined, ${moves} moves`);
+  console.log(`PASS  quick match without players: "${names[1]}" joined from the server, ${moves} moves`);
 
   // --- Profile, leaderboard, feedback ----------------------------------------
 
@@ -343,21 +352,40 @@ try {
   );
   console.log(`PASS  profile, leaderboard (${world.length} players) and feedback`);
 
-  // --- Above the practice ceiling only people count -------------------------
+  // --- The computer plays at every rank ---------------------------------------
 
   await db.query(`update encheres.profiles set trophies = 400 where name = 'Cam'`);
   await solo.goto(`${base}#/match`, { waitUntil: 'networkidle2' });
   await until(solo, async () => (await text(solo)).includes('Silver League, 400 trophies'), 'the level on the match page');
   await click(solo, 'Find an opponent');
-  await until(solo, async () => (await text(solo)).includes('player of your level'), 'the level search');
-  await sleep(20000);
-  assert(
-    (await text(solo)).includes('player of your level') && !(await sees(solo, '.scoreboard')),
-    'no stand-in joins above the ceiling',
-  );
-  await click(solo, 'Cancel');
+  await until(solo, () => sees(solo, '.scoreboard'), 'an opponent at 400 trophies', 25000);
+  await click(solo, 'Forfeit');
+  await until(solo, () => click(solo, 'Confirm forfeit'), 'the confirmation');
+  await until(solo, async () => (await text(solo)).includes('-26 trophies, 374 in total'), 'the trophies lost');
+  console.log('PASS  the computer also plays ranked games above the first league');
+
+  // --- Recovering an account on another device --------------------------------
+
+  await solo.goto(`${base}#/profile`, { waitUntil: 'networkidle2' });
+  await until(solo, () => click(solo, 'Get a recovery code'), 'the recovery button');
+  await until(solo, () => sees(solo, '.code'), 'the recovery code');
+  const recovery = await solo.$eval('.code', (e) => e.textContent.trim());
+  assert(/^[A-Z2-9]{4}(-[A-Z2-9]{4}){3}$/.test(recovery), `the code is readable (${recovery})`);
+  await snap(solo, 'account');
+
+  const laptop = await phone('laptop');
+  await laptop.goto(`${base}#/profile`, { waitUntil: 'networkidle2' });
+  await until(laptop, () => sees(laptop, 'input[placeholder^=XXXX]'), 'the code field');
+  await laptop.type('input[placeholder^=XXXX]', 'AAAA-BBBB-CCCC-DDDD');
+  await click(laptop, 'Open my account');
+  await until(laptop, async () => (await text(laptop)).includes('This code is not valid.'), 'the wrong-code message');
+  await laptop.$eval('input[placeholder^=XXXX]', (e) => e.select());
+  await laptop.type('input[placeholder^=XXXX]', recovery.toLowerCase());
+  await click(laptop, 'Open my account');
+  await until(laptop, async () => (await laptop.$eval('h1', (e) => e.textContent)) === 'Cam', 'the recovered profile');
+  assert((await text(laptop)).includes('374 trophies'), 'the trophies came along');
   assert(pageErrors.length === 0, `no page errors (${pageErrors.join('; ')})`);
-  console.log('PASS  ranked search keeps waiting for a person');
+  console.log('PASS  account recovered on a second device with its code');
 } catch (error) {
   failed = true;
   console.error(`FAIL  ${error.message}`);

@@ -15,7 +15,8 @@ import {
   type PlayAction,
 } from './api';
 
-const POLL_MS = 2500;
+// Also the pace at which a computer opponent is given its turn (see bot_step in 0005).
+const POLL_MS = 1500;
 
 export interface OnlineRoom {
   view: GameView | null;

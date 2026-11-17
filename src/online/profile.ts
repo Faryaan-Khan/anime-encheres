@@ -1,10 +1,9 @@
 /** Player profile, leaderboards and feedback: thin wrappers over the database functions. */
-import type { GameView } from '../game/types';
 import { getClient, getPlayerToken, toOnlineError } from './api';
 
 export interface RecentMatch {
   at: string;
-  kind: 'ranked' | 'practice';
+  kind: 'ranked';
   opponent: string;
   outcome: 'win' | 'loss' | 'tie';
   delta: number;
@@ -32,8 +31,10 @@ export interface Profile {
   /** World rank; `null` until the first ranked game. */
   rank: number | null;
   players: number;
-  /** Below this many trophies a quick match may be played against a stand-in. */
-  practiceBelow: number;
+  /** Saved with a sign-in: it can be recovered on any device. */
+  saved: boolean;
+  /** A recovery code has been issued for this profile. */
+  hasCode: boolean;
   recent: RecentMatch[];
 }
 
@@ -98,18 +99,12 @@ export function sendFeedback(
   });
 }
 
-export interface PracticeReward {
-  delta: number;
-  trophies: number;
-  counted: boolean;
+/** A new recovery code for this profile. The previous one stops working. */
+export function newRecoveryCode(): Promise<string> {
+  return call('recovery_code', { p_token: getPlayerToken() });
 }
 
-/** Files the result of a quick match in which the computer took the other seat. */
-export function reportPractice(outcome: 'win' | 'loss' | 'tie', view: GameView): Promise<PracticeReward> {
-  return call('report_practice', {
-    p_token: getPlayerToken(),
-    p_outcome: outcome,
-    p_names: view.players.map((p) => p.name),
-    p_teams: view.players.map((p) => p.team),
-  });
+/** Opens the profile that owns this code on this device. Resolves to `null` if the code is wrong. */
+export function redeemRecoveryCode(code: string): Promise<Profile | null> {
+  return call('redeem_code', { p_token: getPlayerToken(), p_code: code });
 }

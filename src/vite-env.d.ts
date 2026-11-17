@@ -5,6 +5,8 @@ interface ImportMetaEnv {
   readonly VITE_SUPABASE_URL?: string;
   /** Publishable (anon) key. Public by design; never the secret/service key. */
   readonly VITE_SUPABASE_PUBLISHABLE_KEY?: string;
+  /** 'true' once the Google provider is set up in Supabase (see docs/DEPLOYMENT.md). */
+  readonly VITE_GOOGLE_SIGN_IN?: string;
 }
 
 interface ImportMeta {

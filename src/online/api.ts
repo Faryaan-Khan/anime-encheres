@@ -24,6 +24,7 @@ export const SERVER_ERRORS = [
   'TOO_EARLY',
   'NOT_ALLOWED',
   'RATE_LIMITED',
+  'ALREADY_LINKED',
 ] as const;
 
 export type OnlineErrorCode = (typeof SERVER_ERRORS)[number] | 'NETWORK' | 'UNKNOWN';
