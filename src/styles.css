@@ -810,8 +810,14 @@ input {
 }
 
 .stamp--void {
-  border-color: var(--ink);
-  color: var(--ink);
+  border-color: #23201c;
+  color: #23201c;
+}
+
+/* The stamp is a physical object: same paper and ink in the dark theme. */
+[data-theme='dark'] .stamp {
+  background: #f6f1e7;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.45);
 }
 
 @keyframes stamp {
@@ -1142,7 +1148,23 @@ input {
 }
 
 .recent li,
+.leaders__gap {
+  padding: 0.2rem 0;
+  color: var(--muted);
+  font-size: 1.4rem;
+  line-height: 1;
+  text-align: center;
+  list-style: none;
+}
+
+.leaders__jump {
+  justify-self: start;
+}
+
 .leaders__row {
+  /* A thousand rows: let the browser skip the ones off screen. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 3rem;
   display: flex;
   align-items: center;
   gap: 0.6rem;
@@ -2159,4 +2181,44 @@ input {
     animation: none !important;
     transition: none !important;
   }
+}
+
+/* The next-round button drains as the result's time on screen runs out. */
+.btn--countdown {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.btn--countdown__bar {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: rgb(0 0 0 / 0.14);
+  transform-origin: left;
+  animation: countdown var(--countdown, 5s) linear both;
+}
+
+.btn--countdown__left {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.7;
+}
+
+@keyframes countdown {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn--countdown__bar {
+    animation: none;
+  }
+}
+
+.done-note {
+  text-align: center;
 }

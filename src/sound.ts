@@ -16,6 +16,7 @@ export type Sound =
   | 'bid'
   | 'outbid'
   | 'pass'
+  | 'sold'
   | 'won'
   | 'lost'
   | 'discard'
@@ -177,9 +178,32 @@ const SOUNDS: Record<Sound, (ctx: AudioContext) => void> = {
     tone(ctx, { freq: 660, to: 990, at: 0.12, dur: 0.18, type: 'sawtooth', gain: 0.1 });
   },
   pass: (ctx) => tone(ctx, { freq: 220, to: 140, dur: 0.22, type: 'sine', gain: 0.3 }),
-  won: (ctx) => arpeggio(ctx, [523, 659, 784, 1047], 0.07, { type: 'triangle', gain: 0.25 }),
-  lost: (ctx) => arpeggio(ctx, [392, 330, 262], 0.09, { type: 'triangle', gain: 0.22 }),
-  discard: (ctx) => noise(ctx, { dur: 0.35, from: 1800, to: 300, gain: 0.22 }),
+  // An auctioneer's gavel: two light knocks and a heavy one.
+  sold: (ctx) => {
+    [0, 0.16, 0.38].forEach((at, i) => {
+      const heavy = i === 2;
+      noise(ctx, { at, dur: heavy ? 0.12 : 0.06, from: heavy ? 1400 : 2200, to: 500, gain: heavy ? 0.55 : 0.35, q: 3 });
+      tone(ctx, { at, freq: heavy ? 150 : 210, to: heavy ? 70 : 120, dur: heavy ? 0.22 : 0.09, type: 'sine', gain: heavy ? 0.6 : 0.35 });
+    });
+  },
+  // You bought it: a cash-register bell and a short fanfare.
+  won: (ctx) => {
+    tone(ctx, { freq: 2637, dur: 0.5, type: 'sine', gain: 0.16 });
+    tone(ctx, { freq: 3520, at: 0.03, dur: 0.45, type: 'sine', gain: 0.1 });
+    noise(ctx, { at: 0, dur: 0.12, from: 5000, to: 8000, gain: 0.1 });
+    arpeggio(ctx, [784, 988, 1175, 1568], 0.08, { at: 0.18, type: 'square', gain: 0.11, dur: 0.2 });
+    tone(ctx, { freq: 1568, at: 0.5, dur: 0.45, type: 'triangle', gain: 0.18 });
+  },
+  // The rival bought it: a deflating horn.
+  lost: (ctx) => {
+    [466, 440, 415].forEach((freq, i) => tone(ctx, { freq, at: i * 0.24, dur: 0.22, type: 'sawtooth', gain: 0.1 }));
+    tone(ctx, { freq: 392, to: 330, at: 0.72, dur: 0.6, type: 'sawtooth', gain: 0.11 });
+  },
+  // Nobody wanted it: a paper swipe and a soft thud.
+  discard: (ctx) => {
+    noise(ctx, { dur: 0.35, from: 1800, to: 300, gain: 0.22 });
+    tone(ctx, { freq: 120, to: 70, at: 0.2, dur: 0.2, type: 'sine', gain: 0.3 });
+  },
   tick: (ctx) => tone(ctx, { freq: 1500, dur: 0.04, type: 'square', gain: 0.07 }),
   urgent: (ctx) => {
     tone(ctx, { freq: 880, dur: 0.07, type: 'square', gain: 0.12 });

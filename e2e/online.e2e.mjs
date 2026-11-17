@@ -44,7 +44,7 @@ if (!chromePath) {
 
 const db = new PGlite();
 await db.exec('create role anon nologin; create role authenticated nologin;');
-for (const file of ['0001_init.sql', '0002_matchmaking.sql', '0003_ranking.sql', '0004_character_powers.sql', '0005_accounts_and_opponent.sql', '0006_modes_and_friends.sql', '0007_seasons.sql', '0008_opponent_brain.sql', '0009_google_accounts.sql', '0010_fair_play.sql']) {
+for (const file of ['0001_init.sql', '0002_matchmaking.sql', '0003_ranking.sql', '0004_character_powers.sql', '0005_accounts_and_opponent.sql', '0006_modes_and_friends.sql', '0007_seasons.sql', '0008_opponent_brain.sql', '0009_google_accounts.sql', '0010_fair_play.sql', '0011_autopilot.sql']) {
   await db.exec(readFileSync(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8'));
 }
 
@@ -157,16 +157,26 @@ try {
   await until(host, () => click(host, 'Start the game'), 'the guest to appear');
   await until(guest, () => sees(guest, '.scoreboard'), 'the game to start');
 
-  const results = { host: 0, guest: 0 };
   let rounds = 0;
   let secrecyChecks = 0;
-  const acknowledge = async (page) => {
-    if ((await click(page, 'Next round')) || (await click(page, 'See the teams'))) {
-      results[page.label]++;
-      return true;
-    }
-    return false;
-  };
+  // Results move on by themselves now, so count the results each screen
+  // actually showed (one stamp per round) rather than button presses.
+  for (const page of [host, guest]) {
+    await page.evaluate(() => {
+      window.__results = new Set();
+      const check = () => {
+        if (document.querySelector('.stamp')) window.__results.add(document.querySelector('.board__meta strong')?.textContent);
+      };
+      new MutationObserver(check).observe(document.body, { subtree: true, childList: true, characterData: true });
+    });
+  }
+  const acknowledge = (page) => page.evaluate(() => {
+    const button = [...document.querySelectorAll('button')].find(
+      (b) => (b.textContent.includes('Next round') || b.textContent.includes('See the teams')) && !b.disabled,
+    );
+    button?.click();
+    return Boolean(button);
+  });
 
   for (let step = 0; step < 600; step++) {
     if ((await sees(host, '.final')) && (await sees(guest, '.final'))) break;
@@ -215,7 +225,11 @@ try {
   const played = (
     await db.query(`select coalesce(jsonb_array_length(history), 0) as n from encheres.rooms where not matched order by updated_at desc limit 1`)
   ).rows[0].n;
-  assert(results.host === played && results.guest === played && played >= rounds, 'both players saw every result');
+  const results = {
+    host: await host.evaluate(() => window.__results.size),
+    guest: await guest.evaluate(() => window.__results.size),
+  };
+  assert(results.host === played && results.guest === played && played >= rounds, `both players saw every result (${JSON.stringify(results)} of ${played})`);
   assert(!(await click(guest, 'Rematch')), 'guest cannot start a rematch');
 
   await click(host, 'Rematch');

@@ -36,7 +36,7 @@ built from. The only manual step in the whole system is applying a new database 
 npm install
 npm run dev          # local site, talks to the live database through .env
 npm run typecheck    # TypeScript strict
-npm test             # 198 unit and database tests (no external service needed)
+npm test             # 207 unit and database tests (no external service needed)
 npm run test:e2e     # real browsers against the real SQL; needs Chrome (CHROME_PATH)
 npm run ratings      # after editing src/data/rosters.json
 npm run build:opponent  # after editing src/bot/: rebuild the Edge Function bundle
@@ -103,6 +103,7 @@ Migrations, to be run in this order in the Supabase SQL editor. All are idempote
 | `0007_seasons.sql` | Monthly seasons from zero, `season_results` history, rights-request feedback |
 | `0008_opponent_brain.sql` | pg_net hand-off of strong opponents' bids to the Edge Function, with fallback |
 | `0009_google_accounts.sql` | Guest to Google: keep the guest or start fresh |
+| `0011_autopilot.sql` | A player who cannot buy any more is never forfeited (leaving, disconnecting or "Forfeit"); the computer finishes at once; results move on after 12 s; `encheres.sweep_games()` every minute via pg_cron; leaderboard top 1000 plus the player's neighbours (`around`) |
 | `0010_fair_play.sql` | Automatic draw for a player who cannot buy, presence (`seen_at`, `leaving`), 30 s clock with 3 strikes enforced in `get_room`; `play` split into `encheres.play_as` |
 
 Functions the client calls:
@@ -159,7 +160,8 @@ Things that have bitten this project, so that they do not again:
 - **Where the latest version of a function lives.** Later migrations replace functions
   from earlier ones. As of 0010: the auction rules are `encheres.play_as` (0010; `public.play`
   only maps the token to a seat), `room_view`, `get_room` and `bot_step` are in 0010,
-  `end_by_forfeit` and `settle_match` in 0003. Copy from the newest file when replacing one.
+  `end_by_forfeit` and `settle_match` in 0003; `enforce`, `bot_step`, `leaderboard`,
+  `resign` and `sweep_abandoned` in 0011. Copy from the newest file when replacing one.
 - **Rules exist in two languages.** The auction (TypeScript engine and SQL `play_as`) and
   the rule-based opponent (TypeScript `byRules` and SQL `bot_choice`) are each kept in
   step by a test that plays whole games and compares every step. If you change one side,

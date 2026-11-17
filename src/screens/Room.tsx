@@ -149,7 +149,12 @@ function Game({ view, room, matched }: { view: GameView; room: OnlineRoom; match
     if (view.history.length < shown) setShown(view.history.length);
   }, [view.history.length, shown]);
 
-  const missed = view.history[shown];
+  // Once the game is over, a run of results this screen has not shown means
+  // the rest played out by itself (the player could not buy any more):
+  // straight to the final screen. One or two are ordinary lag, and shown.
+  const skipToEnd = view.status === 'finished' && view.history.length - shown > 2;
+  const missed = skipToEnd ? undefined : view.history[shown];
+  const leave = matched ? matched.onExit : undefined;
 
   if (missed) {
     const serverIsHere = view.phase === 'reveal' && view.history.length === shown + 1;
@@ -176,6 +181,7 @@ function Game({ view, room, matched }: { view: GameView; room: OnlineRoom; match
         }}
         onQuit={quit}
         quitForfeits={Boolean(matched) && view.status === 'playing'}
+        onLeave={leave}
       />
     );
   }
@@ -212,6 +218,7 @@ function Game({ view, room, matched }: { view: GameView; room: OnlineRoom; match
       quitForfeits={Boolean(matched)}
       clock={clock}
       away={away}
+      onLeave={leave}
     />
   );
 }

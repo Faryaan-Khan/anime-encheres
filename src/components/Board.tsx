@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react';
 import { getCharacter } from '../data/characters';
+import { canStillBuy } from '../game/engine';
 import type { GameView, PlayerView, Seat } from '../game/types';
 import { useI18n } from '../i18n';
 import type { StringKey } from '../i18n/strings';
@@ -36,7 +37,19 @@ export interface BoardProps {
   clock?: { seat: Seat; secondsLeft: number; strikes: [number, number]; maxStrikes: number };
   /** Quick matches: the rival's device has gone quiet; they lose when this runs out. */
   away?: { seat: Seat; secondsLeft: number };
+  /**
+   * Quick matches: leave without giving up, for a player who cannot buy any
+   * more. Their result stands and the match is settled without them.
+   */
+  onLeave?: () => void;
 }
+
+/** Seconds a result stays on screen before the game moves on by itself. */
+const NEXT_AFTER = 5;
+/** The same, once this player cannot buy any more: they are only watching. */
+const NEXT_AFTER_WATCHING = 1.5;
+/** The same, before the final screen. */
+const FINISH_AFTER = 3;
 
 /** The clock stays out of the way until this many seconds are left. */
 const CLOCK_VISIBLE_FROM = 15;
@@ -56,6 +69,7 @@ export function Board({
   quitForfeits,
   clock,
   away,
+  onLeave,
 }: BoardProps) {
   const { t, money } = useI18n();
   const [peeking, setPeeking] = useState(false);
@@ -90,6 +104,12 @@ export function Board({
     view.deckCount === 0 ||
     !view.players.some((p) => p.team.length < settings.teamSize && p.budget >= settings.minBid);
 
+  // This screen's player can no longer buy anything: the rest plays out by
+  // itself and they are only watching.
+  const watcher = mode === 'personal' && view.you !== null ? view.you : null;
+  const watching = watcher !== null && view.status === 'playing' && !canStillBuy(view, watcher);
+  const teamFull = watcher !== null && view.players[watcher].team.length >= settings.teamSize;
+
   const faceUp =
     view.phase === 'reveal' ||
     (view.phase === 'bidding' && (mode === 'shared' ? peeking : view.card !== null));
@@ -118,7 +138,11 @@ export function Board({
           </span>
           {view.code && <span>{t('board.room', { code: view.code })}</span>}
         </p>
-        {quitForfeits ? (
+        {watching && onLeave ? (
+          <button type="button" className="link" onClick={onLeave}>
+            {t('board.done.leave')}
+          </button>
+        ) : quitForfeits ? (
           <button
             type="button"
             className="link"
@@ -272,10 +296,18 @@ export function Board({
             <p className="waiting">{t('board.waitMove', { name: bidder.name })}</p>
           ))}
 
+        {watching && view.phase !== 'reveal' && (
+          <p className="note done-note">{t(teamFull ? 'board.done.full' : 'board.done.broke')}</p>
+        )}
+
         {view.phase === 'reveal' && (
-          <button type="button" className="btn btn--primary btn--wide" onClick={onNext} disabled={busy}>
-            {gameEnds ? t('board.finish') : t('board.next')}
-          </button>
+          <NextButton
+            key={`${view.round}-${view.history.length}`}
+            label={gameEnds ? t('board.finish') : t('board.next')}
+            seconds={gameEnds ? FINISH_AFTER : watching ? NEXT_AFTER_WATCHING : NEXT_AFTER}
+            busy={Boolean(busy)}
+            onNext={onNext}
+          />
         )}
       </section>
 
@@ -323,13 +355,19 @@ function History({ view }: { view: GameView }) {
  */
 function useGameSounds(view: GameView, mode: 'shared' | 'personal'): void {
   const previous = useRef<GameView | null>(null);
+  // Sounds already queued must survive the next refresh of the view (online
+  // views are re-read every second or two); they stop only with the board.
+  const timers = useRef<number[]>([]);
+  useEffect(() => () => timers.current.forEach((t) => window.clearTimeout(t)), []);
   useEffect(() => {
     const before = previous.current;
     previous.current = view;
     if (!before || before.round > view.round) return;
     const me = mode === 'personal' ? view.you : null;
-    const timers: number[] = [];
-    const later = (ms: number, fn: () => void) => timers.push(window.setTimeout(fn, ms));
+    const later = (ms: number, fn: () => void) => {
+      if (timers.current.length > 20) timers.current = timers.current.slice(-20);
+      timers.current.push(window.setTimeout(fn, ms));
+    };
 
     if (before.phase === 'draw' && view.phase === 'bidding') {
       play('draw');
@@ -338,9 +376,9 @@ function useGameSounds(view: GameView, mode: 'shared' | 'personal'): void {
       const last = view.history[view.history.length - 1];
       if (before.phase === 'bidding' && before.card === null) play('flip');
       later(250, () => {
-        if (!last || last.winner === null) play('discard');
-        else if (me === null || last.winner === me) play('won');
-        else play('lost');
+        if (!last || last.winner === null) return play('discard');
+        play('sold');
+        later(520, () => play(me === null || last.winner === me ? 'won' : 'lost'));
       });
     } else if (view.phase === 'bidding' && before.phase === 'bidding' && before.round === view.round) {
       if (view.highBid > before.highBid) {
@@ -349,6 +387,62 @@ function useGameSounds(view: GameView, mode: 'shared' | 'personal'): void {
         play('pass');
       }
     }
-    return () => timers.forEach((t) => window.clearTimeout(t));
   }, [view, mode]);
+}
+
+/**
+ * Moves on from a result after a short countdown, shown as a bar draining
+ * across the button. Pressing it moves on at once.
+ */
+function NextButton({
+  label,
+  seconds,
+  busy,
+  onNext,
+}: {
+  label: string;
+  seconds: number;
+  busy: boolean;
+  onNext(): void;
+}) {
+  const [left, setLeft] = useState(Math.ceil(seconds));
+  const fired = useRef(false);
+  const latest = useRef({ onNext, busy });
+  latest.current = { onNext, busy };
+
+  useEffect(() => {
+    const start = Date.now();
+    const timer = window.setInterval(() => {
+      const remaining = seconds - (Date.now() - start) / 1000;
+      setLeft(Math.max(0, Math.ceil(remaining)));
+      if (remaining <= 0 && !fired.current && !latest.current.busy) {
+        fired.current = true;
+        window.clearInterval(timer);
+        latest.current.onNext();
+      }
+    }, 100);
+    return () => window.clearInterval(timer);
+  }, [seconds]);
+
+  const press = () => {
+    if (fired.current) return;
+    fired.current = true;
+    onNext();
+  };
+
+  return (
+    <button
+      type="button"
+      className="btn btn--primary btn--wide btn--countdown"
+      style={{ '--countdown': `${seconds}s` } as CSSProperties}
+      onClick={press}
+      disabled={busy}
+    >
+      <span className="btn--countdown__bar" aria-hidden="true" />
+      <span className="btn--countdown__label">
+        {label}
+        {left > 0 && <span className="btn--countdown__left"> · {left}</span>}
+      </span>
+    </button>
+  );
 }

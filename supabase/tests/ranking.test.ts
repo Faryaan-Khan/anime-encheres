@@ -337,6 +337,27 @@ describe('leaderboards', () => {
     expect((await rpc<Board>('leaderboard', [ANA, 'naruto', null])).rows).toEqual([]);
   });
 
+  it('show the top 1000, then a player further down with the players either side', async () => {
+    await db.exec(`
+      with made as (
+        insert into encheres.profiles (token_hash, name, season_games, games)
+        select 'filler-' || g, 'P' || g, 1, 1 from generate_series(1, 1004) g
+        returning id, name
+      )
+      insert into encheres.ratings (profile, mode, trophies, best, games, season_best, season_games)
+      select id, 'one-piece', 1000 + substr(name, 2)::int, 0, 1, 0, 1 from made`);
+    const board = await rpc<Board & { around: Board['rows'] }>('leaderboard', [ANA, 'one-piece', null]);
+    expect(board.rows).toHaveLength(1000);
+    expect(board.rows[0].value).toBe(2004);
+    expect(board.me).toEqual({ rank: 1007, value: 400 });
+    expect(board.around.map((r) => [r.rank, r.name, Boolean(r.you)])).toEqual([
+      [1006, 'Cam', false],
+      [1007, 'Ana', true],
+    ]);
+    // Inside the top 1000: nothing extra.
+    expect((await rpc<Board & { around: unknown[] }>('leaderboard', [ANA, 'one-piece', null, true])).around).toEqual([]);
+  });
+
   it('rank the world by overall score, where mixed counts double', async () => {
     // Seven universes and mixed: nine shares. Ana adds 450 in mixed, worth 900.
     await setTrophies(ANA, 450, 'mix');

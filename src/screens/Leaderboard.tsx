@@ -7,7 +7,7 @@ import { MODES } from '../match/config';
 import { modeName } from '../modes';
 import { toOnlineError } from '../online/api';
 import { ONLINE_AVAILABLE } from '../online/config';
-import { getLeaderboard, getProfile, type Leaderboard as Board } from '../online/profile';
+import { getLeaderboard, getProfile, type Leaderboard as Board, type LeaderboardRow } from '../online/profile';
 import { navigate } from '../router';
 
 type Audience = 'world' | 'friends' | 'country';
@@ -55,6 +55,10 @@ export function Leaderboard() {
     },
   ];
 
+  const myRow = board?.rows.find((row) => row.you) ?? null;
+  const jumpToMe = () =>
+    document.querySelector('.leaders__row--you')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
   return (
     <main className="page">
       <h1 className="display">{t('home.leaderboard')}</h1>
@@ -101,22 +105,31 @@ export function Leaderboard() {
             <p className="waiting">{t(audience === 'friends' ? 'board.empty.friends' : 'board.empty')}</p>
           )}
           {board && board.rows.length > 0 && (
-            <ol className="leaders">
-              {board.rows.map((row) => (
-                <li key={row.rank} className={row.you ? 'leaders__row leaders__row--you' : 'leaders__row'}>
-                  <span className="leaders__rank">{row.rank}</span>
-                  <Avatar index={row.avatar} size="sm" />
-                  <span className="leaders__name">
-                    {row.country && <span title={countryName(row.country, lang)}>{countryFlag(row.country)} </span>}
-                    {row.name}
-                  </span>
-                  <span className="leaders__value">{row.value}</span>
-                </li>
-              ))}
-            </ol>
-          )}
-          {board?.me && board.me.rank > board.rows.length && (
-            <p className="note">{t('board.you', { rank: board.me.rank, total: board.total })}</p>
+            <>
+              {myRow && board.me && board.me.rank > 10 && (
+                <button type="button" className="link leaders__jump" onClick={() => jumpToMe()}>
+                  {t('board.jump', { rank: board.me.rank })}
+                </button>
+              )}
+              <ol className="leaders">
+                {board.rows.map((row) => (
+                  <LeaderRow key={row.rank} row={row} />
+                ))}
+                {(board.around ?? []).length > 0 && (
+                  <>
+                    <li className="leaders__gap" aria-hidden="true">
+                      ⋮
+                    </li>
+                    {board.around!.map((row) => (
+                      <LeaderRow key={`around-${row.rank}`} row={row} />
+                    ))}
+                  </>
+                )}
+              </ol>
+              {board.me && !myRow && (board.around ?? []).length === 0 && (
+                <p className="note">{t('board.you', { rank: board.me.rank, total: board.total })}</p>
+              )}
+            </>
           )}
         </>
       )}
@@ -130,5 +143,21 @@ export function Leaderboard() {
         </button>
       </div>
     </main>
+  );
+}
+
+/** One line of a ranking. */
+function LeaderRow({ row }: { row: LeaderboardRow }) {
+  const { lang } = useI18n();
+  return (
+    <li className={row.you ? 'leaders__row leaders__row--you' : 'leaders__row'}>
+      <span className="leaders__rank">{row.rank}</span>
+      <Avatar index={row.avatar} size="sm" />
+      <span className="leaders__name">
+        {row.country && <span title={countryName(row.country, lang)}>{countryFlag(row.country)} </span>}
+        {row.name}
+      </span>
+      <span className="leaders__value">{row.value}</span>
+    </li>
   );
 }

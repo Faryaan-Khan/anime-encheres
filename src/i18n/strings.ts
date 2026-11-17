@@ -95,6 +95,7 @@ const fr = {
   'board.country.hint': 'Choisis ton pays dans ton profil pour voir son classement.',
   'board.empty': 'Personne ici pour l’instant. Joue une partie rapide pour être le premier.',
   'board.you': 'Tu es {rank}e sur {total}.',
+  'board.jump': 'Voir ma place ({rank}e)',
 
   'feedback.intro': 'Une idée, un bug, une note de puissance à corriger ? Dis-le nous, on lit tout.',
   'feedback.about': 'Sujet',
@@ -328,6 +329,9 @@ const fr = {
   'board.timer.youExpired': 'Temps écoulé : le jeu joue pour toi.',
   'board.timer.strikes': 'Temps dépassé {n}/{max}. À {max}, la partie est perdue.',
   'board.timer.strikesShort': 'Temps dépassé {n}/{max}',
+  'board.done.full': 'Ton équipe est complète. La suite se joue toute seule, et ton résultat compte même si tu pars.',
+  'board.done.broke': 'Tu n’as plus de quoi enchérir. La suite se joue toute seule, et ton résultat compte même si tu pars.',
+  'board.done.leave': 'Partir (le résultat compte)',
   'board.away.counting': '{name} a quitté la partie. Victoire pour toi dans {n} s s’il ne revient pas.',
   'board.away.done': '{name} a quitté la partie. Victoire en cours…',
 
@@ -476,6 +480,7 @@ const en: Record<StringKey, string> = {
   'board.country.hint': 'Choose your country in your profile to see its ranking.',
   'board.empty': 'Nobody here yet. Play a quick match to be the first.',
   'board.you': 'You are number {rank} of {total}.',
+  'board.jump': 'Show my place (#{rank})',
 
   'feedback.intro': 'An idea, a bug, a power rating to fix? Tell us. We read everything.',
   'feedback.about': 'Topic',
@@ -709,6 +714,9 @@ const en: Record<StringKey, string> = {
   'board.timer.youExpired': 'Time’s up: the game plays for you.',
   'board.timer.strikes': 'Out of time {n}/{max}. At {max} you lose the match.',
   'board.timer.strikesShort': 'Out of time {n}/{max}',
+  'board.done.full': 'Your team is complete. The rest plays out by itself, and your result counts even if you leave.',
+  'board.done.broke': 'You can’t afford another card. The rest plays out by itself, and your result counts even if you leave.',
+  'board.done.leave': 'Leave (result still counts)',
   'board.away.counting': '{name} left the game. You win in {n} s unless they come back.',
   'board.away.done': '{name} left the game. Giving you the win…',
 

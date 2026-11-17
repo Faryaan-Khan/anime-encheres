@@ -103,7 +103,10 @@ export function requiredBid(state: Pick<GameState, 'settings' | 'highBid' | 'hig
     : state.highBid + state.settings.increment;
 }
 
-export function isTeamFull(state: Pick<GameState, 'settings' | 'players'>, seat: Seat): boolean {
+/** Enough of a state or a view to tell what a seat can still do. */
+type Holdings = { settings: GameState['settings']; players: ReadonlyArray<GameState['players'][number]> };
+
+export function isTeamFull(state: Holdings, seat: Seat): boolean {
   return state.players[seat].team.length >= state.settings.teamSize;
 }
 
@@ -232,7 +235,7 @@ export function next(state: GameState): GameState {
 }
 
 /** True while this seat has room in its team and money for the minimum bid. */
-export function canStillBuy(state: Pick<GameState, 'settings' | 'players'>, seat: Seat): boolean {
+export function canStillBuy(state: Holdings, seat: Seat): boolean {
   return !isTeamFull(state, seat) && state.players[seat].budget >= state.settings.minBid;
 }
 

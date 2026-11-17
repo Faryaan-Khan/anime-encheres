@@ -88,6 +88,8 @@ export interface Leaderboard {
   rows: LeaderboardRow[];
   total: number;
   me: { rank: number; value: number } | null;
+  /** When the player is below the top rows: them, and the players either side. */
+  around?: LeaderboardRow[];
 }
 
 /** `overall`, or a mode: a universe id or `mix`. */
