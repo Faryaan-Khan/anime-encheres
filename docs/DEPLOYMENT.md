@@ -6,12 +6,21 @@ site; online play needs both.
 ## 1. Database (Supabase)
 
 1. Create a Supabase project (the free plan is enough).
-2. Open **SQL Editor** and run the two scripts in order:
-   [`0001_init.sql`](../supabase/migrations/0001_init.sql), then
-   [`0002_matchmaking.sql`](../supabase/migrations/0002_matchmaking.sql).
+2. Open **SQL Editor** and run the four scripts in order:
+   [`0001_init.sql`](../supabase/migrations/0001_init.sql),
+   [`0002_matchmaking.sql`](../supabase/migrations/0002_matchmaking.sql),
+   [`0003_ranking.sql`](../supabase/migrations/0003_ranking.sql), then
+   [`0004_character_powers.sql`](../supabase/migrations/0004_character_powers.sql).
    The editor warns about "destructive operations" because the scripts contain `revoke`
-   and `delete` statements inside function bodies; nothing is removed. Both scripts are
+   and `delete` statements inside function bodies; nothing is removed. All scripts are
    idempotent, so they can be run again after an update.
+
+After changing a power rating in `src/data/rosters.json`, run `npm run ratings` and run
+`0004_character_powers.sql` again, so that the server judges games with the same numbers
+as the app. A test fails if the two disagree.
+
+To read what players sent through the feedback form, open **Table Editor**, choose the
+`encheres` schema and the `feedback` table.
 3. Open **Project Settings → API Keys** and copy the project URL and the **publishable**
    key.
 
@@ -56,5 +65,7 @@ build. The browser test (`npm run test:e2e`) is meant to be run locally.
 - Rooms untouched for 24 hours are deleted the next time someone creates a room.
 - Supabase pauses free projects after about a week without activity; resume the project
   from the dashboard if online play stops responding.
+- The security headers in `netlify.toml` name the Supabase project the site may talk to.
+  If you use another project, change the two addresses in `connect-src`.
 - A deployed site is reachable by anyone who has the link. Room contents are still
   protected by the room code and the player token.

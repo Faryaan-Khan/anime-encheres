@@ -44,7 +44,7 @@ if (!chromePath) {
 
 const db = new PGlite();
 await db.exec('create role anon nologin; create role authenticated nologin;');
-for (const file of ['0001_init.sql', '0002_matchmaking.sql']) {
+for (const file of ['0001_init.sql', '0002_matchmaking.sql', '0003_ranking.sql', '0004_character_powers.sql']) {
   await db.exec(readFileSync(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8'));
 }
 
@@ -242,7 +242,9 @@ try {
   await until(ana, () => sees(ana, '.final'), 'the final screen');
   assert((await text(ana)).includes('Ana wins: Ben left the game'), 'the forfeit is announced to the winner');
   assert(!(await click(ana, 'Rematch')), 'no rematch in a quick match');
-  console.log('PASS  quick match: paired, played, forfeit announced');
+  assert((await text(ana)).includes('+30 trophies, 30 in total'), 'the winner sees the trophies won');
+  assert((await text(ben)).includes('Trophies unchanged: 0'), 'trophies never go below zero');
+  console.log('PASS  quick match: paired, played, forfeit announced, trophies awarded');
   await snap(ana, 'match-forfeit');
 
   // Both search again and are paired again; this time one of them stops playing.
@@ -295,11 +297,67 @@ try {
   await until(solo, () => sees(solo, '.final'), 'the end of the game', 5000);
   assert(moves > 0, 'the game was played');
   assert(!/computer|ordinateur/i.test(await text(solo)), 'the final screen does not mention the computer');
+  await until(solo, async () => /trophies/i.test(await text(solo)), 'the trophy line');
+  await snap(solo, 'match-final');
   assert(await click(solo, 'Find another opponent'), 'a new search can be started');
   await until(solo, async () => (await text(solo)).includes('Looking for an opponent'), 'the new search');
   await click(solo, 'Cancel');
-  assert(pageErrors.length === 0, `no page errors (${pageErrors.join('; ')})`);
   console.log(`PASS  quick match without players: stand-in "${names[1]}" joined, ${moves} moves`);
+
+  // --- Profile, leaderboard, feedback ----------------------------------------
+
+  await solo.goto(`${base}#/profile`, { waitUntil: 'networkidle2' });
+  await until(solo, () => sees(solo, '.stats'), 'the profile');
+  assert((await solo.$eval('h1', (e) => e.textContent)) === 'Cam', 'the profile carries the player name');
+  assert((await solo.$eval('.stats dd', (e) => e.textContent)) === '1', 'the game against the stand-in is counted');
+  assert((await solo.$$('.badge--earned')).length >= 1, 'the first badge is earned');
+  await solo.select('select', 'MY');
+  await solo.evaluate(() => document.querySelectorAll('.avatars input')[4].click());
+  await click(solo, 'Save');
+  await until(solo, async () => (await text(solo)).includes('Profile saved.'), 'the profile to be saved');
+  assert((await text(solo)).includes('Malaysia'), 'the country is shown');
+  await snap(solo, 'profile');
+
+  await solo.goto(`${base}#/leaderboard`, { waitUntil: 'networkidle2' });
+  await until(solo, () => sees(solo, '.leaders__row--you'), 'the leaderboard');
+  const world = await solo.$$eval('.leaders__name', (els) => els.map((e) => e.textContent.trim()));
+  assert(world.some((n) => n.endsWith('Ana')) && world.some((n) => n.endsWith('Ben')), `everyone is ranked (${world})`);
+  await snap(solo, 'leaderboard');
+  await solo.evaluate(() => document.querySelectorAll('.options input')[2].click());
+  await until(
+    solo,
+    async () => (await solo.$$('.leaders__row')).length === 1 && (await sees(solo, '.leaders__row--you')),
+    'the country ranking',
+  );
+
+  await solo.goto(`${base}#/feedback`, { waitUntil: 'networkidle2' });
+  await until(solo, () => sees(solo, 'textarea'), 'the feedback form');
+  await snap(solo, 'feedback-empty');
+  await solo.type('textarea', 'Please add a tournament mode.');
+  await click(solo, 'Send');
+  await until(solo, async () => (await text(solo)).includes('Thank you'), 'the thanks');
+  const stored = await db.query('select category, message, lang from encheres.feedback');
+  assert(
+    stored.rows.length === 1 && stored.rows[0].message === 'Please add a tournament mode.' && stored.rows[0].lang === 'en',
+    'the feedback is stored',
+  );
+  console.log(`PASS  profile, leaderboard (${world.length} players) and feedback`);
+
+  // --- Above the practice ceiling only people count -------------------------
+
+  await db.query(`update encheres.profiles set trophies = 400 where name = 'Cam'`);
+  await solo.goto(`${base}#/match`, { waitUntil: 'networkidle2' });
+  await until(solo, async () => (await text(solo)).includes('Silver League, 400 trophies'), 'the level on the match page');
+  await click(solo, 'Find an opponent');
+  await until(solo, async () => (await text(solo)).includes('player of your level'), 'the level search');
+  await sleep(20000);
+  assert(
+    (await text(solo)).includes('player of your level') && !(await sees(solo, '.scoreboard')),
+    'no stand-in joins above the ceiling',
+  );
+  await click(solo, 'Cancel');
+  assert(pageErrors.length === 0, `no page errors (${pageErrors.join('; ')})`);
+  console.log('PASS  ranked search keeps waiting for a person');
 } catch (error) {
   failed = true;
   console.error(`FAIL  ${error.message}`);

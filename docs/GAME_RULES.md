@@ -62,6 +62,16 @@ action; if your opponent runs out of time you can claim the win, and leaving the
 gives the win to your opponent. To play with a friend instead, create a private room and
 share its code.
 
+### Trophies and leagues
+
+Quick matches are ranked. A win earns about 30 trophies, more against a higher-ranked
+player and less against a lower-ranked one; a loss costs about 26, and you never go below
+zero. Trophies place you in a league: Bronze, Silver (300), Gold (600), Platinum (1000),
+Diamond (1500), Legend (2200). You are paired with players close to your level, and the
+range widens the longer you wait. Private rooms never change trophies. Your profile shows
+your statistics, badges and recent games, and the leaderboards rank players worldwide,
+over the current week, and within your country.
+
 ### The bluff
 
 Only the drawer knows what the card is worth.
@@ -134,6 +144,17 @@ monde puisse être associé : 500M chacun, équipes de 5, un univers tiré au so
 60 secondes par action ; si ton adversaire dépasse ce temps, tu peux réclamer la victoire,
 et quitter la partie donne la victoire à l'adversaire. Pour jouer avec un ami, crée plutôt
 un salon privé et partage son code.
+
+### Trophées et ligues
+
+Les parties rapides sont classées. Une victoire rapporte environ 30 trophées, plus contre
+un joueur mieux classé et moins contre un joueur moins bien classé ; une défaite en coûte
+environ 26, et tu ne descends jamais sous zéro. Les trophées te placent dans une ligue :
+Bronze, Argent (300), Or (600), Platine (1000), Diamant (1500), Légende (2200). Tu es
+associé à des joueurs proches de ton niveau, et l'écart accepté grandit avec l'attente.
+Les salons privés ne changent jamais les trophées. Ton profil affiche tes statistiques,
+tes badges et tes dernières parties, et les classements rangent les joueurs dans le monde,
+sur la semaine en cours et dans ton pays.
 
 ### Le bluff
 

@@ -23,6 +23,7 @@ export const SERVER_ERRORS = [
   'INVALID_INPUT',
   'TOO_EARLY',
   'NOT_ALLOWED',
+  'RATE_LIMITED',
 ] as const;
 
 export type OnlineErrorCode = (typeof SERVER_ERRORS)[number] | 'NETWORK' | 'UNKNOWN';

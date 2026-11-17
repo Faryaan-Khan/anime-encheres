@@ -46,9 +46,20 @@ export function Home() {
           {t('home.online')}
           <small>{t('home.online.hint')}</small>
         </button>
-        <button type="button" className="link" onClick={() => navigate('/rules')}>
-          {t('home.rules')}
-        </button>
+        <div className="home__links">
+          <button type="button" className="link" onClick={() => navigate('/profile')}>
+            {t('home.profile')}
+          </button>
+          <button type="button" className="link" onClick={() => navigate('/leaderboard')}>
+            {t('home.leaderboard')}
+          </button>
+          <button type="button" className="link" onClick={() => navigate('/rules')}>
+            {t('home.rules')}
+          </button>
+          <button type="button" className="link" onClick={() => navigate('/feedback')}>
+            {t('home.feedback')}
+          </button>
+        </div>
       </nav>
     </main>
   );

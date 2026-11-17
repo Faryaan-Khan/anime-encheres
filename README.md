@@ -44,6 +44,12 @@ rival, during the same auction.
   players always see each result, even if the other moves on first
 - Quick matches: a matchmaking queue, a 60-second turn clock, forfeits, and the computer
   stepping in when nobody else is looking for a game
+- Ranked play: trophies won and lost by rank difference, six leagues, pairing with
+  players of a similar level, and the winner decided by the server
+- Player profiles with statistics, badges, an avatar and a country; world, weekly and
+  country leaderboards
+- Every finished online game is recorded with its full action log
+- A feedback form for ideas, bugs and rating disputes
 - French and English, remembered per device
 - Designed for phones first, usable on desktop, keyboard accessible
 
@@ -88,9 +94,9 @@ Same-device play works immediately. Online play uses the Supabase project config
 | Command | What it does |
 | --- | --- |
 | `npm run dev` | Development server with hot reload |
-| `npm test` | Runs the 89 unit, database, parity and bot tests |
-| `npm run test:e2e` | Plays private rooms and quick matches between headless browser sessions (needs Chrome) |
-| `npm run ratings` | Rebuilds the power-ratings document and CSV from `src/data/rosters.json` |
+| `npm test` | Runs the 125 unit, database, parity, ranking and bot tests |
+| `npm run test:e2e` | Plays private rooms, quick matches and the profile, leaderboard and feedback screens in headless browser sessions (needs Chrome) |
+| `npm run ratings` | Rebuilds the power-ratings document, the CSV and the database seed (`0004`) from `src/data/rosters.json` |
 | `npm run typecheck` | TypeScript in strict mode, no output |
 | `npm run build` | Type check, then production build into `dist/` |
 | `npm run preview` | Serves the production build locally |
@@ -134,6 +140,10 @@ and universe colour. To show a picture on a card, add an image you are allowed t
 
 - "Undercover" and dice variants seen in the French videos
 - Spectators and audience voting on the final teams
+
+## Licence
+
+All rights reserved; see [LICENSE](LICENSE). The code is public to be read, not reused.
 
 ## Notice
 

@@ -165,6 +165,11 @@ function Game({ view, room, matched }: { view: GameView; room: OnlineRoom; match
         onRematch={!matched && view.you === 0 ? () => void room.start() : undefined}
         onFindAnother={matched?.onFindAnother}
         forfeit={view.forfeit ?? null}
+        trophies={
+          view.you !== null && view.result?.deltas && view.result.trophies
+            ? { delta: view.result.deltas[view.you], total: view.result.trophies[view.you] }
+            : null
+        }
         busy={room.busy}
         onHome={home}
       />

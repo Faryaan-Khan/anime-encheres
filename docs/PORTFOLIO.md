@@ -47,7 +47,13 @@ Pick three or four.
   version checks to discard stale responses.
 - Reduced the initial JavaScript for offline players by about half through route-level
   code splitting of the backend client.
-- Set up CI with GitHub Actions (type check, 89 tests, production build) and continuous
+- Built a ranked ladder in PostgreSQL: Elo-style trophy changes, level-based matchmaking
+  with a widening window, weekly and per-country leaderboards, and a server-side verdict
+  so that a modified client cannot claim a win.
+- Added abuse controls without accounts: per-device and per-address rate limits (addresses
+  stored only as hashes), input validation in every function, and a strict Content
+  Security Policy on the site.
+- Set up CI with GitHub Actions (type check, 125 tests, production build) and continuous
   deployment to Netlify.
 
 ## Skills demonstrated
@@ -105,8 +111,13 @@ themselves.
 Worth saying before an interviewer finds them:
 
 - Two-player rooms only; no spectators yet.
-- Quick matches pair by arrival order, not skill, and fall back to the computer when the
-  queue is empty; that fallback runs in the browser, not on the server.
-- Identity is tied to browser storage; clearing it loses the seat.
+- Below 300 trophies, quick matches fall back to the computer when the queue is empty.
+  That game runs in the browser, so its result is self-reported; it is capped (small
+  amounts, ten a day, never past 300) rather than trusted.
+- Identity is tied to browser storage; clearing it loses the profile. There is no sign-in
+  yet, so a profile cannot move to another device.
 - The character list is static and names only.
-- No rate limiting beyond what Supabase applies by default.
+- Rate limits are per device token and per network address; a determined attacker with
+  many addresses can still create rows, only more slowly.
+- The client code is public by nature, like any website; what protects the game is that
+  the rules, the ranking and the data live on the server.
