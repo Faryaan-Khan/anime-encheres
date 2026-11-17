@@ -90,6 +90,16 @@ export interface GameView {
   idle?: number;
   /** Online only: the server's verdict, once the game is over. */
   result?: MatchResult | null;
+  /** Quick matches: seconds each move may take. */
+  turnSeconds?: number;
+  /** Quick matches: times each seat ran out of time (the server then moved for them). */
+  strikes?: [number, number];
+  /** Quick matches: the time-out that loses the match. */
+  maxStrikes?: number;
+  /** Quick matches: seconds since each seat's device was last heard from. */
+  absent?: [number, number];
+  /** Quick matches: a player not heard from for this long has left, and loses. */
+  awaySeconds?: number;
 }
 
 /** How the server judged a finished online game. */

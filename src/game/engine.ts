@@ -225,7 +225,15 @@ export function next(state: GameState): GameState {
   s.drawer = other(s.drawer);
   s.turn = s.drawer;
   s.phase = 'draw';
+  // A drawer who can no longer buy anything would only hold the other player
+  // up: the card is drawn for them and bidding opens at once.
+  if (!canStillBuy(s, s.drawer)) return draw(s, s.drawer);
   return s;
+}
+
+/** True while this seat has room in its team and money for the minimum bid. */
+export function canStillBuy(state: Pick<GameState, 'settings' | 'players'>, seat: Seat): boolean {
+  return !isTeamFull(state, seat) && state.players[seat].budget >= state.settings.minBid;
 }
 
 /**

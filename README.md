@@ -42,7 +42,7 @@ rival, during the same auction.
 - Same-device games are saved after every move and can be resumed
 - Private online rooms with a shareable link, rematches and automatic reconnection; both
   players always see each result, even if the other moves on first
-- Quick matches: a matchmaking queue, a 60-second turn clock, forfeits, and an opponent
+- Quick matches: a matchmaking queue, a 30-second turn clock with three strikes, automatic wins over players who leave, forfeits, and an opponent
   played by the database itself when nobody else is looking for a game, with a strength
   that follows the player's trophies
 - Guest play by default; sign in with Google to keep the guest's progress or start a new

@@ -14,6 +14,7 @@ export const MIGRATIONS = [
   '0007_seasons.sql',
   '0008_opponent_brain.sql',
   '0009_google_accounts.sql',
+  '0010_fair_play.sql',
 ];
 
 export function readMigration(file: string): string {

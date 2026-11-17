@@ -46,6 +46,11 @@ export function Scoreboard({ view }: { view: GameView }) {
             </h2>
             <p className="player__budget">{money(player.budget)}</p>
             <TeamSlots player={player} teamSize={view.settings.teamSize} />
+            {(view.strikes?.[player.seat] ?? 0) > 0 && (
+              <p className="player__strikes" title={t('board.timer.strikesShort', { n: view.strikes![player.seat], max: view.maxStrikes ?? 3 })}>
+                {t('board.timer.strikesShort', { n: view.strikes![player.seat], max: view.maxStrikes ?? 3 })}
+              </p>
+            )}
             <p className="player__role">
               {live && view.drawer === player.seat ? (
                 <>

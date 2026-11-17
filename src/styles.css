@@ -928,6 +928,20 @@ input {
   text-align: center;
 }
 
+.clock__strikes,
+.player__strikes {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--danger, #c0392b);
+}
+
+.clock--away {
+  padding: 0.6rem 0.8rem;
+  border: 2px dashed var(--danger, #c0392b);
+  border-radius: 0.8rem;
+}
+
 .searching::after {
   content: '';
   display: inline-block;

@@ -15,7 +15,18 @@ import { createTestDb, type TestDb } from './helpers';
 
 /** Fields that only exist online; the engine has no equivalent. */
 function withoutOnlineFields(view: GameView): GameView {
-  const { matched: _matched, forfeit: _forfeit, idle: _idle, result: _result, ...rest } = view;
+  const {
+    matched: _matched,
+    forfeit: _forfeit,
+    idle: _idle,
+    result: _result,
+    turnSeconds: _turnSeconds,
+    strikes: _strikes,
+    maxStrikes: _maxStrikes,
+    absent: _absent,
+    awaySeconds: _awaySeconds,
+    ...rest
+  } = view as GameView & Record<string, unknown>;
   return rest;
 }
 
