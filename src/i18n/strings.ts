@@ -172,11 +172,13 @@ const fr = {
   'tools.sound.on': 'Activer le son',
   'footer.fan': 'Jeu de fans non officiel. Les personnages appartiennent à leurs créateurs.',
   'footer.legal': 'Mentions et droits',
+  'footer.privacy': 'Confidentialité',
+  'footer.terms': 'Conditions',
 
   'legal.title': 'Mentions et droits',
   'legal.fan.title': 'Un jeu de fans',
   'legal.fan':
-    'Enchères Animés est un jeu de fans gratuit et non officiel. Il n’est ni affilié, ni soutenu, ni approuvé par les auteurs, éditeurs, studios ou ayants droit des séries citées. Les noms des personnages et des séries appartiennent à leurs propriétaires et ne servent qu’à identifier les personnages dans le jeu. Aucun droit sur eux n’est revendiqué.',
+    'Enchères Animés (Anime Auction Draft en anglais) est un jeu de fans gratuit et non officiel. Il n’est ni affilié, ni soutenu, ni approuvé par les auteurs, éditeurs, studios ou ayants droit des séries citées. Les noms des personnages et des séries appartiennent à leurs propriétaires et ne servent qu’à identifier les personnages dans le jeu. Aucun droit sur eux n’est revendiqué.',
   'legal.art.title': 'Images',
   'legal.art':
     'Le jeu ne contient aucune illustration officielle ni dessin de fan des personnages : chaque carte est dessinée par le jeu à partir du nom, de l’univers et de la rareté.',
@@ -376,7 +378,7 @@ const fr = {
 export type StringKey = keyof typeof fr;
 
 const en: Record<StringKey, string> = {
-  'app.title': 'Enchères Animés',
+  'app.title': 'Anime Auction Draft',
   'app.tagline': 'One player sees the card. Both bid. Bluff your way to the best team.',
   'lang.switch': 'Français',
 
@@ -547,11 +549,13 @@ const en: Record<StringKey, string> = {
   'tools.sound.on': 'Turn sound on',
   'footer.fan': 'Unofficial fan game. Characters belong to their creators.',
   'footer.legal': 'Notices and rights',
+  'footer.privacy': 'Privacy policy',
+  'footer.terms': 'Terms of use',
 
   'legal.title': 'Notices and rights',
   'legal.fan.title': 'A fan game',
   'legal.fan':
-    'Enchères Animés is a free, unofficial fan game. It is not affiliated with, sponsored by or endorsed by the creators, publishers, studios or rights holders of any series it mentions. Character and series names belong to their owners and are used only to identify the characters in the game. No rights in them are claimed.',
+    'Anime Auction Draft (Enchères Animés in French) is a free, unofficial fan game. It is not affiliated with, sponsored by or endorsed by the creators, publishers, studios or rights holders of any series it mentions. Character and series names belong to their owners and are used only to identify the characters in the game. No rights in them are claimed.',
   'legal.art.title': 'Pictures',
   'legal.art':
     'The game contains no official artwork and no fan drawings of the characters: every card is drawn by the game from the name, the universe and the rarity.',

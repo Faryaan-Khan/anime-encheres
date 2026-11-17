@@ -11,8 +11,8 @@ anime characters by auction. Each round one player draws a card and sees it, the
 does not, and both bid from a fictional budget (500M by default). The drawer can bluff.
 When the cards run out, the stronger team wins.
 
-The French name is **Enchères Animés**. An English name has not been chosen (see
-"Open decisions").
+The English name is **Anime Auction Draft**; the French name, used when the interface is
+in French, is **Enchères Animés**. The repository and URLs keep `anime-encheres`.
 
 ## Where everything lives
 
@@ -205,7 +205,14 @@ country); monthly seasons from zero with history; recovery codes; friends and
 invitations; feedback form with rights requests; match recording; stronger opponent in
 an Edge Function; rarity cards; dark theme; sound; security headers; French and English.
 
-Google sign-in is on. Everyone starts as a guest; a guest can keep their progress with
+Google sign-in is on and the Google app is published (not "Testing"). Branding: app name
+"Anime Auction Draft", logo `public/logo.svg` (PNG sizes made by `npm run logo`), home
+page, `public/privacy.html` and `public/terms.html`. Google shows the name and logo only
+after brand verification; until then it shows the supabase.co callback address. The
+site is verified in Google Search Console with an HTML file in `public/`, which must stay
+there.
+
+Google sign-in details: Everyone starts as a guest; a guest can keep their progress with
 Google (`link`) or start a new Google account and delete the guest (`fresh`), and a
 Google account that already has a profile simply opens on the device. "Sign out on this
 device" starts a new guest and leaves the account untouched. The redirect to Google and
@@ -214,9 +221,8 @@ Google account, so test it by hand after changes.
 
 ### Open decisions (the owner's)
 
-- **English name.** "AniDraft" is taken: there is an app of that name on Google Play in
-  the same genre. "Anime Draft" is the generic name of the trend and used by several
-  sites. A new candidate is needed before any rename.
+- **English name.** Chosen: Anime Auction Draft. It is close to "Ultimate Auction Draft",
+  an existing 1v1 anime auction game; no trademark search has been done.
 - **Repository visibility.** Public today, with an all-rights-reserved licence.
 - **App stores, donations, paid features, in-game currency.** Deferred by the owner.
 - **Character rights.** Names only, no artwork. Draft Anime (draftanime.com), which the
