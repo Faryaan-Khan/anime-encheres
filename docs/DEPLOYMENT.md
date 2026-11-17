@@ -70,6 +70,11 @@ another project:
    (`https://<site>/**`, `http://localhost:5173/**`).
 4. Add `VITE_GOOGLE_SIGN_IN=true` to `.env` and deploy.
 
+For the name and logo to show on Google's screen, the Google app needs its branding
+(name, logo, home page, privacy policy and terms links), only domains you own under
+**Authorized domains**, the site verified in Google Search Console, publishing status
+**In production**, and a passed **Verify branding** check on the Branding page.
+
 Leave **Skip nonce checks** off. The website signs in with a redirect and PKCE, which
 does not need it. It only matters for a future native app that signs in with Google's own
 SDK and cannot pass a nonce (some iOS setups); turn it on then only if that sign-in fails.
