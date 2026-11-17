@@ -6,13 +6,15 @@ site; online play needs both.
 ## 1. Database (Supabase)
 
 1. Create a Supabase project (the free plan is enough).
-2. Open **SQL Editor** and run the six scripts in order:
+2. Open **SQL Editor** and run the eight scripts in order:
    [`0001_init.sql`](../supabase/migrations/0001_init.sql),
    [`0002_matchmaking.sql`](../supabase/migrations/0002_matchmaking.sql),
    [`0003_ranking.sql`](../supabase/migrations/0003_ranking.sql),
    [`0004_character_powers.sql`](../supabase/migrations/0004_character_powers.sql),
-   [`0005_accounts_and_opponent.sql`](../supabase/migrations/0005_accounts_and_opponent.sql), then
-   [`0006_modes_and_friends.sql`](../supabase/migrations/0006_modes_and_friends.sql).
+   [`0005_accounts_and_opponent.sql`](../supabase/migrations/0005_accounts_and_opponent.sql),
+   [`0006_modes_and_friends.sql`](../supabase/migrations/0006_modes_and_friends.sql),
+   [`0007_seasons.sql`](../supabase/migrations/0007_seasons.sql), then
+   [`0008_opponent_brain.sql`](../supabase/migrations/0008_opponent_brain.sql).
    The editor warns about "destructive operations" because the scripts contain `revoke`
    and `delete` statements inside function bodies; nothing is removed. All scripts are
    idempotent, so they can be run again after an update.
@@ -32,6 +34,27 @@ update encheres.config set value = 'false' where key = 'opponent_enabled';
 -- How long a player waits before the computer sits down, in seconds (min, max):
 update encheres.config set value = '[12, 18]' where key = 'opponent_after_seconds';
 ```
+
+### The stronger opponent (Edge Function)
+
+Optional; without it the rule-based opponent plays every move.
+
+1. `npm run build:opponent` writes `supabase/functions/opponent/bundle.js`.
+2. In Supabase, **Edge Functions → Deploy a new function → Via Editor**. Paste the whole
+   bundle, name the function `opponent`, deploy. (With the Supabase CLI:
+   `supabase functions deploy opponent --no-verify-jwt`.)
+3. In the function's **Settings**, turn **Verify JWT** off and save. The database calls
+   it without a user token; a one-time secret protects it instead.
+4. In the SQL editor:
+   ```sql
+   update encheres.config
+      set value = to_jsonb('https://<project-ref>.supabase.co/functions/v1/opponent'::text)
+    where key = 'opponent_function_url';
+   ```
+5. To check it: `select status_code, content from net._http_response order by id desc limit 5;`
+   shows `ok` after strong opponents move.
+
+Redeploy the function (steps 1 and 2) whenever `src/bot/` changes.
 
 ### Google sign-in (optional)
 

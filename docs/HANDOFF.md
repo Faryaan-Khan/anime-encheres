@@ -22,6 +22,7 @@ The French name is **Enchères Animés**. An English name has not been chosen (s
 | Source | https://github.com/Faryaan-Khan/anime-encheres (branch `main`) |
 | Hosting | Netlify, builds and deploys every push to `main` |
 | Database | Supabase project `iwlmrwwuslebvaqjahnt` (URL and publishable key are in `.env`; both are public by design) |
+| Edge Function | `opponent` in the same Supabase project: the stronger computer opponent |
 | CI | GitHub Actions: type check, tests, build (`.github/workflows/ci.yml`) |
 
 Nothing runs on anyone's computer or browser. The site is served by Netlify and the game
@@ -35,9 +36,10 @@ built from. The only manual step in the whole system is applying a new database 
 npm install
 npm run dev          # local site, talks to the live database through .env
 npm run typecheck    # TypeScript strict
-npm test             # 179 unit and database tests (no external service needed)
+npm test             # 186 unit and database tests (no external service needed)
 npm run test:e2e     # real browsers against the real SQL; needs Chrome (CHROME_PATH)
 npm run ratings      # after editing src/data/rosters.json
+npm run build:opponent  # after editing src/bot/: rebuild the Edge Function bundle
 npm run build
 ```
 
@@ -72,6 +74,9 @@ src/match/       Quick-match settings and the list of ranked modes
 src/screens/     One file per screen
 src/components/  Board, cards, bid controls, final screen, avatar
 src/ranking.ts   Leagues, badges and the overall-score formula (display side)
+src/theme.ts     Light/dark theme
+src/sound.ts     Sound effects, synthesized with Web Audio (no audio files)
+supabase/functions/opponent/   Edge Function: the look-ahead opponent (bundle.js is generated)
 supabase/migrations/   The database, in order (below)
 supabase/tests/        Database tests, run in PGlite (Postgres in WebAssembly)
 e2e/online.e2e.mjs     Browser test: several isolated browsers play through the real UI
@@ -94,7 +99,9 @@ Migrations, to be run in this order in the Supabase SQL editor. All are idempote
 | `0003_ranking.sql` | Profiles, match records, feedback, rate limits, server-side verdict |
 | `0004_character_powers.sql` | Generated. Every card's power and universe. Re-run after rating changes |
 | `0005_accounts_and_opponent.sql` | Recovery codes, sign-in linking, the computer opponent played by the database, `encheres.config` |
-| `0006_modes_and_friends.sql` | One queue, rating and leaderboard per mode, overall score, monthly seasons, friends, invitations |
+| `0006_modes_and_friends.sql` | One queue, rating and leaderboard per mode, overall score, friends, invitations |
+| `0007_seasons.sql` | Monthly seasons from zero, `season_results` history, rights-request feedback |
+| `0008_opponent_brain.sql` | pg_net hand-off of strong opponents' bids to the Edge Function, with fallback |
 
 Functions the client calls:
 
@@ -108,14 +115,18 @@ Functions the client calls:
 | `get_friends`, `add_friend`, `answer_friend`, `remove_friend` | Friends by player tag |
 | `invite_friend`, `dismiss_invite` | Invitations to a private room |
 | `recovery_code`, `redeem_code`, `link_account` | Keeping a profile across devices |
-| `send_feedback` | The feedback form |
+| `send_feedback` | The feedback form (also rights requests) |
+| `opponent_claim` | Used only by the Edge Function, with a one-time secret from the database |
 
 Tables: `rooms`, `room_players`, `profiles`, `devices`, `ratings` (trophies per mode),
-`matches` (every finished online game with its action log), `friends`, `invites`,
-`feedback`, `characters`, `config`, `rate_limits`.
+`season_results` (each finished season per player and mode), `matches` (every finished
+online game with its action log), `friends`, `invites`, `feedback`, `characters`,
+`config`, `rate_limits`.
 
 Settings that can be changed without a migration are rows of `encheres.config`:
-`opponent_enabled`, `opponent_after_seconds`, `opponent_pace`, `season`.
+`opponent_enabled`, `opponent_after_seconds`, `opponent_pace`, `opponent_function_url`
+(`null` turns the Edge Function off), `opponent_lookahead_from` (skill from which it is
+used, 0.6), `season` (managed by the server).
 
 To read player feedback: Supabase, Table Editor, schema `encheres`, table `feedback`.
 
@@ -165,12 +176,20 @@ Short versions; details and reasons are in `docs/ARCHITECTURE.md`.
 - **Overall score.** A weighted average of a player's trophies over every mode. `mix`
   counts double; a mode never played counts as zero. With seven universes that is nine
   shares. It is what the world ranking and the profile headline show.
-- **Seasons.** On the first of each month, every rating above 2200 (the Legend entrance)
-  returns to 2200. It happens the first time anyone calls the server in the new month.
+- **Seasons.** On the first of each month (UTC) every rating and overall score returns
+  to 0, after each player's result for the month is filed in `season_results`. It
+  happens the first time anyone calls the server in the new month. All-time bests are
+  kept; the profile shows records and past seasons.
 - **Computer opponent online.** If nobody is found in 12 to 18 seconds, the database
   seats an opponent with an ordinary name and plays its moves when the player's device
   polls. Players are not told; this was the owner's decision. Its skill follows the
-  player's trophies in that mode. `opponent_enabled` turns it off.
+  player's trophies in that mode. `opponent_enabled` turns it off. From skill 0.6 its
+  bids come from the Edge Function's look-ahead player (about 63% against the offline
+  hard level); below that, or if the function does not answer within 6 seconds, from
+  the SQL rule-based player.
+- **Cards and presentation.** Rarity frames (Common to Mythic, Apex for each universe's
+  strongest) are CSS only. Dark theme, synthesized sounds and effects are described in
+  `docs/ARCHITECTURE.md`.
 - **Friends.** Players exchange a seven-character tag. A request must be accepted. There
   is a friends leaderboard, and the host of a private room can invite a friend, who sees
   the invitation on the home screen.
@@ -180,8 +199,9 @@ Short versions; details and reasons are in `docs/ARCHITECTURE.md`.
 Done and live: same-device and offline play against two computer levels; private online
 rooms; quick matches in eight modes with a turn clock; server-played opponent; profiles
 with statistics, badges, avatar and country; leaderboards (overall, per mode, friends,
-country); monthly Legend reset; recovery codes; friends and invitations; feedback form;
-match recording; security headers; French and English.
+country); monthly seasons from zero with history; recovery codes; friends and
+invitations; feedback form with rights requests; match recording; stronger opponent in
+an Edge Function; rarity cards; dark theme; sound; security headers; French and English.
 
 Built but switched off: Google sign-in. It needs an OAuth client created in the owner's
 Google Cloud account and its id and secret entered in Supabase (steps in
@@ -195,8 +215,13 @@ but has not been exercised against the live provider.
   sites. A new candidate is needed before any rename.
 - **Repository visibility.** Public today, with an all-rights-reserved licence.
 - **App stores, donations, paid features, in-game currency.** Deferred by the owner.
-- **Character rights.** Names only, no artwork. The owner intends to revisit this before
-  any commercial step.
+- **Character rights.** Names only, no artwork. Draft Anime (draftanime.com), which the
+  owner pointed to, shows character pictures and relies on a fan-made disclaimer, a
+  statement that franchise material belongs to its owners, and a DMCA/rights-request
+  process. This game has the same notices (`#/legal`, footer, a "rights" feedback topic)
+  but deliberately no pictures: a disclaimer and a takedown route reduce risk, they do
+  not grant the right to use the art. Pictures can be dropped into `src/assets/cards/`
+  only if the owner has the rights to them.
 - **When to switch off the computer opponent.** The owner's idea is once there are
   enough players (he mentioned about ten thousand).
 
@@ -205,8 +230,9 @@ but has not been exercised against the live provider.
 - A learning opponent trained on the recorded matches (`encheres.matches.log`).
 - Cheat detection from the same records.
 - "Undercover" and dice variants, spectators.
-- Moving the stronger look-ahead opponent online (it would need a server runtime such as
-  a Supabase Edge Function; a database function is too slow for it).
+- Teaching the online opponent from recorded games, or letting it learn each player's
+  bluffing during a match (the offline levels already do the latter; the Edge Function
+  starts each decision with a neutral guess).
 
 ### Known limits
 
@@ -217,3 +243,6 @@ but has not been exercised against the live provider.
   on the server, which is what a copy would lack.
 - Supabase pauses free projects after about a week without activity.
 - Statistics (games, wins, streaks) are global; only trophies are per mode.
+- The Edge Function is deployed by pasting `bundle.js` in the dashboard; it is not
+  redeployed by CI. Rebuild and redeploy it when `src/bot/` changes.
+- Sound needs one tap on the page before browsers allow it.
