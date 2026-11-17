@@ -158,8 +158,8 @@ Things that have bitten this project, so that they do not again:
 - **A statement does not see its own writes.** In `roll_season`, updating ratings and
   recomputing overall scores in one statement used the old ratings. Use two statements.
 - **Where the latest version of a function lives.** Later migrations replace functions
-  from earlier ones. As of 0010: the auction rules are `encheres.play_as` (0010; `public.play`
-  only maps the token to a seat), `room_view`, `get_room` and `bot_step` are in 0010,
+  from earlier ones. As of 0011: the auction rules are `encheres.play_as` (0010; `public.play`
+  only maps the token to a seat), `room_view` and `get_room` are in 0010,
   `end_by_forfeit` and `settle_match` in 0003; `enforce`, `bot_step`, `leaderboard`,
   `resign` and `sweep_abandoned` in 0011. Copy from the newest file when replacing one.
 - **Rules exist in two languages.** The auction (TypeScript engine and SQL `play_as`) and
@@ -208,6 +208,18 @@ Short versions; details and reasons are in `docs/ARCHITECTURE.md`.
   no scheduler is needed and nobody has to claim a win. A player who can no longer buy
   (full team, or less than the minimum bid) never holds the other up: their card is drawn
   for them, in every kind of game.
+- **Finished players and the autopilot.** A player who cannot buy any more (team full,
+  or less money than the minimum bid) is only watching: the board says so, results move
+  on after 1.5 s instead of 5, and "Leave (result still counts)" replaces "Forfeit". The
+  server never counts them as gone and `resign` from them is not a forfeit, so the
+  match is played out and settled, trophies included, without them. Against the
+  computer (online and offline) the computer then finishes its team at once and the
+  final screen follows. Every result moves on by itself after a countdown on the button
+  (`NextButton` in `Board.tsx`); between two people the server moves on after 12 s as a
+  backstop. `encheres.sweep_games()` runs every minute through pg_cron
+  (job `encheres-sweep`) so games nobody is looking at still end and are settled.
+- **Leaderboards** show the top 1000; a player below that gets `around`: themselves and
+  the players directly above and below, shown after a gap.
 - **Friends.** Players exchange a seven-character tag. A request must be accepted. There
   is a friends leaderboard, and the host of a private room can invite a friend, who sees
   the invitation on the home screen.
@@ -215,7 +227,7 @@ Short versions; details and reasons are in `docs/ARCHITECTURE.md`.
 ## State of things
 
 Done and live: same-device and offline play against two computer levels; private online
-rooms; quick matches in eight modes with a 30-second clock, strikes and automatic wins over players who leave; server-played opponent; profiles
+rooms; quick matches in eight modes with a 30-second clock, strikes, automatic wins over players who leave, and an autopilot that settles the match once a player cannot buy any more; server-played opponent; profiles
 with statistics, badges, avatar and country; leaderboards (overall, per mode, friends,
 country); monthly seasons from zero with history; recovery codes; friends and
 invitations; feedback form with rights requests; match recording; stronger opponent in
