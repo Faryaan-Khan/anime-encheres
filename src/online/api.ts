@@ -4,7 +4,7 @@
  */
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { GameView, Settings } from '../game/types';
-import { readStored, writeStored } from '../storage';
+import { readStored, removeStored, writeStored } from '../storage';
 import { ONLINE_AVAILABLE, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from './config';
 
 export const SERVER_ERRORS = [
@@ -25,6 +25,7 @@ export const SERVER_ERRORS = [
   'NOT_ALLOWED',
   'RATE_LIMITED',
   'ALREADY_LINKED',
+  'SIGN_IN_CANCELLED',
 ] as const;
 
 export type OnlineErrorCode = (typeof SERVER_ERRORS)[number] | 'NETWORK' | 'UNKNOWN';
@@ -72,6 +73,11 @@ export function getPlayerToken(): string {
     writeStored('ae.token', token);
   }
   return token;
+}
+
+/** Forgets this device's identity; the next call creates a new guest. */
+export function resetPlayerToken(): void {
+  removeStored('ae.token');
 }
 
 async function rpc<T = GameView>(fn: string, args: Record<string, unknown>): Promise<T> {

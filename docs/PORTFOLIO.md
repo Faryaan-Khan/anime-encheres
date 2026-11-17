@@ -53,7 +53,7 @@ Pick three or four.
 - Added abuse controls without accounts: per-device and per-address rate limits (addresses
   stored only as hashes), input validation in every function, and a strict Content
   Security Policy on the site.
-- Set up CI with GitHub Actions (type check, 186 tests, production build) and continuous
+- Set up CI with GitHub Actions (type check, 191 tests, production build) and continuous
   deployment to Netlify.
 
 ## Skills demonstrated
