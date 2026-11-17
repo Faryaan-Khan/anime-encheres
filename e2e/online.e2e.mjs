@@ -44,7 +44,7 @@ if (!chromePath) {
 
 const db = new PGlite();
 await db.exec('create role anon nologin; create role authenticated nologin;');
-for (const file of ['0001_init.sql', '0002_matchmaking.sql', '0003_ranking.sql', '0004_character_powers.sql', '0005_accounts_and_opponent.sql', '0006_modes_and_friends.sql']) {
+for (const file of ['0001_init.sql', '0002_matchmaking.sql', '0003_ranking.sql', '0004_character_powers.sql', '0005_accounts_and_opponent.sql', '0006_modes_and_friends.sql', '0007_seasons.sql', '0008_opponent_brain.sql']) {
   await db.exec(readFileSync(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8'));
 }
 
@@ -242,8 +242,9 @@ try {
   await until(ana, () => sees(ana, '.final'), 'the final screen');
   assert((await text(ana)).includes('Ana wins: Ben left the game'), 'the forfeit is announced to the winner');
   assert(!(await click(ana, 'Rematch')), 'no rematch in a quick match');
-  assert((await text(ana)).includes('+30 trophies, 30 in total'), 'the winner sees the trophies won');
-  assert((await text(ben)).includes('Trophies unchanged: 0'), 'trophies never go below zero');
+  // The total counts up on screen: wait for it to land.
+  await until(ana, async () => (await text(ana)).includes('+30 trophies, 30 in total'), 'the trophies won');
+  await until(ben, async () => (await text(ben)).includes('Trophies unchanged: 0'), 'trophies never below zero');
   console.log('PASS  quick match: paired, played, forfeit announced, trophies awarded');
   await snap(ana, 'match-forfeit');
 
@@ -385,7 +386,10 @@ try {
   await laptop.type('input[placeholder^=XXXX]', recovery.toLowerCase());
   await click(laptop, 'Open my account');
   await until(laptop, async () => (await laptop.$eval('h1', (e) => e.textContent)) === 'Cam', 'the recovered profile');
-  assert(/All mixed\s+Silver League\s+374/.test(await text(laptop)), 'the trophies came along');
+  const mixedTile = await laptop.$$eval('.mode-tile', (tiles) =>
+    tiles.map((t) => t.innerText).find((t) => t.startsWith('All mixed')),
+  );
+  assert(/374/.test(mixedTile) && /Silver League/.test(mixedTile), `the trophies came along (${mixedTile})`);
   console.log('PASS  account recovered on a second device with its code');
 
   // --- Modes -------------------------------------------------------------------
@@ -461,8 +465,32 @@ try {
   assert(buttons.join('|') === 'Play online|Play offline', `home offers online first, then offline (${buttons})`);
   assert(await solo.$eval('.home__modes .btn--mode', (e) => e.classList.contains('btn--primary')), 'online is highlighted');
   await snap(solo, 'home');
-  assert(pageErrors.length === 0, `no page errors (${pageErrors.join('; ')})`);
   console.log('PASS  home: play online first, one offline entry');
+
+  // --- Dark theme, notices -------------------------------------------------------
+
+  await click(solo, '☾');
+  await until(solo, () => solo.evaluate(() => document.documentElement.dataset.theme === 'dark'), 'the dark theme');
+  // The colours fade over a quarter of a second.
+  await until(
+    solo,
+    async () => (await solo.evaluate(() => getComputedStyle(document.body).backgroundColor)) === 'rgb(18, 19, 23)',
+    'the page to turn dark',
+  );
+  await solo.reload({ waitUntil: 'networkidle2' });
+  assert(await solo.evaluate(() => document.documentElement.dataset.theme === 'dark'), 'the theme is remembered');
+  await snap(solo, 'home-dark');
+  await solo.goto(`${base}#/profile`, { waitUntil: 'networkidle2' });
+  await until(solo, () => sees(solo, '.mode-tile'), 'the profile');
+  await snap(solo, 'profile-dark');
+  await solo.goto(`${base}#/legal`, { waitUntil: 'networkidle2' });
+  await until(solo, async () => (await text(solo)).includes('unofficial fan game'), 'the notices');
+  assert((await solo.$$('.team__cards .card')).length === 6, 'every rarity is shown');
+  await snap(solo, 'legal-dark');
+  await click(solo, 'Send a request');
+  await until(solo, () => solo.evaluate(() => [...document.querySelectorAll('input[name=category]')].find((i) => i.checked)?.parentElement.textContent === 'Rights request'), 'the rights topic');
+  assert(pageErrors.length === 0, `no page errors (${pageErrors.join('; ')})`);
+  console.log('PASS  dark theme remembered; notices and rights request');
 } catch (error) {
   failed = true;
   console.error(`FAIL  ${error.message}`);

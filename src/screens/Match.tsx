@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useNow } from '../hooks';
+import { play } from '../sound';
 import { MIX_ID } from '../data/characters';
 import { useI18n } from '../i18n';
 import { MATCH_SETTINGS, MODES, isMode } from '../match/config';
@@ -90,6 +92,7 @@ export function Match() {
         name={name.trim()}
         mode={mode}
         onFound={(found) => {
+          play('found');
           setSearching(false);
           setCode(found);
         }}
@@ -210,10 +213,33 @@ function Searching({ name, mode, onFound, onCancel }: SearchingProps) {
     };
   }, [name, mode]);
 
+  const started = useRef(Date.now());
+  const now = useNow(250);
+  const seconds = Math.max(0, Math.floor((now - started.current) / 1000));
+  const clock = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+  const tip = Math.floor(seconds / 6) % 5;
+
+  // A soft ping every few seconds while looking.
+  useEffect(() => {
+    if (seconds > 0 && seconds % 3 === 0) play('search');
+  }, [seconds]);
+
   return (
-    <main className="page">
+    <main className="page search-screen">
       <h1 className="display">{t('match.title')}</h1>
-      <p className="waiting searching">{t('match.searching.mode', { mode: modeName(mode, t) })}</p>
+      <p className="trophies searching__mode">{modeName(mode, t)}</p>
+      <div className="radar" role="timer" aria-label={t('search.time')}>
+        <span className="radar__ring" />
+        <span className="radar__ring" />
+        <span className="radar__ring" />
+        <span className="radar__time">{clock}</span>
+      </div>
+      <p className="searching__status" aria-live="polite">
+        <span className="dots">{t('match.searching.mode', { mode: modeName(mode, t) }).replace(/…$/, '')}</span>
+      </p>
+      <p key={tip} className="searching__tip">
+        {t(`search.tip.${tip}` as 'search.tip.0')}
+      </p>
       <button type="button" className="btn" onClick={onCancel}>
         {t('match.cancel')}
       </button>

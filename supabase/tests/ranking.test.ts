@@ -49,13 +49,16 @@ const search = (who: string, name: string, code: string | null = null) =>
 const profile = (who: string) => rpc<Profile>('get_profile', [who]);
 const setTrophies = async (who: string, trophies: number, mode = 'one-piece') => {
   await db.query(
-    `insert into encheres.ratings (profile, mode, trophies, best, games)
-     select id, $3, $2, $2, 1 from encheres.profiles where token_hash = encheres.token_hash($1)
-     on conflict (profile, mode) do update set trophies = excluded.trophies, best = excluded.trophies`,
+    `insert into encheres.ratings (profile, mode, trophies, best, games, season_best, season_games)
+     select id, $3, $2, $2, 1, $2, 1 from encheres.profiles where token_hash = encheres.token_hash($1)
+     on conflict (profile, mode) do update
+       set trophies = excluded.trophies, best = excluded.trophies,
+           season_best = excluded.trophies, season_games = greatest(encheres.ratings.season_games, 1)`,
     [who, trophies, mode],
   );
   await db.query(
-    `update encheres.profiles set games = greatest(games, 1), trophies = encheres.overall(id)
+    `update encheres.profiles set games = greatest(games, 1), season_games = greatest(season_games, 1),
+            trophies = encheres.overall(id)
       where token_hash = encheres.token_hash($1)`,
     [who],
   );
@@ -172,9 +175,9 @@ describe('ranked games', () => {
       expect(result.deltas![expected.winner === 0 ? 1 : 0]).toBe(0);
       // Trophies belong to the mode; the profile's own number is the overall score (30 / 9).
       expect(winner).toMatchObject({ trophies: 3, peak: 30, wins: 1, losses: 0, streak: 1, rank: 1 });
-      expect(winner.modes).toEqual([{ mode: 'one-piece', trophies: 30, best: 30, games: 1, wins: 1 }]);
+      expect(winner.modes).toMatchObject([{ mode: 'one-piece', trophies: 30, best: 30, games: 1, wins: 1 }]);
       expect(loser).toMatchObject({ trophies: 0, wins: 0, losses: 1, streak: 0, rank: 2 });
-      expect(loser.modes).toEqual([{ mode: 'one-piece', trophies: 0, best: 0, games: 1, wins: 0 }]);
+      expect(loser.modes).toMatchObject([{ mode: 'one-piece', trophies: 0, best: 0, games: 1, wins: 0 }]);
       expect(result.trophies![expected.winner]).toBe(30);
     }
   });
@@ -351,7 +354,7 @@ describe('leaderboards', () => {
   });
 
   it('leave out players who never played, work without a token, and validate', async () => {
-    await db.exec(`update encheres.profiles set games = 0 where name = 'Cam'`);
+    await db.exec(`update encheres.profiles set games = 0, season_games = 0 where name = 'Cam'`);
     const board = await rpc<Board>('leaderboard', [null, 'overall', null]);
     expect(board.rows.map((r) => r.name)).toEqual(['Ben', 'Ana']);
     expect(board.me).toBeNull();

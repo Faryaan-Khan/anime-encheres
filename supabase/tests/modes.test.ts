@@ -43,13 +43,16 @@ const friends = (who: string) => rpc<Friends>('get_friends', [who]);
 const named = async (who: string, name: string) => rpc<Profile>('update_profile', [who, name, null, 0]);
 const setTrophies = async (who: string, trophies: number, mode: string) => {
   await db.query(
-    `insert into encheres.ratings (profile, mode, trophies, best, games)
-     select id, $3, $2, $2, 1 from encheres.profiles where token_hash = encheres.token_hash($1)
-     on conflict (profile, mode) do update set trophies = excluded.trophies, best = excluded.trophies`,
+    `insert into encheres.ratings (profile, mode, trophies, best, games, season_best, season_games)
+     select id, $3, $2, $2, 1, $2, 1 from encheres.profiles where token_hash = encheres.token_hash($1)
+     on conflict (profile, mode) do update
+       set trophies = excluded.trophies, best = excluded.trophies,
+           season_best = excluded.trophies, season_games = greatest(encheres.ratings.season_games, 1)`,
     [who, trophies, mode],
   );
   await db.query(
-    `update encheres.profiles set games = greatest(games, 1), trophies = encheres.overall(id)
+    `update encheres.profiles set games = greatest(games, 1), season_games = greatest(season_games, 1),
+            trophies = encheres.overall(id)
       where token_hash = encheres.token_hash($1)`,
     [who],
   );
@@ -67,7 +70,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   await db.exec(`
     delete from encheres.rooms; delete from encheres.matches; delete from encheres.devices;
-    delete from encheres.profiles; delete from encheres.rate_limits;
+    delete from encheres.profiles; delete from encheres.rate_limits; delete from encheres.feedback;
     delete from encheres.config where key = 'season';
     update encheres.config set value = 'false' where key = 'opponent_enabled';`);
 });
@@ -170,33 +173,90 @@ describe('seasons', () => {
        on conflict (key) do update set value = excluded.value`,
       [month],
     );
+  interface Season {
+    season: string;
+    trophies: number;
+    best: number;
+    rank: number;
+    players: number;
+    modes: Array<{ mode: string; trophies: number; best: number; rank: number }>;
+  }
+  interface Records {
+    season: string;
+    trophies: number;
+    seasonBest: number;
+    bestRank: number | null;
+    peak: number;
+    rank: number | null;
+    modes: Array<{ mode: string; trophies: number; best: number; seasonBest: number; bestRank: number | null }>;
+    history: Season[];
+  }
+  const records = (who: string) => rpc<Records>('get_profile', [who]);
 
-  it('bring Legend players back to the league entrance when the month changes', async () => {
+  it('start everyone from zero each month and keep the results of the month before', async () => {
     await named(ANA, 'Ana');
     await named(BEN, 'Ben');
     await setTrophies(ANA, 2950, 'naruto');
-    await setTrophies(ANA, 2400, 'mix');
-    await setTrophies(ANA, 1800, 'bleach');
-    await setTrophies(BEN, 2199, 'naruto');
+    await setTrophies(ANA, 400, 'mix');
+    await setTrophies(BEN, 1200, 'naruto');
     await setSeason('2020-01');
 
-    const ana = await profile(ANA);
+    const ana = await records(ANA);
+    expect(ana.season).toBe(new Date().toISOString().slice(0, 7));
+    expect(ana.trophies).toBe(0);
+    expect(ana.rank).toBeNull();
     expect(ana.modes).toMatchObject([
-      { mode: 'bleach', trophies: 1800 },
-      { mode: 'mix', trophies: 2200 },
-      { mode: 'naruto', trophies: 2200, best: 2950 },
+      { mode: 'mix', trophies: 0, best: 400, seasonBest: 0, bestRank: 1 },
+      { mode: 'naruto', trophies: 0, best: 2950, seasonBest: 0, bestRank: 1 },
     ]);
-    expect(ana.trophies).toBe(overallScore({ bleach: 1800, mix: 2200, naruto: 2200 }));
-    expect((await profile(BEN)).modes).toMatchObject([{ mode: 'naruto', trophies: 2199 }]);
+    expect(ana.peak).toBe(2950);
+    expect(ana.bestRank).toBe(1);
+    expect(ana.history).toHaveLength(1);
+    expect(ana.history[0]).toMatchObject({
+      season: '2020-01',
+      trophies: overallScore({ naruto: 2950, mix: 400 }),
+      rank: 1,
+      players: 2,
+    });
+    expect(ana.history[0].modes).toMatchObject([
+      { mode: 'naruto', trophies: 2950, rank: 1 },
+      { mode: 'mix', trophies: 400, rank: 1 },
+    ]);
+    const ben = await records(BEN);
+    expect(ben.history[0]).toMatchObject({ rank: 2, players: 2 });
+    expect(ben.history[0].modes).toMatchObject([{ mode: 'naruto', rank: 2 }]);
+
+    // The new season's tables are empty until someone plays.
+    expect((await rpc<Board>('leaderboard', [ANA, 'naruto', null])).rows).toEqual([]);
+    expect((await rpc<Board>('leaderboard', [ANA, 'overall', null])).rows).toEqual([]);
+  });
+
+  it('count a game played in the new season', async () => {
+    await named(ANA, 'Ana');
+    await named(BEN, 'Ben');
+    await setTrophies(ANA, 900, 'naruto');
+    await setSeason('2020-01');
+    const waiting = await search(ANA, 'Ana', 'naruto');
+    await search(BEN, 'Ben', 'naruto');
+    await rpc('resign', [waiting.code, BEN]);
+    const ana = await records(ANA);
+    expect(ana.modes).toMatchObject([{ mode: 'naruto', trophies: 30, seasonBest: 30, best: 900 }]);
+    expect(ana.rank).toBe(1);
+    expect((await rpc<Board>('leaderboard', [ANA, 'naruto', null])).rows.map((r) => r.name)).toEqual(['Ana', 'Ben']);
   });
 
   it('do nothing again within the same month', async () => {
     await named(ANA, 'Ana');
     await profile(ANA); // starts the current season
     await setTrophies(ANA, 2600, 'naruto');
-    expect((await profile(ANA)).modes).toMatchObject([{ mode: 'naruto', trophies: 2600 }]);
     await rpc('leaderboard', [ANA, 'naruto', null]);
     expect((await profile(ANA)).modes).toMatchObject([{ mode: 'naruto', trophies: 2600 }]);
+    expect((await records(ANA)).history).toEqual([]);
+  });
+
+  it('accept rights requests through the feedback form', async () => {
+    expect(await rpc<boolean>('send_feedback', [ANA, 'rights', 'Please remove the picture of my character.', 'legal@example.com', 'en'])).toBe(true);
+    expect((await db.query<{ category: string }>('select category from encheres.feedback')).rows).toEqual([{ category: 'rights' }]);
   });
 });
 

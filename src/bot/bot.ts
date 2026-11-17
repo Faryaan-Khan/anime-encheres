@@ -68,6 +68,10 @@ export interface BotContext {
   rng?: () => number;
   /** Imagined games per decision for the hard level. More is stronger and slower. */
   rollouts?: number;
+  /** How both players play in the imagined games (default: the normal level). */
+  playoutStyle?: Style;
+  /** What the hard level does when looking ahead cannot separate the options (default: SHARP). */
+  instinctStyle?: Style;
 }
 
 export interface Decision {
@@ -255,6 +259,10 @@ export interface Style {
   greed?: number;
   /** Multiplies what it will pay for a card it has not seen. */
   nerve?: number;
+  /** How far a bluff goes, as a share of one slot's fair budget (default 0.5). */
+  bluffDepth?: number;
+  /** A card counts as unwanted, and can be bluffed on, below this many minimum bids (default 2). */
+  bluffBelow?: number;
 }
 
 const NORMAL: Style = {
@@ -335,14 +343,14 @@ function byRules(view: GameView, ctx: BotContext, style: Style, rng: () => numbe
     const noise = 1 + (rng() * 2 - 1) * style.noise;
     const limit = floor(Math.min(self.budget, myWorth(powerOf(view.card)) * noise * (style.greed ?? 1)));
     // A bluff pretends the card is decent: half a slot's fair share at most.
-    const bluffCeiling = floor(Math.min(self.budget, (self.budget / mySlots) * 0.5));
+    const bluffCeiling = floor(Math.min(self.budget, (self.budget / mySlots) * (style.bluffDepth ?? 0.5)));
 
     if (view.highBidder === null) {
       // Nobody to outbid: take it at the minimum or leave it.
       if (rivalIsOut) return limit >= required ? bids(required) : passes();
 
       if (memory.bluff === null) {
-        const unwanted = limit < minBid * 2;
+        const unwanted = limit < minBid * (style.bluffBelow ?? 2);
         const bluff = unwanted && self.budget >= minBid * 4 && rng() < style.bluffChance;
         memory = { ...memory, bluff };
       }
@@ -457,7 +465,7 @@ function seatView(state: GameState, seat: Seat): GameView {
 }
 
 /** Plays an imagined game to the end with two rule-based players. Returns the winner. */
-function playOut(start: GameState, pool: readonly string[], rng: () => number): Seat | null {
+function playOut(start: GameState, pool: readonly string[], rng: () => number, style: Style = NORMAL): Seat | null {
   let state = start;
   const memory: [BotMemory, BotMemory] = [emptyMemory(), emptyMemory()];
   for (let steps = 0; state.phase !== 'finished' && steps < 4000; steps++) {
@@ -471,7 +479,7 @@ function playOut(start: GameState, pool: readonly string[], rng: () => number): 
     const { action, memory: updated } = byRules(
       seatView(state, seat),
       { pool, level: 'normal', memory: memory[seat] },
-      NORMAL,
+      style,
       rng,
     );
     memory[seat] = updated;
@@ -489,7 +497,7 @@ function playOut(start: GameState, pool: readonly string[], rng: () => number): 
 export const DEFAULT_ROLLOUTS = 40;
 
 function byLookingAhead(view: GameView, ctx: BotContext, rng: () => number): Decision {
-  const instinct = byRules(view, ctx, SHARP, rng);
+  const instinct = byRules(view, ctx, ctx.instinctStyle ?? SHARP, rng);
   if (view.phase !== 'bidding') return instinct;
 
   const me = view.you as Seat;
@@ -538,7 +546,7 @@ function byLookingAhead(view: GameView, ctx: BotContext, rng: () => number): Dec
     options.forEach((option, index) => {
       const after = option.type === 'bid' ? bid(world, me, option.amount) : pass(world, me);
       // The same seed for both options: they are compared on the same future.
-      const winner = playOut(after, ctx.pool, seededRng(seed));
+      const winner = playOut(after, ctx.pool, seededRng(seed), ctx.playoutStyle);
       score[index] += winner === me ? 1 : winner === null ? 0.5 : 0;
     });
   }

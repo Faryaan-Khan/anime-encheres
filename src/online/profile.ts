@@ -21,6 +21,20 @@ export interface ModeRating {
   best: number;
   games: number;
   wins: number;
+  seasonBest: number;
+  seasonGames: number;
+  /** Best final rank in this mode over past seasons. */
+  bestRank: number | null;
+}
+
+/** A finished season: the overall result and each mode played. */
+export interface SeasonResult {
+  season: string;
+  trophies: number;
+  best: number;
+  rank: number;
+  players: number;
+  modes: Array<{ mode: string; trophies: number; best: number; rank: number }>;
 }
 
 export interface Profile {
@@ -38,6 +52,12 @@ export interface Profile {
   modes: ModeRating[];
   /** Highest trophies ever reached in any single mode. */
   peak: number;
+  /** The current season, 'YYYY-MM' (UTC). Trophies start from 0 each month. */
+  season: string | null;
+  seasonBest: number;
+  /** Best final rank in any past season, overall or in a mode. */
+  bestRank: number | null;
+  history: SeasonResult[];
   games: number;
   wins: number;
   losses: number;
@@ -72,7 +92,7 @@ export interface Leaderboard {
 
 /** `overall`, or a mode: a universe id or `mix`. */
 export type LeaderboardScope = string;
-export type FeedbackCategory = 'idea' | 'bug' | 'ratings' | 'other';
+export type FeedbackCategory = 'idea' | 'bug' | 'ratings' | 'rights' | 'other';
 
 async function call<T>(fn: string, args: Record<string, unknown>): Promise<T> {
   let result;

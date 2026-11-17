@@ -1,4 +1,4 @@
-import { useEffect, useState, type KeyboardEvent, type PointerEvent } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { getCharacter } from '../data/characters';
 import type { GameView, PlayerView, Seat } from '../game/types';
 import { useI18n } from '../i18n';
@@ -6,6 +6,7 @@ import type { StringKey } from '../i18n/strings';
 import { BidControls } from './BidControls';
 import { CharacterCard } from './CharacterCard';
 import { Scoreboard } from './Scoreboard';
+import { play } from '../sound';
 
 export interface BoardProps {
   view: GameView;
@@ -65,6 +66,13 @@ export function Board({
 
   // Never carry a peek over to the next card.
   useEffect(() => setPeeking(false), [view.round, view.phase]);
+
+  useGameSounds(view, mode);
+  const myClock = clock && (mode === 'shared' || view.you === clock.seat) ? clock.secondsLeft : null;
+  useEffect(() => {
+    if (myClock === null || myClock > 10 || myClock < 1) return;
+    play(myClock <= 5 ? 'urgent' : 'tick');
+  }, [myClock]);
 
   const player = (seat: Seat): PlayerView => view.players[seat];
   const drawer = player(view.drawer);
@@ -155,7 +163,9 @@ export function Board({
                 <>
                   <p className="stage__label">{t('board.currentBid')}</p>
                   <p className="stage__amount">
-                    <span className="price">{money(view.highBid)}</span>
+                    <span key={view.highBid} className="price pop">
+                      {money(view.highBid)}
+                    </span>
                     <span className={`stage__by seat${view.highBidder}`}>
                       {t('board.by', { name: player(view.highBidder).name })}
                     </span>
@@ -197,7 +207,7 @@ export function Board({
       )}
 
       {clock && clock.secondsLeft <= CLOCK_VISIBLE_FROM && (
-        <div className="clock" role="status">
+        <div className={`clock${clock.secondsLeft <= 10 ? ' clock--urgent' : ''}`} role="status">
           {mine(clock.seat) ? (
             <p className="alert">{t('board.timer.you', { n: Math.max(0, clock.secondsLeft) })}</p>
           ) : clock.secondsLeft > 0 ? (
@@ -292,4 +302,41 @@ function History({ view }: { view: GameView }) {
       )}
     </details>
   );
+}
+
+/**
+ * Plays a sound for each thing that happens in the game, by comparing the
+ * view with the previous one. "Mine" means the seat this screen belongs to;
+ * on a shared screen every result is cheered.
+ */
+function useGameSounds(view: GameView, mode: 'shared' | 'personal'): void {
+  const previous = useRef<GameView | null>(null);
+  useEffect(() => {
+    const before = previous.current;
+    previous.current = view;
+    if (!before || before.round > view.round) return;
+    const me = mode === 'personal' ? view.you : null;
+    const timers: number[] = [];
+    const later = (ms: number, fn: () => void) => timers.push(window.setTimeout(fn, ms));
+
+    if (before.phase === 'draw' && view.phase === 'bidding') {
+      play('draw');
+      if (view.card !== null) later(220, () => play('flip'));
+    } else if (view.phase === 'reveal' && (before.phase !== 'reveal' || before.round !== view.round)) {
+      const last = view.history[view.history.length - 1];
+      if (before.phase === 'bidding' && before.card === null) play('flip');
+      later(250, () => {
+        if (!last || last.winner === null) play('discard');
+        else if (me === null || last.winner === me) play('won');
+        else play('lost');
+      });
+    } else if (view.phase === 'bidding' && before.phase === 'bidding' && before.round === view.round) {
+      if (view.highBid > before.highBid) {
+        play(me !== null && view.highBidder !== me && before.highBidder === me ? 'outbid' : 'bid');
+      } else if (view.passed.some((p, i) => p && !before.passed[i])) {
+        play('pass');
+      }
+    }
+    return () => timers.forEach((t) => window.clearTimeout(t));
+  }, [view, mode]);
 }

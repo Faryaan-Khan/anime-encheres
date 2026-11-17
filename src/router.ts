@@ -9,12 +9,13 @@ export type Route =
   | { name: 'leaderboard' }
   | { name: 'feedback' }
   | { name: 'friends' }
+  | { name: 'legal' }
   | { name: 'online' }
   | { name: 'rules' }
   | { name: 'room'; code: string };
 
 export function parseRoute(hash: string): Route {
-  const parts = hash.replace(/^#\/?/, '').split('/').filter(Boolean);
+  const parts = hash.replace(/^#\/?/, '').split('?')[0].split('/').filter(Boolean);
   if (parts[0] === 'local') return { name: 'local' };
   if (parts[0] === 'solo') return { name: 'solo' };
   if (parts[0] === 'match') return { name: 'match' };
@@ -22,6 +23,7 @@ export function parseRoute(hash: string): Route {
   if (parts[0] === 'leaderboard') return { name: 'leaderboard' };
   if (parts[0] === 'feedback') return { name: 'feedback' };
   if (parts[0] === 'friends') return { name: 'friends' };
+  if (parts[0] === 'legal') return { name: 'legal' };
   if (parts[0] === 'online') return { name: 'online' };
   if (parts[0] === 'rules') return { name: 'rules' };
   if (parts[0] === 'room' && parts[1]) {
