@@ -44,7 +44,8 @@ export interface Profile {
   name: string;
   /** ISO 3166-1 alpha-2 code, chosen by the player. */
   country: string | null;
-  avatar: number;
+  /** A character id, '' for none (old profiles may hold a retired symbol number). */
+  avatar: string | number;
   /** The overall score: a weighted average over every mode (see ranking.ts). */
   trophies: number;
   best: number;
@@ -52,7 +53,15 @@ export interface Profile {
   modes: ModeRating[];
   /** Highest trophies ever reached in any single mode. */
   peak: number;
-  /** The current season, 'YYYY-MM' (UTC). Trophies start from 0 each month. */
+  /**
+   * Name rules: 'free' (below 500 trophies), 'cooldown' (changed less than 30
+   * days ago; free again at `nameFreeAt`) or 'locked' (reached the Legend
+   * league, on `legendAt`).
+   */
+  nameRule?: 'free' | 'cooldown' | 'locked';
+  nameFreeAt?: string | null;
+  legendAt?: string | null;
+  /** The current season, 'YYYY-MM' (UTC). Each month every mode drops to its bracket floor (see seasonFloor). */
   season: string | null;
   seasonBest: number;
   /** Best final rank in any past season, overall or in a mode. */
@@ -79,7 +88,8 @@ export interface LeaderboardRow {
   rank: number;
   name: string;
   country: string | null;
-  avatar: number;
+  /** A character id, '' for none (old profiles may hold a retired symbol number). */
+  avatar: string | number;
   value: number;
   you: boolean | null;
 }
@@ -111,7 +121,7 @@ export function getProfile(): Promise<Profile> {
   return call('get_profile', { p_token: getPlayerToken() });
 }
 
-export function updateProfile(name: string, country: string | null, avatar: number): Promise<Profile> {
+export function updateProfile(name: string, country: string | null, avatar: string): Promise<Profile> {
   return call('update_profile', {
     p_token: getPlayerToken(),
     p_name: name,
@@ -136,7 +146,8 @@ export function getLeaderboard(
 export interface Person {
   id: string;
   name: string;
-  avatar: number;
+  /** A character id, '' for none (old profiles may hold a retired symbol number). */
+  avatar: string | number;
   country: string | null;
   trophies: number;
   tag: string;
@@ -150,7 +161,7 @@ export interface Friends {
   /** Requests sent, not answered yet. */
   outgoing: Person[];
   /** Private rooms a friend is waiting in for this player. */
-  invites: Array<{ code: string; from: string; avatar: number }>;
+  invites: Array<{ code: string; from: string; avatar: string | number }>;
 }
 
 export type AddFriendStatus = 'sent' | 'accepted' | 'already' | 'unknown' | 'self' | 'full';

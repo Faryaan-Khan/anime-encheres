@@ -152,7 +152,7 @@ function LeaderRow({ row }: { row: LeaderboardRow }) {
   return (
     <li className={row.you ? 'leaders__row leaders__row--you' : 'leaders__row'}>
       <span className="leaders__rank">{row.rank}</span>
-      <Avatar index={row.avatar} size="sm" />
+      <Avatar value={row.avatar} size="sm" />
       <span className="leaders__name">
         {row.country && <span title={countryName(row.country, lang)}>{countryFlag(row.country)} </span>}
         {row.name}

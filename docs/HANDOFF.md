@@ -107,6 +107,7 @@ Migrations, to be run in this order in the Supabase SQL editor. All are idempote
 | `0011_autopilot.sql` | A player who cannot buy any more is never forfeited (leaving, disconnecting or "Forfeit"); the computer finishes at once; results move on after 12 s; `encheres.sweep_games()` every minute via pg_cron; leaderboard top 1000 plus the player's neighbours (`around`) |
 | `0012_passes_and_scales.sql` | Whole-pool decks, 3 passes per player (`rooms.pass_limit`, `room_players.passes`, `encheres.can_pass`), strikes reset by the player's own move (time-outs in a row), `rooms.scale` for display |
 | `0013_old_site_and_auto_bid.sql` | A player out of passes facing a card nobody bid on gets the minimum bid after 5 s (`enforce`, any room, no strike). Temporary: requests from the old Netlify address (older client) may pass without limit (`encheres.old_client`, `room_players.old_site`) |
+| `0014_seasons_names_avatars.sql` | Season brackets (`season_floor`: below 500 kept, else 500 / 999 / 1499 / 1999), name rules (`name_state`: free below 500, once per 30 days from 500, locked forever from the Legend league; `legend_at` recorded), profile picture = a character id or '' (`profiles.avatar` is text), auto-bid after 8 s |
 
 Functions the client calls:
 
@@ -160,7 +161,8 @@ Things that have bitten this project, so that they do not again:
 - **A statement does not see its own writes.** In `roll_season`, updating ratings and
   recomputing overall scores in one statement used the old ratings. Use two statements.
 - **Where the latest version of a function lives.** Later migrations replace functions
-  from earlier ones. As of 0013: `play_as`, `enforce` and `touch` are in 0013; `room_view`,
+  from earlier ones. As of 0014: `profile_for`, `profile_json`, `roll_season`,
+  `update_profile` and `auto_bid_seconds` are in 0014; `play_as`, `enforce` and `touch` in 0013; `room_view`,
   `bot_choice`, `begin_game` and `public.play` in 0012; `get_room` in 0010; `bot_step`,
   `leaderboard`, `resign` and `sweep_abandoned` in 0011; `settle_match` in 0006;
   `end_by_forfeit` in 0003. Copy from the newest file when replacing one.
@@ -189,10 +191,19 @@ Short versions; details and reasons are in `docs/ARCHITECTURE.md`.
 - **Overall score.** A weighted average of a player's trophies over every mode. `mix`
   counts double; a mode never played counts as zero. With seven universes that is nine
   shares. It is what the world ranking and the profile headline show.
-- **Seasons.** On the first of each month (UTC) every rating and overall score returns
-  to 0, after each player's result for the month is filed in `season_results`. It
-  happens the first time anyone calls the server in the new month. All-time bests are
-  kept; the profile shows records and past seasons.
+- **Seasons.** On the first of each month (UTC), after each player's result for the
+  month is filed in `season_results`, every mode drops to the floor of its bracket
+  (`encheres.season_floor`, mirrored by `seasonFloor` in `src/ranking.ts`): below 500
+  unchanged, 500–999 → 500, 1000–1499 → 999, 1500–1999 → 1499, 2000+ → 1999. The overall
+  score is then recomputed. An idle account slides one bracket per month. It happens
+  the first time anyone calls the server in the new month. All-time bests are kept.
+- **Names.** Free to change below 500 trophies (best mode), once per 30 days from 500
+  (`name_changed_at`), and locked forever once any mode reaches 2200 (Legend);
+  `legend_at` is kept and shown on the profile. Enforced in `update_profile` and
+  `profile_for` (errors `NAME_COOLDOWN`, `NAME_LOCKED`).
+- **Profile pictures.** A character id (face cropped from its card picture; initials if
+  it has none) or '' for the grey guest figure. Old numeric values count as none. No
+  uploads: storing and moderating images was judged not worth it.
 - **Computer opponent online.** If nobody is found in 12 to 18 seconds, the database
   seats an opponent with an ordinary name and plays its moves when the player's device
   polls. Players are not told; this was the owner's decision. Its skill follows the
@@ -249,8 +260,8 @@ Short versions; details and reasons are in `docs/ARCHITECTURE.md`.
 
 Done and live: same-device and offline play against two computer levels; private online
 rooms; a Characters page; an animated How to play; quick matches in eight modes with 3 passes per player, a 30-second clock, three time-outs in a row, automatic wins over players who leave, and an autopilot that settles the match once a player cannot buy any more; server-played opponent; profiles
-with statistics, badges, avatar and country; leaderboards (overall, per mode, friends,
-country); monthly seasons from zero with history; recovery codes; friends and
+with statistics, badges, a character as profile picture and country; leaderboards (overall, per mode, friends,
+country); monthly seasons with bracket floors and history; name rules; Play again / Change verse after a match; recovery codes; friends and
 invitations; feedback form with rights requests; match recording; stronger opponent in
 an Edge Function; rarity cards; dark theme; sound; security headers; French and English.
 

@@ -49,7 +49,12 @@ export function Match() {
     if (!ONLINE_AVAILABLE || !idle) return;
     let cancelled = false;
     getProfile()
-      .then((p) => !cancelled && setProfile(p))
+      .then((p) => {
+        if (cancelled) return;
+        setProfile(p);
+        // A name that may not change right now is the one the match uses.
+        if (p.nameRule && p.nameRule !== 'free') setName(p.name);
+      })
       .catch(() => undefined);
     return () => {
       cancelled = true;
@@ -65,13 +70,17 @@ export function Match() {
     setCode(null);
     navigate('/');
   };
-  const findAnother = () => {
+  const findAnother = (next?: string) => {
+    if (next && isMode(next)) {
+      setMode(next);
+      writeStored(MODE_KEY, next);
+    }
     setCode(null);
     setSearching(true);
   };
 
   if (code) {
-    return <ConnectedRoom key={code} code={code} matched={{ onExit: exit, onFindAnother: findAnother }} />;
+    return <ConnectedRoom key={code} code={code} matched={{ onExit: exit, onFindAnother: findAnother, mode }} />;
   }
 
   if (!ONLINE_AVAILABLE) {
@@ -142,6 +151,7 @@ export function Match() {
             value={name}
             maxLength={20}
             autoComplete="nickname"
+            disabled={Boolean(profile?.nameRule && profile.nameRule !== 'free')}
             onChange={(e) => setName(e.target.value)}
           />
         </label>

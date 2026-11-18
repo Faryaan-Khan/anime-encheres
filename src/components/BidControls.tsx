@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { useI18n } from '../i18n';
 
 interface Props {
@@ -17,11 +17,26 @@ interface Props {
   passesLeft?: number | null;
   /** Out of passes and nobody has bid: the player has to bid. */
   mustBid?: boolean;
+  /**
+   * With `mustBid`: seconds before the minimum is bid for the player (the
+   * server does it online, the game offline). Shown draining on the bid button.
+   */
+  autoBidIn?: number;
 }
 
 const QUICK_RAISES = [50, 100];
 
-export function BidControls({ min, max, step, disabled, onBid, onPass, passesLeft = null, mustBid = false }: Props) {
+export function BidControls({
+  min,
+  max,
+  step,
+  disabled,
+  onBid,
+  onPass,
+  passesLeft = null,
+  mustBid = false,
+  autoBidIn,
+}: Props) {
   const { t, money } = useI18n();
   const [amount, setAmount] = useState(min);
 
@@ -91,7 +106,6 @@ export function BidControls({ min, max, step, disabled, onBid, onPass, passesLef
         </button>
       </div>
 
-      {mustBid && <p className="note bid__must">{t('board.pass.none')}</p>}
       <div className="bid__actions">
         <button
           type="button"
@@ -105,15 +119,68 @@ export function BidControls({ min, max, step, disabled, onBid, onPass, passesLef
               ? t('board.pass.left', { n: passesLeft })
               : t('board.pass')}
         </button>
-        <button
-          type="button"
-          className="btn btn--primary"
-          onClick={() => valid && onBid(amount)}
-          disabled={disabled || !valid}
-        >
-          {t('board.bid', { amount: money(valid ? amount : min) })}
-        </button>
+        {mustBid && autoBidIn !== undefined ? (
+          <AutoBidButton
+            seconds={autoBidIn}
+            label={t('board.bid', { amount: money(valid ? amount : min) })}
+            disabled={Boolean(disabled) || !valid}
+            onClick={() => valid && onBid(amount)}
+          />
+        ) : (
+          <button
+            type="button"
+            className="btn btn--primary"
+            onClick={() => valid && onBid(amount)}
+            disabled={disabled || !valid}
+          >
+            {t('board.bid', { amount: money(valid ? amount : min) })}
+          </button>
+        )}
       </div>
     </div>
+  );
+}
+
+/**
+ * The bid button when the player has to bid: a bar drains across it until the
+ * minimum is bid for them. Display only: the bid itself is made by the server
+ * online and by the game offline.
+ */
+function AutoBidButton({
+  seconds,
+  label,
+  disabled,
+  onClick,
+}: {
+  seconds: number;
+  label: string;
+  disabled: boolean;
+  onClick(): void;
+}) {
+  // Fixed when the button appears: later refreshes of the view must not
+  // restart the countdown.
+  const [total] = useState(() => Math.max(0, seconds));
+  const [left, setLeft] = useState(Math.ceil(total));
+  useEffect(() => {
+    const start = Date.now();
+    const timer = window.setInterval(() => {
+      setLeft(Math.max(0, Math.ceil(total - (Date.now() - start) / 1000)));
+    }, 200);
+    return () => window.clearInterval(timer);
+  }, [total]);
+  return (
+    <button
+      type="button"
+      className="btn btn--primary btn--countdown"
+      style={{ '--countdown': `${total}s` } as CSSProperties}
+      onClick={onClick}
+      disabled={disabled}
+    >
+      <span className="btn--countdown__bar" aria-hidden="true" />
+      <span className="btn--countdown__label">
+        {label}
+        {left > 0 && <span className="btn--countdown__left"> · {left}</span>}
+      </span>
+    </button>
   );
 }

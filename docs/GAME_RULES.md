@@ -86,9 +86,16 @@ Your overall score is the average of your trophies in every mode, with the mixed
 counting double because it is the hardest: you need to know every series. A mode you have
 never played counts as zero.
 
-Each month is a season. On the first day of the month everyone starts again from 0
-trophies in every mode. Your profile keeps each past season's result, your highest
-trophies, the best league and the best rank you have ever reached.
+Each month is a season. On the first day of the month every mode drops to the floor of
+its bracket, so players stay with players of their level: below 500 nothing changes;
+500–999 drops to 500, 1000–1499 to 999, 1500–1999 to 1499, and 2000 or more to 1999. An
+account that stops playing keeps sliding down a bracket each month. Your profile keeps
+each past season's result, your highest trophies, the best league and the best rank you
+have ever reached.
+
+Below 500 trophies you can change your name whenever you like; from 500, once a month.
+The day you reach the Legend league your name is fixed for good, and the date goes on
+your profile.
 
 ### Card rarity
 
@@ -202,9 +209,16 @@ Ton score global est la moyenne de tes trophées dans tous les modes ; le mode T
 compte double, car c'est le plus difficile : il faut connaître toutes les séries. Un mode
 jamais joué compte pour zéro.
 
-Chaque mois est une saison. Le premier jour du mois, tout le monde repart de 0 trophée
-dans chaque mode. Ton profil garde le résultat de chaque saison passée, ton record de
-trophées, la meilleure ligue et le meilleur rang que tu as atteints.
+Chaque mois est une saison. Le premier jour du mois, chaque mode redescend au plancher de
+sa tranche, pour que chacun joue contre des joueurs de son niveau : sous 500 rien ne
+change ; 500–999 redescend à 500, 1000–1499 à 999, 1500–1999 à 1499, et 2000 ou plus à
+1999. Un compte qui ne joue plus continue de descendre d'une tranche chaque mois. Ton
+profil garde le résultat de chaque saison passée, ton record de trophées, la meilleure
+ligue et le meilleur rang que tu as atteints.
+
+Sous 500 trophées, tu peux changer de nom quand tu veux ; à partir de 500, une fois par
+mois. Le jour où tu atteins la ligue Légende, ton nom est fixé pour toujours et la date
+apparaît sur ton profil.
 
 ### Rareté des cartes
 

@@ -44,7 +44,7 @@ if (!chromePath) {
 
 const db = new PGlite();
 await db.exec('create role anon nologin; create role authenticated nologin;');
-for (const file of ['0001_init.sql', '0002_matchmaking.sql', '0003_ranking.sql', '0004_character_powers.sql', '0005_accounts_and_opponent.sql', '0006_modes_and_friends.sql', '0007_seasons.sql', '0008_opponent_brain.sql', '0009_google_accounts.sql', '0010_fair_play.sql', '0011_autopilot.sql', '0012_passes_and_scales.sql', '0013_old_site_and_auto_bid.sql']) {
+for (const file of ['0001_init.sql', '0002_matchmaking.sql', '0003_ranking.sql', '0004_character_powers.sql', '0005_accounts_and_opponent.sql', '0006_modes_and_friends.sql', '0007_seasons.sql', '0008_opponent_brain.sql', '0009_google_accounts.sql', '0010_fair_play.sql', '0011_autopilot.sql', '0012_passes_and_scales.sql', '0013_old_site_and_auto_bid.sql', '0014_seasons_names_avatars.sql']) {
   await db.exec(readFileSync(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8'));
 }
 
@@ -278,8 +278,8 @@ try {
   await snap(ana, 'match-forfeit');
 
   // Both search again and are paired again; this time one of them stops playing.
-  await click(ana, 'Find another opponent');
-  await click(ben, 'Find another opponent');
+  await click(ana, 'Play again');
+  await click(ben, 'Play again');
   await until(ana, () => sees(ana, '.scoreboard'), 'a second match for Ana', 20000);
   await until(ben, () => sees(ben, '.scoreboard'), 'a second match for Ben', 20000);
   const idler = (await sees(ana, '.controls .btn--primary')) ? ana : ben;
@@ -376,7 +376,11 @@ try {
   );
   await until(solo, async () => /trophies/i.test(await text(solo)), 'the trophy line');
   await snap(solo, 'match-final');
-  assert(await click(solo, 'Find another opponent'), 'a new search can be started');
+  // Changing verse first: the other universes are offered, and picking one searches in it.
+  assert(await click(solo, 'Change verse'), 'the verse can be changed after a game');
+  const verses = await solo.$$eval('.again__modes button', (els) => els.map((e) => e.textContent.trim()));
+  assert(verses.length >= 2, `other verses are offered (${verses})`);
+  assert(await click(solo, verses[0]), 'a new search can be started in another verse');
   await until(solo, async () => (await text(solo)).includes('Looking for an opponent'), 'the new search');
   await click(solo, 'Cancel');
   console.log(`PASS  quick match without players: "${names[1]}" joined from the server, ${moves} moves`);
@@ -389,9 +393,16 @@ try {
   assert((await solo.$eval('.stats dd', (e) => e.textContent)) === '1', 'the game against the stand-in is counted');
   assert((await solo.$$('.badge--earned')).length >= 1, 'the first badge is earned');
   await solo.select('select', 'MY');
-  await solo.evaluate(() => document.querySelectorAll('.avatars input')[4].click());
+  assert(await sees(solo, '.hero-card .avatar--none'), 'a profile without a picture shows the guest figure');
+  assert((await text(solo)).includes('Under 500 trophies you can change your name any time'), 'the name rule is explained');
+  // Pick a character with a card picture as the profile picture.
+  await solo.evaluate(() => document.querySelector('.avatar-picker__choice .avatar--character img')?.closest('button').click());
+  const picked = await solo.$eval('.avatar-picker__choice--on .avatar-picker__name', (e) => e.textContent);
   await click(solo, 'Save');
   await until(solo, async () => (await text(solo)).includes('Profile saved.'), 'the profile to be saved');
+  assert(await sees(solo, '.hero-card .avatar--character img'), `the chosen face is shown on the profile (${picked})`);
+  const stored0 = await db.query(`select avatar from encheres.profiles where name = 'Cam'`);
+  assert(stored0.rows[0].avatar.length > 2, `a character id is stored (${stored0.rows[0].avatar})`);
   assert((await text(solo)).includes('Malaysia'), 'the country is shown');
   await snap(solo, 'profile');
 
@@ -425,6 +436,8 @@ try {
   await db.query(`
     update encheres.ratings set trophies = 400, best = 400
      where mode = 'mix' and profile = (select id from encheres.profiles where name = 'Cam')`);
+  // Cam changed verse earlier; this check is about the mixed one.
+  await solo.evaluate(() => localStorage.setItem('ae.mode', 'mix'));
   await solo.goto(`${base}#/match`, { waitUntil: 'networkidle2' });
   await until(solo, async () => (await text(solo)).includes('Silver League, 400 trophies'), 'the level on the match page');
   await click(solo, 'Find an opponent');

@@ -91,7 +91,7 @@ export function Friends() {
 
   const person = (p: Person, actions: JSX.Element) => (
     <li key={p.id} className="leaders__row">
-      <Avatar index={p.avatar} size="sm" />
+      <Avatar value={p.avatar} size="sm" />
       <span className="leaders__name">{p.name}</span>
       <span className="people__actions">{actions}</span>
     </li>
@@ -132,7 +132,7 @@ export function Friends() {
               <ul className="leaders">
                 {data.invites.map((invite) => (
                   <li key={invite.code} className="leaders__row leaders__row--you">
-                    <Avatar index={invite.avatar} size="sm" />
+                    <Avatar value={invite.avatar} size="sm" />
                     <span className="leaders__name">{t('friends.invite.from', { name: invite.from })}</span>
                     <span className="people__actions">
                       <button type="button" className="link" onClick={() => navigate(`/room/${invite.code}`)}>

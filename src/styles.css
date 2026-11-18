@@ -353,6 +353,8 @@ input {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  /* The art area is wider than the 5:7 picture: keep the face in view. */
+  object-position: 50% 22%;
 }
 
 .card__initials {
@@ -2699,4 +2701,138 @@ input {
   border: 1.5px solid currentColor;
   border-radius: 999px;
   color: var(--spot);
+}
+
+/* After a quick match: same mode again, or another one. */
+.again {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.again__modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+/* ---------- Profile pictures ---------- */
+
+.avatar {
+  overflow: hidden;
+  font-family: var(--font-display);
+}
+
+.avatar--character {
+  color: var(--ink);
+}
+
+/* A character's face, cut from the card picture: the face sits in the upper
+   part of every card, so zoom in there. */
+.avatar--character img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 0%;
+  transform: scale(1.6);
+  transform-origin: 50% 25%;
+}
+
+.avatar--none,
+.avatar--clear {
+  background: #c9ccd1;
+  color: #8a8f98;
+}
+
+[data-theme='dark'] .avatar--none,
+[data-theme='dark'] .avatar--clear {
+  background: #3a3d44;
+  color: #6f747e;
+}
+
+.avatar__guest {
+  width: 78%;
+  height: 78%;
+  margin-top: 22%;
+  fill: currentColor;
+}
+
+.avatar--clear svg {
+  width: 70%;
+  height: 70%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+
+.avatar-picker {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.avatar-picker__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.avatar-picker__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.6rem, 1fr));
+  gap: 0.6rem;
+  max-height: 22rem;
+  overflow-y: auto;
+  padding: 0.25rem;
+}
+
+.avatar-picker__choice {
+  display: grid;
+  justify-items: center;
+  gap: 0.25rem;
+  padding: 0.4rem 0.2rem;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.avatar-picker__choice--on {
+  border-color: var(--ink);
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+}
+
+.avatar-picker__choice:focus-visible {
+  outline: 3px solid var(--seat1);
+}
+
+.avatar-picker__name {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.15;
+  text-align: center;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.name-rule {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.legend-mark {
+  display: inline-block;
+  margin-top: 0.35rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: #ff5d93;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 800;
 }

@@ -19,7 +19,7 @@ let rpcError: TestDb['rpcError'];
 interface Profile {
   name: string;
   country: string | null;
-  avatar: number;
+  avatar: string;
   trophies: number;
   best: number;
   games: number;
@@ -296,17 +296,20 @@ describe('profiles', () => {
   it('start empty and unranked', async () => {
     const p = await profile(ANA);
     expect(p).toMatchObject({
-      name: 'Player', country: null, avatar: 0, trophies: 0, games: 0, rank: null, players: 0, recent: [], modes: [], peak: 0,
+      name: 'Player', country: null, avatar: '', trophies: 0, games: 0, rank: null, players: 0, recent: [], modes: [], peak: 0,
     });
   });
 
   it('can be edited, with validation', async () => {
-    const p = await rpc<Profile>('update_profile', [ANA, '  Ana  ', 'my', 7]);
-    expect(p).toMatchObject({ name: 'Ana', country: 'MY', avatar: 7 });
-    expect((await rpc<Profile>('update_profile', [ANA, 'Ana', '', 0])).country).toBeNull();
-    expect(await rpcError('update_profile', [ANA, 'Ana', 'MYS', 0])).toContain('INVALID_INPUT');
+    const p = await rpc<Profile>('update_profile', [ANA, '  Ana  ', 'my', 'satoru-gojo']);
+    expect(p).toMatchObject({ name: 'Ana', country: 'MY', avatar: 'satoru-gojo' });
+    expect((await rpc<Profile>('update_profile', [ANA, 'Ana', '', ''])).country).toBeNull();
+    // Old clients still send the retired symbol numbers.
+    expect((await rpc<Profile>('update_profile', [ANA, 'Ana', '', 7])).avatar).toBe('7');
+    expect(await rpcError('update_profile', [ANA, 'Ana', 'MYS', ''])).toContain('INVALID_INPUT');
     expect(await rpcError('update_profile', [ANA, 'Ana', 'MY', 12])).toContain('INVALID_INPUT');
-    expect(await rpcError('update_profile', [ANA, '', 'MY', 0])).toContain('INVALID_INPUT');
+    expect(await rpcError('update_profile', [ANA, 'Ana', 'MY', 'not-a-character'])).toContain('INVALID_INPUT');
+    expect(await rpcError('update_profile', [ANA, '', 'MY', ''])).toContain('INVALID_INPUT');
     expect(await rpcError('get_profile', ['short'])).toContain('INVALID_INPUT');
   });
 
@@ -438,7 +441,7 @@ describe('permissions', () => {
     const check = async (sql: string) => (await db.query<{ ok: boolean }>(sql)).rows[0].ok;
     for (const fn of [
       'public.get_profile(text)',
-      'public.update_profile(text, text, text, integer)',
+      'public.update_profile(text, text, text, text)',
       'public.leaderboard(text, text, text, boolean)',
       'public.send_feedback(text, text, text, text, text)',
     ]) {
