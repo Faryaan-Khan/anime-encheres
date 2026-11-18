@@ -90,7 +90,7 @@ More detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 | Online backend | Supabase: Postgres functions (PL/pgSQL) and Realtime broadcast |
 | Tests | Vitest; PGlite (Postgres compiled to WebAssembly) runs the real SQL migration |
 | CI | GitHub Actions: type check, tests, production build |
-| Hosting | Netlify (static site) |
+| Hosting | Cloudflare Pages (static site) |
 
 ## Getting started
 

@@ -37,10 +37,17 @@ for (const [id, name] of Object.entries(UNIVERSES)) {
   });
 }
 
+// Everyone on the shared scale, strongest first, ties by name: the same order
+// as overallRank() in src/data/characters.ts and the "All" list in the game.
+const overall = rows.slice().sort((a, b) => b.power - a.power || a.character.localeCompare(b.character));
+overall.forEach((r, i) => {
+  r.overall = i + 1;
+});
+
 const csvCell = (value) => `"${String(value).replaceAll('"', '""')}"`;
 const csv = [
-  ['Universe', 'Rank', 'Character', 'Power', 'Universe power', 'Tier', 'Why'].join(','),
-  ...rows.map((r) => [r.universe, r.rank, r.character, r.power, r.own, r.tier, r.note].map(csvCell).join(',')),
+  ['Universe', 'Rank', 'Overall rank', 'Character', 'Power', 'Universe power', 'Tier', 'Why'].join(','),
+  ...rows.map((r) => [r.universe, r.rank, r.overall, r.character, r.power, r.own, r.tier, r.note].map(csvCell).join(',')),
 ].join('\n');
 writeFileSync(new URL('../docs/power-ratings.csv', import.meta.url), `${csv}\n`);
 
@@ -56,9 +63,9 @@ const sections = Object.values(UNIVERSES).map((name) => {
   return [
     `## ${name}`,
     '',
-    '| # | Character | Power | Universe power | Tier | Why |',
-    '| --- | --- | --- | --- | --- | --- |',
-    ...own.map((r) => `| ${r.rank} | ${r.character} | ${r.power} | ${r.own} | ${r.tier} | ${r.note} |`),
+    '| # | Overall | Character | Power | Universe power | Tier | Why |',
+    '| --- | --- | --- | --- | --- | --- | --- |',
+    ...own.map((r) => `| ${r.rank} | ${r.overall} | ${r.character} | ${r.power} | ${r.own} | ${r.tier} | ${r.note} |`),
   ].join('\n');
 });
 

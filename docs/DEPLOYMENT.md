@@ -107,13 +107,24 @@ project.
 If the variables are empty, the build still works and online play shows a clear "not
 configured" message.
 
-## 3. Hosting (Netlify)
+## 3. Hosting (Cloudflare Pages)
 
-1. In Netlify choose **Add new project → Import an existing project** and pick the GitHub
-   repository.
-2. Keep the detected settings. `netlify.toml` already sets the build command
-   (`npm run build`), the publish directory (`dist`) and the Node version.
-3. Deploy. Every push to `main` then redeploys automatically.
+The game is served by Cloudflare Pages at https://anime-encheres.pages.dev (free plan:
+unlimited bandwidth and requests, 500 builds a month).
+
+1. In Cloudflare, **Workers & Pages → Create application → Pages → Import an existing Git
+   repository**. Connect GitHub and give the Cloudflare app access to this repository
+   only.
+2. Build command `npm run build`, build output directory `dist`, production branch
+   `main`. No environment variables are needed: the public Supabase settings are in the
+   committed `.env`. `.nvmrc` pins Node 22.
+3. Save and deploy. Every push to `main` then redeploys automatically.
+4. Response headers (security policy, caching) come from `public/_headers`.
+
+The site used to be on Netlify (`anime-encheres.netlify.app`, configured by
+`netlify.toml`). Netlify's free plan charges credits for every production deploy and for
+traffic, and stopped publishing after a busy fortnight of updates; Cloudflare Pages does
+not charge for traffic.
 
 Any static host works the same way (Vercel, Cloudflare Pages, GitHub Pages): build with
 `npm run build` and serve `dist/`. Routes use the URL hash, so no rewrite rule is needed.
@@ -129,7 +140,8 @@ build. The browser test (`npm run test:e2e`) is meant to be run locally.
 - Rooms untouched for 24 hours are deleted the next time someone creates a room.
 - Supabase pauses free projects after about a week without activity; resume the project
   from the dashboard if online play stops responding.
-- The security headers in `netlify.toml` name the Supabase project the site may talk to.
-  If you use another project, change the two addresses in `connect-src`.
+- The security headers in `public/_headers` (and `netlify.toml`) name the Supabase project
+  the site may talk to. If you use another project, change the two addresses in
+  `connect-src`.
 - A deployed site is reachable by anyone who has the link. Room contents are still
   protected by the room code and the player token.

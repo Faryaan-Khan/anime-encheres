@@ -429,17 +429,56 @@ describe('passes and time-outs in a row', () => {
     expect(view.players.map((p) => p.passes)).toEqual([3, 3]);
   });
 
-  it('bids the minimum for a timed-out player who has no pass left', async () => {
+  it('lets players on the old site, which knows no limit, keep passing', async () => {
+    const game = await start();
+    const code = game.code!;
+    await db.query('update encheres.room_players set passes = 3 where room_code = $1', [code]);
+    const view = await rpc('play', [code, token(game.drawer), 'draw', null]);
+    const headers = (origin: string) =>
+      db.query(`select set_config('request.headers', $1, false)`, [JSON.stringify({ origin })]);
+    try {
+      await headers('https://anime-encheres.pages.dev');
+      expect(await rpcError('play', [code, token(view.turn), 'pass', null])).toContain('NO_PASSES_LEFT');
+      await headers('https://anime-encheres.netlify.app');
+      const passed = await rpc('play', [code, token(view.turn), 'pass', null]);
+      expect(passed.passed[view.turn]).toBe(true);
+    } finally {
+      await db.query(`select set_config('request.headers', '', false)`);
+    }
+  });
+
+  it('bids the minimum after 5 seconds for a player who has to bid, with no strike', async () => {
     const game = await start();
     const code = game.code!;
     await db.query('update encheres.room_players set passes = 3 where room_code = $1', [code]);
     const actor = game.drawer;
+    const rival = actor === 0 ? 1 : 0;
     await rpc('play', [code, token(actor), 'draw', null]);
-    await backdate(code, 31);
-    const view = await rpc('get_room', [code, token(actor === 0 ? 1 : 0)]);
+    await backdate(code, 4);
+    expect((await rpc('get_room', [code, token(rival)])).highBidder).toBeNull();
+    await backdate(code, 6);
+    const view = await rpc('get_room', [code, token(rival)]);
     expect(view.highBidder).toBe(actor);
     expect(view.highBid).toBe(10);
-    expect(view.strikes?.[actor]).toBe(1);
+    expect(view.strikes?.[actor]).toBe(0);
+  });
+
+  it('bids for a player who has to bid in private rooms too, but not for players on the old site', async () => {
+    const created = await rpc('create_room', [ANA, 'Ana', 500, 5, 10, 10, pool]);
+    await rpc('join_room', [created.code, BEN, 'Ben']);
+    const game = await rpc('start_game', [created.code, ANA]);
+    const code = game.code!;
+    await db.query('update encheres.room_players set passes = 3 where room_code = $1', [code]);
+    const actor = game.drawer;
+    const rival = actor === 0 ? 1 : 0;
+    await rpc('play', [code, token(actor), 'draw', null]);
+    await db.query('update encheres.room_players set old_site = true where room_code = $1 and seat = $2', [code, actor]);
+    await backdate(code, 6);
+    expect((await rpc('get_room', [code, token(rival)])).highBidder).toBeNull();
+    await db.query('update encheres.room_players set old_site = false where room_code = $1', [code]);
+    const view = await rpc('get_room', [code, token(rival)]);
+    expect(view.highBidder).toBe(actor);
+    expect(view.highBid).toBe(10);
   });
 
   it('counts only time-outs in a row: a move of the player’s own clears them', async () => {

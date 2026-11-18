@@ -5,6 +5,7 @@ import {
   CHARACTERS,
   UNIVERSES,
   getUniverse,
+  overallRank,
   powerIn,
   tierOf,
   type Character,
@@ -18,6 +19,9 @@ import { navigate } from '../router';
  * ranks its own characters on that universe's 0–100 scale, which is what
  * players see in a game of that universe.
  */
+/** How many characters the "All" list shows; a search covers everyone. */
+const ALL_SHOWN = 100;
+
 export function Characters() {
   const { t } = useI18n();
   const [scale, setScale] = useState<string>(ALL_SCALE);
@@ -30,8 +34,12 @@ export function Characters() {
       .slice()
       .sort((a, b) => b.power - a.power || a.name.localeCompare(b.name))
       .map((character, index) => ({ character, rank: index + 1 }));
-    return needle ? ranked.filter(({ character }) => character.name.toLowerCase().includes(needle)) : ranked;
+    if (needle) return ranked.filter(({ character }) => character.name.toLowerCase().includes(needle));
+    // Everyone together is a long list: the top of it is what players look
+    // for, and a search still finds anyone.
+    return scale === ALL_SCALE ? ranked.slice(0, ALL_SHOWN) : ranked;
   }, [scale, query]);
+  const searching = query.trim() !== '';
 
   const choices = [{ id: ALL_SCALE, name: t('chars.all') }, ...UNIVERSES.map((u) => ({ id: u.id, name: u.name }))];
 
@@ -68,7 +76,11 @@ export function Characters() {
         />
       </label>
 
-      <p className="note">{t('chars.count', { n: rows.length })}</p>
+      <p className="note">
+        {scale === ALL_SCALE && !searching
+          ? t('chars.top', { n: ALL_SHOWN, total: CHARACTERS.length })
+          : t('chars.count', { n: rows.length })}
+      </p>
 
       <ol className="chars__list">
         {rows.map(({ character, rank }) => (
@@ -99,6 +111,9 @@ function CharacterRow({ character, rank, scale }: { character: Character; rank: 
         <p className="chars__meta">
           <span className="chars__universe">{universe.name}</span>
           <span className={`chars__tier tier--${tierOf(character)}`}>{t('chars.tier', { tier: tierOf(character) })}</span>
+          {/* A universe's strongest shows where it stands among everyone: a
+              guide to how strong the universe is as a whole. */}
+          {own === 100 && scale !== ALL_SCALE && <span className="chars__overall">{t('chars.overallRank', { n: overallRank(character.id) })}</span>}
         </p>
         <p className="chars__why">{character.note}</p>
       </div>
