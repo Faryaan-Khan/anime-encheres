@@ -12,6 +12,7 @@ export type Route =
   | { name: 'legal' }
   | { name: 'online' }
   | { name: 'rules' }
+  | { name: 'characters' }
   | { name: 'room'; code: string };
 
 export function parseRoute(hash: string): Route {
@@ -26,6 +27,7 @@ export function parseRoute(hash: string): Route {
   if (parts[0] === 'legal') return { name: 'legal' };
   if (parts[0] === 'online') return { name: 'online' };
   if (parts[0] === 'rules') return { name: 'rules' };
+  if (parts[0] === 'characters') return { name: 'characters' };
   if (parts[0] === 'room' && parts[1]) {
     const code = parts[1].toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5);
     if (code.length === 5) return { name: 'room', code };

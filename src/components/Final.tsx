@@ -1,4 +1,4 @@
-import { getCharacter } from '../data/characters';
+import { getCharacter, powerOf, scaleFactor } from '../data/characters';
 import type { GameView, Seat } from '../game/types';
 import { judge } from '../game/verdict';
 import { useI18n } from '../i18n';
@@ -111,7 +111,7 @@ export function Final({
             <header className="team__head">
               <h2>{player.name}</h2>
               <p className="team__power">
-                {t('final.teamPower', { n: verdict.power[player.seat].toFixed(1) })}
+                {t('final.teamPower', { n: (verdict.power[player.seat] * scaleFactor(view.scale)).toFixed(1) })}
               </p>
               <p>
                 {t('final.spent', { amount: money(view.settings.budget - player.budget) })},{' '}
@@ -124,12 +124,13 @@ export function Final({
               <ul className="team__cards">
                 {player.team.map((id) => {
                   const price = view.history.find((h) => h.card === id)?.price ?? 0;
-                  const power = getCharacter(id).power;
+                  const power = powerOf(id, view.scale);
+                  const isBest = getCharacter(id).power === best;
                   return (
                     <li key={id}>
                       <CharacterCard id={id} size="sm" />
                       <span className="tag">{money(price)}</span>
-                      <span className={`team__rating${power === best ? ' team__rating--best' : ''}`}>
+                      <span className={`team__rating${isBest ? ' team__rating--best' : ''}`}>
                         {t('board.power', { n: power })}
                       </span>
                     </li>

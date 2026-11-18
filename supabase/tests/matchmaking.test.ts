@@ -41,7 +41,7 @@ describe('pairing', () => {
     expect(joined.status).toBe('playing');
     expect(joined.you).toBe(1);
     expect(joined.players.map((p) => p.name)).toEqual(['Ana', 'Ben']);
-    expect(joined.deckCount).toBe(20);
+    expect(joined.deckCount).toBe(poolFor('one-piece').length); // the server deals the whole universe
 
     // The waiting player learns about it on the next poll.
     const started = await search(ANA, 'Ana', waiting.code);
@@ -398,6 +398,65 @@ describe('the minute sweep', () => {
     expect(room.status).toBe('finished');
     expect(room.forfeit).not.toBeNull();
     expect((await db.query('select 1 from encheres.matches')).rows).toHaveLength(1);
+  });
+});
+
+describe('passes and time-outs in a row', () => {
+  const token = (seat: Seat) => (seat === 0 ? ANA : BEN);
+  const backdate = (code: string, seconds: number) =>
+    db.query(`update encheres.rooms set updated_at = now() - make_interval(secs => $2) where code = $1`, [code, seconds]);
+  const start = async () => {
+    await search(ANA, 'Ana');
+    return search(BEN, 'Ben');
+  };
+
+  it('allows three skipped cards each, while letting the other have a card stays free', async () => {
+    const game = await start();
+    const code = game.code!;
+    let view = game;
+    for (let skipped = 1; skipped <= 3; skipped++) {
+      view = await rpc('play', [code, token(view.drawer), 'draw', null]);
+      view = await rpc('play', [code, token(view.turn), 'pass', null]);
+      view = await rpc('play', [code, token(view.turn), 'pass', null]);
+      expect(view.players.map((p) => p.passes)).toEqual([skipped, skipped]);
+      view = await rpc('play', [code, ANA, 'next', null]);
+    }
+    view = await rpc('play', [code, token(view.drawer), 'draw', null]);
+    expect(await rpcError('play', [code, token(view.turn), 'pass', null])).toContain('NO_PASSES_LEFT');
+    view = await rpc('play', [code, token(view.turn), 'bid', 10]);
+    view = await rpc('play', [code, token(view.turn), 'pass', null]);
+    expect(view.phase).toBe('reveal');
+    expect(view.players.map((p) => p.passes)).toEqual([3, 3]);
+  });
+
+  it('bids the minimum for a timed-out player who has no pass left', async () => {
+    const game = await start();
+    const code = game.code!;
+    await db.query('update encheres.room_players set passes = 3 where room_code = $1', [code]);
+    const actor = game.drawer;
+    await rpc('play', [code, token(actor), 'draw', null]);
+    await backdate(code, 31);
+    const view = await rpc('get_room', [code, token(actor === 0 ? 1 : 0)]);
+    expect(view.highBidder).toBe(actor);
+    expect(view.highBid).toBe(10);
+    expect(view.strikes?.[actor]).toBe(1);
+  });
+
+  it('counts only time-outs in a row: a move of the player’s own clears them', async () => {
+    const game = await start();
+    const code = game.code!;
+    const actor = game.drawer;
+    await db.query('update encheres.room_players set strikes = 2 where room_code = $1 and seat = $2', [code, actor]);
+    await rpc('play', [code, token(actor), 'draw', null]);
+    const strikes = (
+      await db.query<{ strikes: number }>('select strikes from encheres.room_players where room_code = $1 and seat = $2', [code, actor])
+    ).rows[0].strikes;
+    expect(strikes).toBe(0);
+    // So the next time-out is the first again, not the third.
+    await backdate(code, 31);
+    const view = await rpc('get_room', [code, token(actor === 0 ? 1 : 0)]);
+    expect(view.status).toBe('playing');
+    expect(view.strikes?.[actor]).toBe(1);
   });
 });
 

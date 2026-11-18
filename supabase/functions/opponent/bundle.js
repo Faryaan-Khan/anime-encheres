@@ -392,6 +392,7 @@ var GameError = class extends Error {
 };
 
 // src/game/engine.ts
+var PASS_LIMIT = 3;
 var other = (seat) => seat === 0 ? 1 : 0;
 function shuffle(items, rng = Math.random) {
   const out = items.slice();
@@ -406,6 +407,16 @@ function requiredBid(state) {
 }
 function isTeamFull(state, seat) {
   return state.players[seat].team.length >= state.settings.teamSize;
+}
+function passesLeft(state, seat) {
+  const limit = state.settings.passLimit ?? PASS_LIMIT;
+  return Math.max(0, limit - (state.players[seat].passes ?? 0));
+}
+function passCosts(state) {
+  return state.highBidder === null;
+}
+function canPass(state, seat) {
+  return !passCosts(state) || passesLeft(state, seat) > 0;
 }
 function canBid(state, seat) {
   return !isTeamFull(state, seat) && state.players[seat].budget >= requiredBid(state);
@@ -485,7 +496,9 @@ function bid(state, seat, amount) {
 function pass(state, seat) {
   if (state.phase !== "bidding") throw new GameError("WRONG_PHASE");
   if (seat !== state.turn) throw new GameError("NOT_YOUR_TURN");
+  if (!canPass(state, seat)) throw new GameError("NO_PASSES_LEFT");
   const s = clone(state);
+  if (passCosts(s)) s.players[seat].passes = (s.players[seat].passes ?? 0) + 1;
   s.passed[seat] = true;
   s.turn = other(seat);
   return settle(s);
@@ -505,7 +518,11 @@ function next(state) {
   s.drawer = other(s.drawer);
   s.turn = s.drawer;
   s.phase = "draw";
+  if (!canStillBuy(s, s.drawer)) return draw(s, s.drawer);
   return s;
+}
+function canStillBuy(state, seat) {
+  return !isTeamFull(state, seat) && state.players[seat].budget >= state.settings.minBid;
 }
 
 // src/game/verdict.ts
@@ -637,9 +654,10 @@ function byRules(view, ctx, style, rng) {
   const rivalSlots = teamSize - rival.team.length;
   const required = view.highBidder === null ? minBid : view.highBid + increment;
   const floor = (amount) => Math.floor(amount / increment) * increment;
-  const passes = () => ({ action: { type: "pass" }, memory });
+  let passes = () => ({ action: { type: "pass" }, memory });
   const bids = (amount) => ({ action: { type: "bid", amount }, memory });
   if (mySlots <= 0 || self.budget < required) return passes();
+  if (!canPass(view, me)) passes = () => bids(required);
   const revealed = new Set(view.history.map((h) => h.card));
   const unseen = ctx.pool.filter((id) => !revealed.has(id));
   const market = style.countsCards ? marketOf(view.card === null ? unseen : unseen.filter((id) => id !== view.card), view.deckCount) : wholePoolMarket(ctx.pool, view.deckCount);
@@ -702,11 +720,23 @@ function imagine(view, card, deck) {
       budget: view.settings.budget,
       teamSize: view.settings.teamSize,
       minBid: view.settings.minBid,
-      increment: view.settings.increment
+      increment: view.settings.increment,
+      passLimit: view.settings.passLimit
     },
+    scale: view.scale,
     players: [
-      { name: view.players[0].name, budget: view.players[0].budget, team: view.players[0].team.slice() },
-      { name: view.players[1].name, budget: view.players[1].budget, team: view.players[1].team.slice() }
+      {
+        name: view.players[0].name,
+        budget: view.players[0].budget,
+        team: view.players[0].team.slice(),
+        passes: view.players[0].passes ?? 0
+      },
+      {
+        name: view.players[1].name,
+        budget: view.players[1].budget,
+        team: view.players[1].team.slice(),
+        passes: view.players[1].passes ?? 0
+      }
     ],
     deck,
     phase: "bidding",
@@ -739,6 +769,7 @@ function seatView(state, seat) {
     highBid: state.highBid,
     highBidder: state.highBidder,
     passed: state.passed,
+    scale: state.scale,
     deckCount: state.deck.length,
     card: visible ? state.card : null,
     history: state.history
@@ -777,6 +808,7 @@ function byLookingAhead(view, ctx, rng) {
   const rival = view.players[rivalSeat];
   const required = view.highBidder === null ? minBid : view.highBid + increment;
   if (teamSize - self.team.length <= 0 || self.budget < required) return instinct;
+  if (!canPass(view, me)) return instinct;
   const revealed = new Set(view.history.map((h) => h.card));
   const unseen = ctx.pool.filter((id) => !revealed.has(id));
   let candidates;

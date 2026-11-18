@@ -195,6 +195,10 @@ has polled for 12 seconds is skipped.
   seconds since each seat was heard from; the board shows a countdown to the win after
   12 seconds of silence. Hidden tabs keep polling every 5 seconds so a player who only
   switched apps is not counted as gone. `resign` gives up at once.
+- **Passes and time-outs in a row** (`0012_passes_and_scales.sql`). Skipping a card nobody
+  has bid on costs one of three passes; `encheres.can_pass` mirrors `canPass`. Strikes
+  count time-outs in a row: `public.play` clears the caller's strikes, `enforce` adds one
+  and plays the default move (draw, pass, or the minimum bid when out of passes).
 - **Finished players** (`0011_autopilot.sql`). A seat that cannot buy any more
   (`encheres.can_buy`, mirror of `canStillBuy`) has nothing left to decide, so its result
   stands: `enforce` never counts it as gone, `resign` from it is not a forfeit, and

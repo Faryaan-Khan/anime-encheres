@@ -14,6 +14,7 @@
  *    If nobody bids, the card is discarded.
  */
 
+import { scaleOf } from '../data/characters';
 import {
   GameError,
   type GameState,
@@ -30,8 +31,8 @@ export const DEFAULT_SETTINGS: Settings = {
   increment: 10,
 };
 
-/** Cards dealt per game: enough for both teams with room to pass on some. */
-export const DECK_FACTOR = 4;
+/** How many cards each player may skip in a game (see `Settings.passLimit`). */
+export const PASS_LIMIT = 3;
 
 const other = (seat: Seat): Seat => (seat === 0 ? 1 : 0);
 
@@ -76,12 +77,13 @@ export interface CreateGameOptions {
 export function createGame(options: CreateGameOptions): GameState {
   const { settings, names, pool, rng = Math.random } = options;
   validateSettings(settings, pool.length);
-  const deck =
-    options.deck?.slice() ?? shuffle(pool, rng).slice(0, settings.teamSize * DECK_FACTOR);
+  // Every card of the chosen universe (or of all of them) is in the deck.
+  const deck = options.deck?.slice() ?? shuffle(pool, rng);
   const drawer: Seat = options.firstDrawer ?? (rng() < 0.5 ? 0 : 1);
-  const player = (name: string): PlayerState => ({ name, budget: settings.budget, team: [] });
+  const player = (name: string): PlayerState => ({ name, budget: settings.budget, team: [], passes: 0 });
   return {
-    settings: { ...settings },
+    settings: { ...settings, passLimit: settings.passLimit ?? PASS_LIMIT },
+    scale: scaleOf(pool),
     players: [player(names[0]), player(names[1])],
     deck,
     phase: 'draw',
@@ -108,6 +110,26 @@ type Holdings = { settings: GameState['settings']; players: ReadonlyArray<GameSt
 
 export function isTeamFull(state: Holdings, seat: Seat): boolean {
   return state.players[seat].team.length >= state.settings.teamSize;
+}
+
+/** How many more cards this seat may skip. */
+export function passesLeft(state: Holdings, seat: Seat): number {
+  const limit = state.settings.passLimit ?? PASS_LIMIT;
+  return Math.max(0, limit - (state.players[seat].passes ?? 0));
+}
+
+/**
+ * Passing skips the card, and costs one of the player's passes, while nobody
+ * has bid on it. Once the other player has bid, passing lets them have it,
+ * which is always allowed.
+ */
+export function passCosts(state: Pick<GameState, 'highBidder'>): boolean {
+  return state.highBidder === null;
+}
+
+/** False when this seat would have to skip a card and has no passes left: it must bid. */
+export function canPass(state: Holdings & Pick<GameState, 'highBidder'>, seat: Seat): boolean {
+  return !passCosts(state) || passesLeft(state, seat) > 0;
 }
 
 export function canBid(state: GameState, seat: Seat): boolean {
@@ -206,7 +228,9 @@ export function bid(state: GameState, seat: Seat, amount: number): GameState {
 export function pass(state: GameState, seat: Seat): GameState {
   if (state.phase !== 'bidding') throw new GameError('WRONG_PHASE');
   if (seat !== state.turn) throw new GameError('NOT_YOUR_TURN');
+  if (!canPass(state, seat)) throw new GameError('NO_PASSES_LEFT');
   const s = clone(state);
+  if (passCosts(s)) s.players[seat].passes = (s.players[seat].passes ?? 0) + 1;
   s.passed[seat] = true;
   s.turn = other(seat);
   return settle(s);
@@ -257,10 +281,10 @@ export function toView(
     status: state.phase === 'finished' ? 'finished' : 'playing',
     version: meta.version ?? 0,
     you: viewer === 'all' ? null : viewer,
-    settings: { ...state.settings, poolSize: meta.poolSize ?? 0 },
+    settings: { ...state.settings, passLimit: state.settings.passLimit ?? PASS_LIMIT, poolSize: meta.poolSize ?? 0 },
     players: [
-      { seat: 0, ...state.players[0], team: state.players[0].team.slice() },
-      { seat: 1, ...state.players[1], team: state.players[1].team.slice() },
+      { seat: 0, ...state.players[0], passes: state.players[0].passes ?? 0, team: state.players[0].team.slice() },
+      { seat: 1, ...state.players[1], passes: state.players[1].passes ?? 0, team: state.players[1].team.slice() },
     ],
     phase: state.phase,
     round: state.round,
@@ -269,6 +293,7 @@ export function toView(
     highBid: state.highBid,
     highBidder: state.highBidder,
     passed: [state.passed[0], state.passed[1]],
+    scale: state.scale ?? 'all',
     deckCount: state.deck.length,
     card: revealed || drawerPeek ? state.card : null,
     history: state.history.slice(),

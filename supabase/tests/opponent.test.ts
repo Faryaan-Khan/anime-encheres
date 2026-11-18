@@ -73,11 +73,13 @@ async function playerMove(code: string, rng: () => number): Promise<void> {
     return;
   }
   const required = r.high_bidder === null ? r.min_bid : r.high_bid + r.increment;
-  const view = await db.query<{ budget: number }>(
-    'select budget from encheres.room_players where room_code = $1 and seat = 0',
+  const view = await db.query<{ budget: number; passes: number }>(
+    'select budget, passes from encheres.room_players where room_code = $1 and seat = 0',
     [code],
   );
-  if (rng() < 0.55) {
+  // Out of passes and nobody has bid: bidding is the only legal move.
+  const mustBid = r.high_bidder === null && view.rows[0].passes >= 3;
+  if (rng() < 0.55 || mustBid) {
     const amount = Math.min(view.rows[0].budget, required + Math.floor(rng() * 4) * r.increment);
     await rpc('play', [code, ANA, 'bid', amount]);
   } else {

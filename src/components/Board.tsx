@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react';
-import { getCharacter } from '../data/characters';
-import { canStillBuy } from '../game/engine';
+import { getCharacter, powerOf } from '../data/characters';
+import { canPass, canStillBuy, passCosts, passesLeft } from '../game/engine';
 import type { GameView, PlayerView, Seat } from '../game/types';
 import { useI18n } from '../i18n';
 import type { StringKey } from '../i18n/strings';
@@ -222,7 +222,7 @@ export function Board({
                   })}
             </h2>
             {getCharacter(last.card).power > 0 && (
-              <p className="power">{t('board.power', { n: getCharacter(last.card).power })}</p>
+              <p className="power">{t('board.power', { n: powerOf(last.card, view.scale) })}</p>
             )}
           </>
         )}
@@ -290,6 +290,8 @@ export function Board({
                 disabled={busy}
                 onBid={onBid}
                 onPass={onPass}
+                passesLeft={passCosts(view) ? passesLeft(view, view.turn) : null}
+                mustBid={!canPass(view, view.turn)}
               />
             </>
           ) : (
@@ -369,13 +371,18 @@ function useGameSounds(view: GameView, mode: 'shared' | 'personal'): void {
       timers.current.push(window.setTimeout(fn, ms));
     };
 
+    // A pass that skipped the card costs one of the player's three: buzzer.
+    const skipped = [0, 1].some((i) => (view.players[i]?.passes ?? 0) > (before.players[i]?.passes ?? 0));
+    if (skipped && before.round === view.round) play('skip');
+    const after = skipped ? 450 : 0;
+
     if (before.phase === 'draw' && view.phase === 'bidding') {
       play('draw');
       if (view.card !== null) later(220, () => play('flip'));
     } else if (view.phase === 'reveal' && (before.phase !== 'reveal' || before.round !== view.round)) {
       const last = view.history[view.history.length - 1];
       if (before.phase === 'bidding' && before.card === null) play('flip');
-      later(250, () => {
+      later(250 + after, () => {
         if (!last || last.winner === null) return play('discard');
         play('sold');
         later(520, () => play(me === null || last.winner === me ? 'won' : 'lost'));
@@ -383,7 +390,7 @@ function useGameSounds(view: GameView, mode: 'shared' | 'personal'): void {
     } else if (view.phase === 'bidding' && before.phase === 'bidding' && before.round === view.round) {
       if (view.highBid > before.highBid) {
         play(me !== null && view.highBidder !== me && before.highBidder === me ? 'outbid' : 'bid');
-      } else if (view.passed.some((p, i) => p && !before.passed[i])) {
+      } else if (!skipped && view.passed.some((p, i) => p && !before.passed[i])) {
         play('pass');
       }
     }

@@ -3,6 +3,7 @@ import {
   DEFAULT_SETTINGS,
   bid,
   canBid,
+  canPass,
   createGame,
   draw,
   isGameOver,
@@ -12,6 +13,7 @@ import {
   shuffle,
   toView,
 } from './engine';
+import { poolFor, scaleOf } from '../data/characters';
 import { seeded } from './testing';
 import { GameError, type GameState, type Seat, type Settings } from './types';
 
@@ -39,16 +41,18 @@ function expectError(fn: () => unknown, code: string) {
 }
 
 describe('setup', () => {
-  it('deals teamSize × 4 cards and gives both players the full budget', () => {
+  it('deals the whole pool and gives both players the full budget and three passes', () => {
     const g = createGame({
       settings: DEFAULT_SETTINGS,
       names: ['Ana', 'Ben'],
       pool,
       rng: seeded(1),
     });
-    expect(g.deck).toHaveLength(20);
-    expect(new Set(g.deck).size).toBe(20);
+    expect(g.deck).toHaveLength(pool.length);
+    expect(new Set(g.deck)).toEqual(new Set(pool));
     expect(g.players.map((p) => p.budget)).toEqual([500, 500]);
+    expect(g.players.map((p) => p.passes)).toEqual([0, 0]);
+    expect(g.settings.passLimit).toBe(3);
     expect(g.phase).toBe('draw');
     expect(g.turn).toBe(g.drawer);
   });
@@ -186,7 +190,7 @@ describe('bidding', () => {
   });
 
   it('never makes the player who can still buy wait for one who cannot', () => {
-    let g = game({ teamSize: 1 }, 1);
+    let g = game({ teamSize: 1, passLimit: 99 }, 1);
     g = draw(g, 1);
     g = bid(g, 1, 10);
     g = pass(g, 0); // Ben is full
@@ -198,6 +202,53 @@ describe('bidding', () => {
       else expect(g.turn).toBe(0);
       g = g.phase === 'draw' ? pass(draw(g, 0), 0) : pass(g, 0);
     }
+  });
+});
+
+describe('passes', () => {
+  it('costs a pass to skip a card nobody has bid on, and three is the limit', () => {
+    let g = game({}, 0);
+    for (let skipped = 1; skipped <= 3; skipped++) {
+      g = draw(g, g.drawer);
+      g = pass(g, g.turn);
+      g = pass(g, g.turn);
+      expect(g.history.at(-1)!.winner).toBeNull();
+      expect(g.players.map((p) => p.passes)).toEqual([skipped, skipped]);
+      g = next(g);
+    }
+    g = draw(g, g.drawer);
+    expect(canPass(g, g.turn)).toBe(false);
+    expectError(() => pass(g, g.turn), 'NO_PASSES_LEFT');
+    // Out of passes: the minimum bid is the only move, and the other player
+    // may let them have the card.
+    const bidder = g.turn;
+    g = bid(g, bidder, 10);
+    g = pass(g, g.turn);
+    expect(g.history.at(-1)).toMatchObject({ winner: bidder, price: 10 });
+  });
+
+  it('never costs a pass to let the other player have a card', () => {
+    let g = draw(game(), 0);
+    g = bid(g, 0, 10);
+    g = pass(g, 1);
+    expect(g.players.map((p) => p.passes)).toEqual([0, 0]);
+  });
+
+  it('never costs a pass when the game passes for a player who cannot bid', () => {
+    let g = game({ teamSize: 1 }, 0);
+    g = draw(g, 0);
+    g = bid(g, 0, 10);
+    g = pass(g, 1);
+    g = next(g); // Ana is full: her turns to bid are skipped
+    expect(g.players[0].passes).toBe(0);
+  });
+});
+
+describe('scale', () => {
+  it('shows a one-universe game on its own scale, and a mixed one on the shared scale', () => {
+    expect(createGame({ settings: DEFAULT_SETTINGS, names: ['A', 'B'], pool: poolFor('naruto') }).scale).toBe('naruto');
+    expect(createGame({ settings: DEFAULT_SETTINGS, names: ['A', 'B'], pool: poolFor('mix') }).scale).toBe('all');
+    expect(scaleOf(pool)).toBe('all');
   });
 });
 
@@ -282,7 +333,7 @@ describe('random playthroughs keep the books balanced', () => {
       if (++steps > 2000) throw new Error('game did not terminate');
       if (g.phase === 'draw') g = draw(g, g.drawer);
       else if (g.phase === 'reveal') g = next(g);
-      else if (rng() < 0.6) {
+      else if (rng() < 0.6 || !canPass(g, g.turn)) {
         const min = requiredBid(g);
         const max = g.players[g.turn].budget;
         g = bid(g, g.turn, Math.min(max, min + Math.floor(rng() * 6) * 10));

@@ -83,6 +83,53 @@ const topPower = new Map(
   UNIVERSES.map((u) => [u.id, Math.max(...roster[u.id].map(([, power]) => power))]),
 );
 
+/** The power scale of a game: one universe's own, or `all` for mixed games. */
+export const ALL_SCALE = 'all';
+
+/**
+ * The scale a game with this pool is judged on: the universe's own when every
+ * card comes from one universe, otherwise the shared scale. Same rule as
+ * encheres.scale_of in SQL.
+ */
+export function scaleOf(pool: readonly string[]): string {
+  let universe: string | null = null;
+  for (const id of pool) {
+    const own = byId.get(id)?.universe;
+    if (!own) continue;
+    if (universe === null) universe = own;
+    else if (universe !== own) return ALL_SCALE;
+  }
+  return universe ?? ALL_SCALE;
+}
+
+/**
+ * A character's power as shown to players. On the shared scale (`all`) every
+ * universe is compared with every other, so a universe's strongest can sit
+ * well below 100. On a universe's own scale its strongest is 100 and everyone
+ * else keeps the same proportion of that: power × 100 ÷ strongest, rounded.
+ *
+ * Display only: the winner is always decided on the shared power, so a game
+ * plays the same whichever scale it is shown on (`scaleFactor` converts a
+ * team's power for display).
+ */
+export function powerIn(character: Character, scale: string | undefined | null): number {
+  if (!scale || scale === ALL_SCALE || character.universe !== scale) return character.power;
+  const top = topPower.get(character.universe);
+  return top ? Math.round((100 * character.power) / top) : character.power;
+}
+
+/** What shared powers are multiplied by to show them on `scale` (1 on the shared scale). */
+export function scaleFactor(scale: string | undefined | null): number {
+  if (!scale || scale === ALL_SCALE) return 1;
+  const top = topPower.get(scale);
+  return top ? 100 / top : 1;
+}
+
+/** `powerIn` by id. */
+export function powerOf(id: string, scale: string | undefined | null): number {
+  return powerIn(getCharacter(id), scale);
+}
+
 /**
  * Where a character stands inside their own universe, relative to its
  * strongest character. Used to check that every roster has a spread of

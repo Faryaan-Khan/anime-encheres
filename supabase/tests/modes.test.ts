@@ -1,7 +1,7 @@
 /** Ranked modes (one universe or all mixed), monthly seasons, friends and invitations. */
 import type { PGlite } from '@electric-sql/pglite';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { CHARACTERS, MIX_ID, UNIVERSES, poolFor } from '../../src/data/characters';
+import { CHARACTERS, MIX_ID, UNIVERSES, poolFor, scaleOf } from '../../src/data/characters';
 import { OVERALL_SHARES, overallScore } from '../../src/ranking';
 import { createTestDb, type TestDb } from './helpers';
 
@@ -103,7 +103,17 @@ describe('modes', () => {
     expect(view.settings.poolSize).toBe(CHARACTERS.length);
     await search(BEN, 'Ben', 'mix');
     const deck = (await db.query<{ deck: string[] }>('select deck from encheres.rooms')).rows[0].deck;
-    expect(deck).toHaveLength(20);
+    expect(deck).toHaveLength(CHARACTERS.length);
+    expect((await db.query<{ scale: string }>('select scale from encheres.rooms')).rows[0].scale).toBe('all');
+  });
+
+  it('show a single universe on its own scale', async () => {
+    await search(ANA, 'Ana', 'naruto');
+    const view = await search(BEN, 'Ben', 'naruto');
+    expect(view.scale).toBe('naruto');
+    expect(view.deckCount).toBe(poolFor('naruto').length);
+    // Same rule as the app.
+    expect(scaleOf(poolFor('naruto'))).toBe('naruto');
   });
 
   it('are worked out from the cards for apps that do not name one', async () => {

@@ -36,7 +36,7 @@ built from. The only manual step in the whole system is applying a new database 
 npm install
 npm run dev          # local site, talks to the live database through .env
 npm run typecheck    # TypeScript strict
-npm test             # 207 unit and database tests (no external service needed)
+npm test             # 217 unit and database tests (no external service needed)
 npm run test:e2e     # real browsers against the real SQL; needs Chrome (CHROME_PATH)
 npm run ratings      # after editing src/data/rosters.json
 npm run build:opponent  # after editing src/bot/: rebuild the Edge Function bundle
@@ -105,6 +105,7 @@ Migrations, to be run in this order in the Supabase SQL editor. All are idempote
 | `0009_google_accounts.sql` | Guest to Google: keep the guest or start fresh |
 | `0010_fair_play.sql` | Automatic draw for a player who cannot buy, presence (`seen_at`, `leaving`), 30 s clock with 3 strikes enforced in `get_room`; `play` split into `encheres.play_as` |
 | `0011_autopilot.sql` | A player who cannot buy any more is never forfeited (leaving, disconnecting or "Forfeit"); the computer finishes at once; results move on after 12 s; `encheres.sweep_games()` every minute via pg_cron; leaderboard top 1000 plus the player's neighbours (`around`) |
+| `0012_passes_and_scales.sql` | Whole-pool decks, 3 passes per player (`rooms.pass_limit`, `room_players.passes`, `encheres.can_pass`), strikes reset by the player's own move (time-outs in a row), `rooms.scale` for display |
 
 Functions the client calls:
 
@@ -158,10 +159,10 @@ Things that have bitten this project, so that they do not again:
 - **A statement does not see its own writes.** In `roll_season`, updating ratings and
   recomputing overall scores in one statement used the old ratings. Use two statements.
 - **Where the latest version of a function lives.** Later migrations replace functions
-  from earlier ones. As of 0011: the auction rules are `encheres.play_as` (0010; `public.play`
-  only maps the token to a seat), `room_view` and `get_room` are in 0010,
-  `end_by_forfeit` and `settle_match` in 0003; `enforce`, `bot_step`, `leaderboard`,
-  `resign` and `sweep_abandoned` in 0011. Copy from the newest file when replacing one.
+  from earlier ones. As of 0012: `play_as`, `room_view`, `enforce`, `bot_choice`,
+  `begin_game` and `public.play` are in 0012; `get_room` in 0010; `bot_step`,
+  `leaderboard`, `resign` and `sweep_abandoned` in 0011; `settle_match` in 0006;
+  `end_by_forfeit` in 0003. Copy from the newest file when replacing one.
 - **Rules exist in two languages.** The auction (TypeScript engine and SQL `play_as`) and
   the rule-based opponent (TypeScript `byRules` and SQL `bot_choice`) are each kept in
   step by a test that plays whole games and compares every step. If you change one side,
@@ -218,6 +219,20 @@ Short versions; details and reasons are in `docs/ARCHITECTURE.md`.
   (`NextButton` in `Board.tsx`); between two people the server moves on after 12 s as a
   backstop. `encheres.sweep_games()` runs every minute through pg_cron
   (job `encheres-sweep`) so games nobody is looking at still end and are settled.
+- **Passes.** Each player has 3 passes (`settings.passLimit`). A pass costs one only when
+  it skips a card nobody has bid on (`passCosts`); conceding a card the other player bid
+  on is free, and so is the automatic pass for a player who cannot bid. Out of passes
+  with no bid on the table, the player must bid (`canPass`, error `NO_PASSES_LEFT`). The
+  bots bid the minimum wherever they would have passed (`byRules`, `bot_choice`); a
+  timed-out player out of passes gets the minimum bid. The scoreboard shows the passes as
+  ✕ marks, with a buzzer sound.
+- **Decks** are the whole pool: every character of the universe, or all 326 when mixed.
+- **Power scales.** In a one-universe game powers are shown on that universe's own scale
+  (strongest = 100; `powerIn`, `scaleFactor`, `GameView.scale`, `rooms.scale`). Display
+  only: the verdict and every bot use shared power. Judging on the stretched scale was
+  tried and dropped: it made the universe's top card decide almost every game (×3 gaps
+  in Demon Slayer) and weakened the look-ahead opponent. The Characters page
+  (`#/characters`) lists everyone with both scales and the reason for each rating.
 - **Leaderboards** show the top 1000; a player below that gets `around`: themselves and
   the players directly above and below, shown after a gap.
 - **Friends.** Players exchange a seven-character tag. A request must be accepted. There
@@ -227,7 +242,7 @@ Short versions; details and reasons are in `docs/ARCHITECTURE.md`.
 ## State of things
 
 Done and live: same-device and offline play against two computer levels; private online
-rooms; quick matches in eight modes with a 30-second clock, strikes, automatic wins over players who leave, and an autopilot that settles the match once a player cannot buy any more; server-played opponent; profiles
+rooms; a Characters page; an animated How to play; quick matches in eight modes with 3 passes per player, a 30-second clock, three time-outs in a row, automatic wins over players who leave, and an autopilot that settles the match once a player cannot buy any more; server-played opponent; profiles
 with statistics, badges, avatar and country; leaderboards (overall, per mode, friends,
 country); monthly seasons from zero with history; recovery codes; friends and
 invitations; feedback form with rights requests; match recording; stronger opponent in

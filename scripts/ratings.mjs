@@ -31,14 +31,16 @@ const rows = [];
 for (const [id, name] of Object.entries(UNIVERSES)) {
   const top = Math.max(...rosters[id].map(([, power]) => power));
   rosters[id].forEach(([character, power, note], index) => {
-    rows.push({ universeId: id, universe: name, rank: index + 1, character, power, tier: tier(power, top), note });
+    // Same as powerIn() in src/data/characters.ts: the universe's own 0–100 scale.
+    const own = Math.round((100 * power) / top);
+    rows.push({ universeId: id, universe: name, rank: index + 1, character, power, own, tier: tier(power, top), note });
   });
 }
 
 const csvCell = (value) => `"${String(value).replaceAll('"', '""')}"`;
 const csv = [
-  ['Universe', 'Rank', 'Character', 'Power', 'Tier', 'Why'].join(','),
-  ...rows.map((r) => [r.universe, r.rank, r.character, r.power, r.tier, r.note].map(csvCell).join(',')),
+  ['Universe', 'Rank', 'Character', 'Power', 'Universe power', 'Tier', 'Why'].join(','),
+  ...rows.map((r) => [r.universe, r.rank, r.character, r.power, r.own, r.tier, r.note].map(csvCell).join(',')),
 ].join('\n');
 writeFileSync(new URL('../docs/power-ratings.csv', import.meta.url), `${csv}\n`);
 
@@ -54,9 +56,9 @@ const sections = Object.values(UNIVERSES).map((name) => {
   return [
     `## ${name}`,
     '',
-    '| # | Character | Power | Tier | Why |',
-    '| --- | --- | --- | --- | --- |',
-    ...own.map((r) => `| ${r.rank} | ${r.character} | ${r.power} | ${r.tier} | ${r.note} |`),
+    '| # | Character | Power | Universe power | Tier | Why |',
+    '| --- | --- | --- | --- | --- | --- |',
+    ...own.map((r) => `| ${r.rank} | ${r.character} | ${r.power} | ${r.own} | ${r.tier} | ${r.note} |`),
   ].join('\n');
 });
 
