@@ -248,6 +248,19 @@ country); monthly seasons from zero with history; recovery codes; friends and
 invitations; feedback form with rights requests; match recording; stronger opponent in
 an Edge Function; rarity cards; dark theme; sound; security headers; French and English.
 
+**Pending as of 18 Nov 2026: the latest client is not live.** Netlify skipped the deploy
+of `main@78d8dfc` (three passes, Characters page, animated How to play, universe scales)
+because the free team ran out of build credits for the billing period (16 Nov to 15 Dec).
+The site still serves `main@0bc5ee8`. The database (0012) and the Edge Function are already
+on the new rules, so that the old client keeps working: the pass limit is switched off for
+now (`rooms.pass_limit` default set to 99, running rooms updated). **Once the new client is
+live**, switch it back on in the SQL editor:
+`alter table encheres.rooms alter column pass_limit set default 3;` (rooms already playing
+keep 99 until they end). Ways to get it live: a paid Netlify plan, moving hosting to a host
+with free deploys (new address: Google sign-in domains, Supabase redirect URLs and Google
+brand verification would have to be redone), or waiting for the credits to reset on 16 Dec.
+Netlify charges every production deploy: batch changes into fewer pushes to `main`.
+
 Google sign-in is on and the Google app is published (not "Testing"). Branding: app name
 "Anime Auction Draft", logo `public/logo.svg` (PNG sizes made by `npm run logo`), home
 page, `public/privacy.html` and `public/terms.html`. Authorized domains: only
