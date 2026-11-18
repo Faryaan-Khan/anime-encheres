@@ -298,8 +298,16 @@ Google account, so test it by hand after changes.
   statement that franchise material belongs to its owners, and a DMCA/rights-request
   process. This game has the same notices (`#/legal`, footer, a "rights" feedback topic)
   but deliberately no pictures: a disclaimer and a takedown route reduce risk, they do
-  not grant the right to use the art. Pictures can be dropped into `src/assets/cards/`
-  only if the owner has the rights to them.
+  not grant the right to use the art. **Decided by the owner (18 Nov 2026):** the website
+  will use pictures of the real characters, under the existing fan-game notices and
+  takedown route; the App Store and Google Play versions must not, and will use original
+  (e.g. cartoon-style) art instead, since stores reject apps with other companies'
+  characters. AI-generated pictures of the characters count as real-character pictures
+  here: the characters' owners keep their rights whoever or whatever draws them. Keep the
+  source of every picture in a credits file so any one can be removed quickly, and make
+  sure app builds cannot include the web pictures (a build setting that leaves them out).
+  The owner will send the pictures as zip files named after the characters; convert them
+  to small WebP (about 400×560) named by character id in `src/assets/cards/`.
 - **When to switch off the computer opponent.** The owner's idea is once there are
   enough players (he mentioned about ten thousand).
 
