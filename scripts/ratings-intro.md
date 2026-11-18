@@ -28,6 +28,11 @@ This file is generated. Edit `src/data/rosters.json`, then run `npm run ratings`
 
 - **Small gaps matter.** In the verdict, strength doubles every 2.5 points, so a 55 is
   about four times as strong as a 50.
+- **Universe power** is what players see in a game of one universe: the same rating on
+  that universe's own 0–100 scale, where its strongest character is 100 and everyone else
+  keeps the same proportion (power × 100 ÷ strongest, rounded). It is display only: the
+  verdict always uses the shared power, so a game plays the same whichever scale it is
+  shown on. Mixed games show the shared power.
 - **Tier** (S to D) is relative to the strongest character of the same universe, so it
   says how good a card is in a single-universe game: S is within 7% of the top, A within
   18%, B within 34%, C within 55%, D below that.

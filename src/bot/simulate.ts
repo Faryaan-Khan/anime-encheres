@@ -4,7 +4,7 @@
  * they are. Not imported by the app.
  */
 import { getCharacter } from '../data/characters';
-import { bid, createGame, draw, next, pass, requiredBid, toView } from '../game/engine';
+import { bid, canPass, createGame, draw, next, pass, requiredBid, toView } from '../game/engine';
 import type { GameState, Seat, Settings } from '../game/types';
 import { judge, type Verdict } from '../game/verdict';
 import {
@@ -103,6 +103,8 @@ export function simulate(
         action = result.action;
         memory[seat] = result.memory;
       }
+      // Out of passes and nobody has bid: the only legal move is the minimum bid.
+      if (action.type === 'pass' && !canPass(state, seat)) action = { type: 'bid', amount: requiredBid(state) };
       if (action.type === 'draw') state = draw(state, seat);
       else if (action.type === 'pass') state = pass(state, seat);
       else state = bid(state, seat, action.amount);

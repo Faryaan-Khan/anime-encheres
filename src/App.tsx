@@ -6,6 +6,7 @@ import { setTheme, useTheme } from './theme';
 import { Home } from './screens/Home';
 import { Legal } from './screens/Legal';
 import { LocalGame } from './screens/LocalGame';
+import { Characters } from './screens/Characters';
 import { Rules } from './screens/Rules';
 
 // The online screens pull in the Supabase client, so they are loaded on demand:
@@ -64,6 +65,7 @@ export function App() {
       {route.name === 'local' && <LocalGame key="local" />}
       {route.name === 'solo' && <LocalGame key="solo" solo />}
       {route.name === 'rules' && <Rules />}
+      {route.name === 'characters' && <Characters />}
       <Suspense fallback={<p className="waiting">{t('online.connecting')}</p>}>
         {route.name === 'online' && <Online />}
         {route.name === 'match' && <Match />}

@@ -19,6 +19,7 @@ export const SERVER_ERRORS = [
   'NOT_YOUR_TURN',
   'WRONG_PHASE',
   'INVALID_BID',
+  'NO_PASSES_LEFT',
   'TEAM_FULL',
   'INVALID_INPUT',
   'TOO_EARLY',

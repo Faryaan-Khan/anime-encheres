@@ -8,7 +8,7 @@
  */
 import type { PGlite } from '@electric-sql/pglite';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { bid, createGame, draw, next, pass, requiredBid, toView } from '../../src/game/engine';
+import { bid, canPass, createGame, draw, next, pass, requiredBid, toView } from '../../src/game/engine';
 import { seeded } from '../../src/game/testing';
 import type { GameState, GameView, Seat } from '../../src/game/types';
 import { createTestDb, type TestDb } from './helpers';
@@ -63,12 +63,13 @@ describe('rooms', () => {
     expect(view.code).toMatch(/^[A-HJ-NP-Z2-9]{5}$/);
     expect(view.status).toBe('lobby');
     expect(view.you).toBe(0);
-    expect(view.players).toEqual([{ seat: 0, name: 'Ana', budget: 500, team: [] }]);
+    expect(view.players).toEqual([{ seat: 0, name: 'Ana', budget: 500, team: [], passes: 0 }]);
     expect(view.settings).toEqual({
       budget: 500,
       teamSize: 5,
       minBid: 10,
       increment: 10,
+      passLimit: 3,
       poolSize: 24,
     });
   });
@@ -115,7 +116,8 @@ describe('rooms', () => {
     const view = await rpc('start_game', [code, HOST]);
     expect(view.status).toBe('playing');
     expect(view.phase).toBe('draw');
-    expect(view.deckCount).toBe(20);
+    // The whole pool is dealt.
+    expect(view.deckCount).toBe(pool.length);
     expect(await rpcError('start_game', [code, HOST])).toContain('ALREADY_PLAYING');
   });
 });
@@ -265,7 +267,7 @@ describe('parity with the TypeScript engine', () => {
         const seat: Seat = rng() < 0.5 ? 0 : 1;
         await rpc('play', [code, token(seat), 'next', null]);
         local = next(local);
-      } else if (rng() < 0.6) {
+      } else if (rng() < 0.6 || !canPass(local, local.turn)) {
         const seat = local.turn;
         const min = requiredBid(local);
         const amount = Math.min(local.players[seat].budget, min + Math.floor(rng() * 6) * 10);

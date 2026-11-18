@@ -44,11 +44,14 @@ if (!chromePath) {
 
 const db = new PGlite();
 await db.exec('create role anon nologin; create role authenticated nologin;');
-for (const file of ['0001_init.sql', '0002_matchmaking.sql', '0003_ranking.sql', '0004_character_powers.sql', '0005_accounts_and_opponent.sql', '0006_modes_and_friends.sql', '0007_seasons.sql', '0008_opponent_brain.sql', '0009_google_accounts.sql', '0010_fair_play.sql', '0011_autopilot.sql']) {
+for (const file of ['0001_init.sql', '0002_matchmaking.sql', '0003_ranking.sql', '0004_character_powers.sql', '0005_accounts_and_opponent.sql', '0006_modes_and_friends.sql', '0007_seasons.sql', '0008_opponent_brain.sql', '0009_google_accounts.sql', '0010_fair_play.sql', '0011_autopilot.sql', '0012_passes_and_scales.sql']) {
   await db.exec(readFileSync(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8'));
 }
 
 const calls = { leaving: 0 };
+const rosters = JSON.parse(readFileSync(new URL('../src/data/rosters.json', import.meta.url), 'utf8'));
+const CHARACTER_COUNT = Object.values(rosters).reduce((n, list) => n + list.length, 0);
+const ONE_PIECE_COUNT = rosters['one-piece'].length;
 const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': '*',
@@ -530,6 +533,20 @@ try {
   assert(await solo.$eval('.home__modes .btn--mode', (e) => e.classList.contains('btn--primary')), 'online is highlighted');
   await snap(solo, 'home');
   console.log('PASS  home: play online first, one offline entry');
+
+  // --- Characters and How to play ----------------------------------------------
+
+  await solo.goto(`${base}#/characters`, { waitUntil: 'networkidle2' });
+  assert((await text(solo)).includes(`${CHARACTER_COUNT} characters`), 'every character is listed');
+  await click(solo, 'One Piece');
+  await until(solo, async () => (await solo.$eval('.chars__row .chars__power strong', (e) => e.textContent)) === '100', 'One Piece on its own scale');
+  assert((await solo.$$('.chars__row')).length === ONE_PIECE_COUNT, 'only One Piece characters');
+  await snap(solo, 'characters');
+  await solo.goto(`${base}#/rules`, { waitUntil: 'networkidle2' });
+  const firstCaption = await solo.$eval('.demo__caption', (e) => e.textContent);
+  await until(solo, async () => (await solo.$eval('.demo__caption', (e) => e.textContent)) !== firstCaption, 'the demo to move on by itself', 8000);
+  await snap(solo, 'rules');
+  console.log('PASS  characters on each universe scale; how-to-play demo plays');
 
   // --- Dark theme, notices -------------------------------------------------------
 

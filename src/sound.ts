@@ -16,6 +16,7 @@ export type Sound =
   | 'bid'
   | 'outbid'
   | 'pass'
+  | 'skip'
   | 'sold'
   | 'won'
   | 'lost'
@@ -178,6 +179,13 @@ const SOUNDS: Record<Sound, (ctx: AudioContext) => void> = {
     tone(ctx, { freq: 660, to: 990, at: 0.12, dur: 0.18, type: 'sawtooth', gain: 0.1 });
   },
   pass: (ctx) => tone(ctx, { freq: 220, to: 140, dur: 0.22, type: 'sine', gain: 0.3 }),
+  // A card skipped, one of the three passes gone: a talent-show buzzer.
+  skip: (ctx) => {
+    tone(ctx, { freq: 98, dur: 0.6, type: 'sawtooth', gain: 0.2 });
+    tone(ctx, { freq: 147, dur: 0.6, type: 'square', gain: 0.09 });
+    tone(ctx, { freq: 104, dur: 0.6, type: 'sawtooth', gain: 0.12 });
+    noise(ctx, { dur: 0.25, from: 600, to: 200, gain: 0.12 });
+  },
   // An auctioneer's gavel: two light knocks and a heavy one.
   sold: (ctx) => {
     [0, 0.16, 0.38].forEach((at, i) => {

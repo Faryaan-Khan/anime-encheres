@@ -83,8 +83,9 @@ async function playToEnd(code: string, rng: () => number, tokens = token): Promi
     } else {
       const seat = view.turn;
       const min = view.highBidder === null ? 10 : view.highBid + 10;
+      const mustBid = view.highBidder === null && (view.players[seat].passes ?? 0) >= 3;
       view =
-        rng() < 0.6
+        rng() < 0.6 || mustBid
           ? await rpc('play', [code, tokens(seat), 'bid', Math.min(view.players[seat].budget, min + Math.floor(rng() * 4) * 10)])
           : await rpc('play', [code, tokens(seat), 'pass', null]);
     }

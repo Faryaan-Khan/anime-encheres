@@ -19,6 +19,12 @@ export interface Settings {
   minBid: number;
   /** Smallest legal raise over the current bid, in millions. */
   increment: number;
+  /**
+   * How many times each player may skip a card: pass when nobody has bid on
+   * it yet. Letting the other player have a card they bid on is always free.
+   * 3 when missing (games saved before the limit existed).
+   */
+  passLimit?: number;
 }
 
 export interface PlayerState {
@@ -26,6 +32,8 @@ export interface PlayerState {
   budget: number;
   /** Character ids won so far, in the order they were won. */
   team: string[];
+  /** Cards skipped so far (passes that count against `settings.passLimit`). */
+  passes?: number;
 }
 
 export interface HistoryEntry {
@@ -54,6 +62,13 @@ export interface GameState {
   /** A pass is final for the current card. */
   passed: [boolean, boolean];
   history: HistoryEntry[];
+  /**
+   * The power scale the game is shown on: a universe id when every card comes
+   * from that universe (each universe on its own 0–100 scale), `all` for
+   * mixed games. Display only; the winner is decided on shared power. Missing
+   * in games saved before scales existed: `all`.
+   */
+  scale?: string;
 }
 
 export interface PlayerView extends PlayerState {
@@ -77,6 +92,8 @@ export interface GameView {
   drawer: Seat;
   turn: Seat;
   highBid: number;
+  /** See `GameState.scale`. */
+  scale?: string;
   highBidder: Seat | null;
   passed: [boolean, boolean];
   deckCount: number;
@@ -119,6 +136,7 @@ export type GameErrorCode =
   | 'NOT_YOUR_TURN'
   | 'TEAM_FULL'
   | 'INVALID_BID'
+  | 'NO_PASSES_LEFT'
   | 'INVALID_INPUT';
 
 export class GameError extends Error {

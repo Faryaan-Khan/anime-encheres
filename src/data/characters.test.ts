@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ALL_SCALE,
   CHARACTERS,
   MIX_ID,
   UNIVERSES,
   getCharacter,
   initials,
   poolFor,
+  powerIn,
+  scaleFactor,
+  scaleOf,
   slug,
   tierOf,
 } from './characters';
@@ -69,5 +73,27 @@ describe('character data', () => {
 
   it('falls back gracefully for unknown ids', () => {
     expect(getCharacter('someone-new').name).toBe('someone-new');
+  });
+});
+
+describe('universe scales', () => {
+  it('put each universe’s strongest at 100 and keep everyone’s share of that', () => {
+    for (const universe of UNIVERSES) {
+      const own = CHARACTERS.filter((c) => c.universe === universe.id);
+      const top = Math.max(...own.map((c) => c.power));
+      expect(Math.max(...own.map((c) => powerIn(c, universe.id)))).toBe(100);
+      for (const c of own) {
+        expect(powerIn(c, universe.id)).toBe(Math.round((100 * c.power) / top));
+        expect(powerIn(c, ALL_SCALE)).toBe(c.power);
+      }
+    }
+  });
+
+  it('pick a universe’s scale only when every card comes from it', () => {
+    expect(scaleOf(poolFor('bleach'))).toBe('bleach');
+    expect(scaleOf(poolFor(MIX_ID))).toBe(ALL_SCALE);
+    expect(scaleOf([])).toBe(ALL_SCALE);
+    expect(scaleFactor('one-piece')).toBeCloseTo(100 / 58);
+    expect(scaleFactor(ALL_SCALE)).toBe(1);
   });
 });

@@ -19,7 +19,7 @@
  * See docs/ARCHITECTURE.md ("Computer opponent") for the reasoning.
  */
 import { getCharacter } from '../data/characters';
-import { bid, draw, next, pass, shuffle } from '../game/engine';
+import { bid, canPass, draw, next, pass, shuffle } from '../game/engine';
 import type { GameState, GameView, Seat } from '../game/types';
 import { judge, strength } from '../game/verdict';
 
@@ -325,10 +325,13 @@ function byRules(view: GameView, ctx: BotContext, style: Style, rng: () => numbe
   const rivalSlots = teamSize - rival.team.length;
   const required = view.highBidder === null ? minBid : view.highBid + increment;
   const floor = (amount: number) => Math.floor(amount / increment) * increment;
-  const passes = (): Decision => ({ action: { type: 'pass' }, memory });
+  let passes = (): Decision => ({ action: { type: 'pass' }, memory });
   const bids = (amount: number): Decision => ({ action: { type: 'bid', amount }, memory });
 
   if (mySlots <= 0 || self.budget < required) return passes();
+  // Out of passes and nobody has bid: skipping is not allowed, so wherever the
+  // bot would pass it bids the minimum instead. (Same in encheres.bot_choice.)
+  if (!canPass(view, me)) passes = () => bids(required);
 
   const revealed = new Set(view.history.map((h) => h.card));
   const unseen = ctx.pool.filter((id) => !revealed.has(id));
@@ -421,10 +424,22 @@ function imagine(view: GameView, card: string, deck: string[]): GameState {
       teamSize: view.settings.teamSize,
       minBid: view.settings.minBid,
       increment: view.settings.increment,
+      passLimit: view.settings.passLimit,
     },
+    scale: view.scale,
     players: [
-      { name: view.players[0].name, budget: view.players[0].budget, team: view.players[0].team.slice() },
-      { name: view.players[1].name, budget: view.players[1].budget, team: view.players[1].team.slice() },
+      {
+        name: view.players[0].name,
+        budget: view.players[0].budget,
+        team: view.players[0].team.slice(),
+        passes: view.players[0].passes ?? 0,
+      },
+      {
+        name: view.players[1].name,
+        budget: view.players[1].budget,
+        team: view.players[1].team.slice(),
+        passes: view.players[1].passes ?? 0,
+      },
     ],
     deck,
     phase: 'bidding',
@@ -458,6 +473,7 @@ function seatView(state: GameState, seat: Seat): GameView {
     highBid: state.highBid,
     highBidder: state.highBidder,
     passed: state.passed,
+    scale: state.scale,
     deckCount: state.deck.length,
     card: visible ? state.card : null,
     history: state.history,
@@ -507,6 +523,8 @@ function byLookingAhead(view: GameView, ctx: BotContext, rng: () => number): Dec
   const rival = view.players[rivalSeat];
   const required = view.highBidder === null ? minBid : view.highBid + increment;
   if (teamSize - self.team.length <= 0 || self.budget < required) return instinct;
+  // No pass left to compare with: bidding is the only move.
+  if (!canPass(view, me)) return instinct;
 
   const revealed = new Set(view.history.map((h) => h.card));
   const unseen = ctx.pool.filter((id) => !revealed.has(id));

@@ -92,6 +92,9 @@ export function Home() {
           <button type="button" className="link" onClick={() => navigate('/rules')}>
             {t('home.rules')}
           </button>
+          <button type="button" className="link" onClick={() => navigate('/characters')}>
+            {t('home.characters')}
+          </button>
           <button type="button" className="link" onClick={() => navigate('/feedback')}>
             {t('home.feedback')}
           </button>

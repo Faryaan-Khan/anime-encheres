@@ -12,7 +12,9 @@ Build a better team of characters than your opponent, using a fictional budget.
 
 - Two players. Each starts with the same budget (500M by default).
 - Choose a universe (or mix them all) and a team size (5 by default).
-- The game deals a face-down deck of four cards per team slot (20 cards for teams of 5).
+- The deck is every character of the chosen universe (every character of every universe
+  when mixed), shuffled face down.
+- Each player has **3 passes** for the whole game.
 
 ### A round
 
@@ -21,7 +23,10 @@ Build a better team of characters than your opponent, using a fictional budget.
 2. **Bid.** The drawer speaks first. On your turn you either:
    - **bid**: at least 10M to open, then at least 10M more than the current bid, and never
      more than your budget; or
-   - **pass**: a pass is final for this card.
+   - **pass**: a pass is final for this card. Passing on a card nobody has bid on yet skips
+     it and uses one of your 3 passes (a ✕ lights up under your name). Once the other
+     player has bid, passing just lets them have the card, which is always free. With no
+     passes left and nobody bidding, you have to bid at least the minimum.
 3. **Resolve.**
    - When one player has bid and the other passes, the bidder wins the card and pays
      their bid.
@@ -40,8 +45,11 @@ needs characters can afford the minimum bid.
 
 ### The verdict
 
-Every character has a power rating (see [POWER_RATINGS.md](POWER_RATINGS.md)); it is shown
-when a card is revealed. At the end the game compares the two teams. Strength doubles
+Every character has a power rating (see [POWER_RATINGS.md](POWER_RATINGS.md), or the
+Characters page in the game); it is shown when a card is revealed. In a game of one universe
+powers are shown on that universe's own 0–100 scale, where its strongest character is 100;
+mixed games show the shared scale. The scale only changes the numbers shown: the verdict is
+the same either way. At the end the game compares the two teams. Strength doubles
 every 2.5 points of power and a team's strength is the sum of its members', so the
 strongest characters count the most: one 95 beats a 92 and a 91 together. The final screen
 shows each team's power and how decisive the win is. The ratings are opinions, so you are
@@ -59,7 +67,7 @@ the game in its head before every bid.
 "Quick match" finds you an opponent online. You choose a mode: one universe, or all of
 them mixed. The rules are fixed so that anyone can be paired: 500M each, teams of 5. You
 have 30 seconds for each action. If you run out of time the game plays for you (draws the
-card, or passes) and counts it; the third time loses the match. Leaving the game, or
+card, or passes) and counts it; the third time in a row loses the match (any move you make yourself resets the count). Leaving the game, or
 closing the page and not coming back within a few seconds, gives the win to your
 opponent. Once you cannot buy anything more (your team is full, or you cannot afford the
 minimum bid), the rest of the game plays out by itself and your result counts even if you
@@ -118,8 +126,9 @@ Composer une meilleure équipe de personnages que ton adversaire avec un budget 
 
 - Deux joueurs. Chacun commence avec le même budget (500M par défaut).
 - Choisissez un univers (ou mélangez tout) et une taille d'équipe (5 par défaut).
-- Le jeu distribue une pioche face cachée de quatre cartes par place dans une équipe
-  (20 cartes pour des équipes de 5).
+- La pioche contient tous les personnages de l'univers choisi (tous ceux de tous les
+  univers dans une partie mélangée), mélangés face cachée.
+- Chaque joueur a **3 passes** pour toute la partie.
 
 ### Une manche
 
@@ -128,7 +137,10 @@ Composer une meilleure équipe de personnages que ton adversaire avec un budget 
 2. **Enchères.** Celui qui a pioché parle en premier. À ton tour, tu peux :
    - **miser** : au moins 10M pour ouvrir, puis au moins 10M de plus que la mise actuelle,
      sans jamais dépasser ton budget ;
-   - **passer** : passer est définitif pour cette carte.
+   - **passer** : passer est définitif pour cette carte. Passer sur une carte où personne
+     n'a encore misé revient à la sauter et utilise une de tes 3 passes (un ✕ s'allume sous
+     ton nom). Une fois que l'autre a misé, passer revient à lui laisser la carte : c'est
+     toujours gratuit. Sans passe restante et sans mise, tu dois miser au moins le minimum.
 3. **Résolution.**
    - Quand un joueur a misé et que l'autre passe, celui qui a misé remporte la carte et
      paie sa mise.
@@ -147,8 +159,11 @@ quand plus aucun joueur ayant encore besoin de personnages ne peut payer la mise
 
 ### Le verdict
 
-Chaque personnage a une note de puissance (voir [POWER_RATINGS.md](POWER_RATINGS.md)),
-affichée quand la carte est révélée. À la fin, le jeu compare les deux équipes. La force
+Chaque personnage a une note de puissance (voir [POWER_RATINGS.md](POWER_RATINGS.md), ou
+la page Personnages du jeu), affichée quand la carte est révélée. Dans une partie d'un seul
+univers, elle est affichée sur l'échelle 0–100 de cet univers, où son personnage le plus
+fort vaut 100 ; les parties mélangées affichent l'échelle commune. L'échelle ne change que
+les nombres affichés : le verdict est le même. À la fin, le jeu compare les deux équipes. La force
 double tous les 2,5 points de puissance et la force d'une équipe est la somme de celles de
 ses membres : les plus forts pèsent donc le plus, et un 95 bat un 92 et un 91 réunis.
 L'écran final affiche la puissance de chaque équipe et l'ampleur de la victoire. Les notes
@@ -166,7 +181,7 @@ partie avant chaque mise.
 « Partie rapide » te trouve un adversaire en ligne. Tu choisis un mode : un seul univers,
 ou tous mélangés. Les règles sont fixes pour que tout le monde puisse être associé : 500M
 chacun, équipes de 5. Tu as 30 secondes par action. Si le temps est écoulé, le jeu joue
-pour toi (tire la carte, ou passe) et le compte ; la troisième fois, la partie est perdue.
+pour toi (tire la carte, ou passe) et le compte ; la troisième fois de suite, la partie est perdue (chaque coup que tu joues toi-même remet le compteur à zéro).
 Quitter la partie, ou fermer la page sans revenir dans les secondes qui suivent, donne la
 victoire à l'adversaire. Quand tu ne peux plus rien acheter (équipe complète, ou plus de
 quoi payer l'enchère minimale), la suite se joue toute seule et ton résultat compte même

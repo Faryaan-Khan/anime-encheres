@@ -10,11 +10,18 @@ interface Props {
   disabled?: boolean;
   onBid(amount: number): void;
   onPass(): void;
+  /**
+   * Passes left when passing would skip the card (nobody has bid on it yet);
+   * `null` when passing only lets the other player have it, which is free.
+   */
+  passesLeft?: number | null;
+  /** Out of passes and nobody has bid: the player has to bid. */
+  mustBid?: boolean;
 }
 
 const QUICK_RAISES = [50, 100];
 
-export function BidControls({ min, max, step, disabled, onBid, onPass }: Props) {
+export function BidControls({ min, max, step, disabled, onBid, onPass, passesLeft = null, mustBid = false }: Props) {
   const { t, money } = useI18n();
   const [amount, setAmount] = useState(min);
 
@@ -84,9 +91,19 @@ export function BidControls({ min, max, step, disabled, onBid, onPass }: Props) 
         </button>
       </div>
 
+      {mustBid && <p className="note bid__must">{t('board.pass.none')}</p>}
       <div className="bid__actions">
-        <button type="button" className="btn" onClick={onPass} disabled={disabled}>
-          {t('board.pass')}
+        <button
+          type="button"
+          className={`btn${passesLeft !== null ? ' btn--skip' : ''}`}
+          onClick={onPass}
+          disabled={disabled || mustBid}
+        >
+          {mustBid
+            ? t('board.pass.out')
+            : passesLeft !== null
+              ? t('board.pass.left', { n: passesLeft })
+              : t('board.pass')}
         </button>
         <button
           type="button"

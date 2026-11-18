@@ -46,6 +46,7 @@ export function Scoreboard({ view }: { view: GameView }) {
             </h2>
             <p className="player__budget">{money(player.budget)}</p>
             <TeamSlots player={player} teamSize={view.settings.teamSize} />
+            <PassMarks used={player.passes ?? 0} limit={view.settings.passLimit ?? 3} name={player.name} />
             {(view.strikes?.[player.seat] ?? 0) > 0 && (
               <p className="player__strikes" title={t('board.timer.strikesShort', { n: view.strikes![player.seat], max: view.maxStrikes ?? 3 })}>
                 {t('board.timer.strikesShort', { n: view.strikes![player.seat], max: view.maxStrikes ?? 3 })}
@@ -79,5 +80,22 @@ function EyeIcon() {
       />
       <circle cx="12" cy="12" r="3.2" fill="currentColor" />
     </svg>
+  );
+}
+
+/**
+ * The passes a player has used, as big crosses that light up one by one, like
+ * the buzzers on a talent show.
+ */
+function PassMarks({ used, limit, name }: { used: number; limit: number; name: string }) {
+  const { t } = useI18n();
+  return (
+    <p className="passes" aria-label={t('board.passes.label', { name, n: used, max: limit })}>
+      {Array.from({ length: limit }, (_, i) => (
+        <span key={i} className={`passes__x${i < used ? ' passes__x--used' : ''}`} aria-hidden="true">
+          ✕
+        </span>
+      ))}
+    </p>
   );
 }
