@@ -36,7 +36,7 @@ built from. The only manual step in the whole system is applying a new database 
 npm install
 npm run dev          # local site, talks to the live database through .env
 npm run typecheck    # TypeScript strict
-npm test             # 220 unit and database tests (no external service needed)
+npm test             # 222 unit and database tests (no external service needed)
 npm run test:e2e     # real browsers against the real SQL; needs Chrome (CHROME_PATH)
 npm run ratings      # after editing src/data/rosters.json
 npm run build:opponent  # after editing src/bot/: rebuild the Edge Function bundle
@@ -55,8 +55,9 @@ the client that calls them.
 - Routes are hash routes (`#/match`, `#/room/CODE`); see `src/router.ts`.
 - Commits are authored as `Faryaan Khan <Faryaan-Khan@users.noreply.github.com>`. The
   owner's personal email must not appear in the repository.
-- No copyrighted or fan-made character art. Cards are drawn from the name; pictures the
-  owner has the right to use can be dropped in `src/assets/cards/`.
+- Card pictures: website only (see "Character rights" below). They live in
+  `src/assets/cards/<character-id>.webp`, each recorded in `CREDITS.md` there; cards
+  without one are drawn from the name. Build app versions with `VITE_CARD_IMAGES=off`.
 - Documentation is part of the work: update the relevant file in `docs/` in the same
   commit as the code.
 
@@ -234,8 +235,8 @@ Short versions; details and reasons are in `docs/ARCHITECTURE.md`.
 - **Passes.** Each player has 3 passes (`settings.passLimit`). A pass costs one only when
   it skips a card nobody has bid on (`passCosts`); conceding a card the other player bid
   on is free, and so is the automatic pass for a player who cannot bid. Out of passes
-  with no bid on the table, the player must bid (`canPass`, error `NO_PASSES_LEFT`); after
-  5 seconds the minimum is bid for them (server `enforce`; offline `LocalGame`). The
+  with no bid on the table, the player must bid (`canPass`, error `NO_PASSES_LEFT`); the
+  10M button counts down and after 8 seconds the minimum is bid for them (server `enforce`; offline `LocalGame`). The
   bots bid the minimum wherever they would have passed (`byRules`, `bot_choice`); a
   timed-out player out of passes gets the minimum bid. The scoreboard shows the passes as
   ✕ marks, with a buzzer sound.
@@ -318,7 +319,15 @@ Google account, so test it by hand after changes.
   source of every picture in a credits file so any one can be removed quickly, and make
   sure app builds cannot include the web pictures (a build setting that leaves them out).
   The owner will send the pictures as zip files named after the characters; convert them
-  to small WebP (about 400×560) named by character id in `src/assets/cards/`.
+  to small WebP (about 420×588) named by character id in `src/assets/cards/`. The first
+  six (Zeno, Grand Priest, Whis, Vados, Beerus, Gogeta) went live on 19 Nov 2026.
+
+### Waiting on the owner
+
+- **1v1v1 and team modes** (offline 1v1v1, offline teams passing one phone, online 2v2
+  with paired face-offs) were requested on 19 Nov 2026; not started until the rules are
+  agreed: shared or separate budgets and rosters per team, team size, whether 1v1v1 is
+  also wanted online.
 - **When to switch off the computer opponent.** The owner's idea is once there are
   enough players (he mentioned about ten thousand).
 
