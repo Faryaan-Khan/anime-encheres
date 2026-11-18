@@ -160,8 +160,8 @@ Things that have bitten this project, so that they do not again:
 - **A statement does not see its own writes.** In `roll_season`, updating ratings and
   recomputing overall scores in one statement used the old ratings. Use two statements.
 - **Where the latest version of a function lives.** Later migrations replace functions
-  from earlier ones. As of 0012: `play_as`, `room_view`, `enforce`, `bot_choice`,
-  `begin_game` and `public.play` are in 0012; `get_room` in 0010; `bot_step`,
+  from earlier ones. As of 0013: `play_as`, `enforce` and `touch` are in 0013; `room_view`,
+  `bot_choice`, `begin_game` and `public.play` in 0012; `get_room` in 0010; `bot_step`,
   `leaderboard`, `resign` and `sweep_abandoned` in 0011; `settle_match` in 0006;
   `end_by_forfeit` in 0003. Copy from the newest file when replacing one.
 - **Rules exist in two languages.** The auction (TypeScript engine and SQL `play_as`) and
