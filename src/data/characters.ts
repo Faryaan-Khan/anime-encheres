@@ -9,6 +9,7 @@
  * src/assets/cards/ named after the character id (for example `goku.webp`).
  */
 
+import { cardImages } from './cardImages';
 import rosters from './rosters.json';
 
 export interface Universe {
@@ -182,18 +183,7 @@ export function initials(name: string): string {
 }
 
 // Optional pictures, picked up automatically at build time.
-const imageModules = import.meta.glob('../assets/cards/*.{png,jpg,jpeg,webp,avif}', {
-  eager: true,
-  query: '?url',
-  import: 'default',
-}) as Record<string, string>;
-
-const images = new Map(
-  Object.entries(imageModules).map(([path, url]) => [
-    path.split('/').pop()!.replace(/\.[^.]+$/, ''),
-    url,
-  ]),
-);
+const images = cardImages;
 
 export function getImage(id: string): string | undefined {
   return images.get(id);

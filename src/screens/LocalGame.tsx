@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import type { BotLevel } from '../bot/bot';
-import { Board } from '../components/Board';
+import { AUTO_BID_SECONDS, Board } from '../components/Board';
 import { Final } from '../components/Final';
 import { DEFAULT_OPTIONS, SettingsFields, toSettings, type GameOptions } from '../components/SettingsFields';
 import { poolFor } from '../data/characters';
@@ -14,7 +14,7 @@ import { readStored, writeStored } from '../storage';
 /** How long the computer appears to think before it acts, in milliseconds. */
 const BOT_DELAY = 900;
 /** How long a player who has to bid gets before the minimum is bid for them. */
-const AUTO_BID_MS = 5000;
+const AUTO_BID_MS = AUTO_BID_SECONDS * 1000;
 
 type Opponent = 'friend' | BotLevel;
 

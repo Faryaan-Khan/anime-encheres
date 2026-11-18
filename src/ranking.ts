@@ -82,3 +82,16 @@ export function badgesOf(profile: Stats): Badge[] {
     };
   });
 }
+
+/**
+ * Where a mode's trophies land when a new month starts: below 500 they stay;
+ * otherwise they drop to the floor of their bracket. Same as
+ * encheres.season_floor in SQL.
+ */
+export function seasonFloor(trophies: number): number {
+  if (trophies < 500) return trophies;
+  if (trophies < 1000) return 500;
+  if (trophies < 1500) return 999;
+  if (trophies < 2000) return 1499;
+  return 1999;
+}

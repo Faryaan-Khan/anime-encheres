@@ -447,16 +447,16 @@ describe('passes and time-outs in a row', () => {
     }
   });
 
-  it('bids the minimum after 5 seconds for a player who has to bid, with no strike', async () => {
+  it('bids the minimum after 8 seconds for a player who has to bid, with no strike', async () => {
     const game = await start();
     const code = game.code!;
     await db.query('update encheres.room_players set passes = 3 where room_code = $1', [code]);
     const actor = game.drawer;
     const rival = actor === 0 ? 1 : 0;
     await rpc('play', [code, token(actor), 'draw', null]);
-    await backdate(code, 4);
+    await backdate(code, 7);
     expect((await rpc('get_room', [code, token(rival)])).highBidder).toBeNull();
-    await backdate(code, 6);
+    await backdate(code, 9);
     const view = await rpc('get_room', [code, token(rival)]);
     expect(view.highBidder).toBe(actor);
     expect(view.highBid).toBe(10);
@@ -473,7 +473,7 @@ describe('passes and time-outs in a row', () => {
     const rival = actor === 0 ? 1 : 0;
     await rpc('play', [code, token(actor), 'draw', null]);
     await db.query('update encheres.room_players set old_site = true where room_code = $1 and seat = $2', [code, actor]);
-    await backdate(code, 6);
+    await backdate(code, 9);
     expect((await rpc('get_room', [code, token(rival)])).highBidder).toBeNull();
     await db.query('update encheres.room_players set old_site = false where room_code = $1', [code]);
     const view = await rpc('get_room', [code, token(rival)]);

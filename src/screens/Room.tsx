@@ -22,7 +22,10 @@ const AWAY_SHOWN_AFTER = 12;
 /** What a quick match needs from the screen that hosts it. */
 export interface MatchedHandlers {
   onExit(): void;
-  onFindAnother(): void;
+  /** Search again: in the same mode, or in the one given. */
+  onFindAnother(mode?: string): void;
+  /** The mode this match was played in. */
+  mode?: string;
 }
 
 /** One online room: join form, lobby, board or final screen depending on its state. */
@@ -61,7 +64,7 @@ export function ConnectedRoom({ code, matched }: { code: string; matched?: Match
               <p className="alert" role="alert">
                 {t(`error.${room.loadError}` as StringKey)}
               </p>
-              <button type="button" className="btn btn--primary" onClick={matched.onFindAnother}>
+              <button type="button" className="btn btn--primary" onClick={() => matched.onFindAnother()}>
                 {t('match.again')}
               </button>
             </>
@@ -192,6 +195,7 @@ function Game({ view, room, matched }: { view: GameView; room: OnlineRoom; match
         view={shownView}
         onRematch={!matched && view.you === 0 ? () => void room.start() : undefined}
         onFindAnother={matched?.onFindAnother}
+        mode={matched?.mode}
         forfeit={view.forfeit ?? null}
         trophies={
           view.you !== null && view.result?.deltas && typeof view.result.trophies?.[view.you] === 'number'
@@ -386,7 +390,7 @@ function InviteFriends({ code }: { code: string }) {
         <ul className="leaders">
           {friends.map((friend) => (
             <li key={friend.id} className="leaders__row">
-              <Avatar index={friend.avatar} size="sm" />
+              <Avatar value={friend.avatar} size="sm" />
               <span className="leaders__name">{friend.name}</span>
               <span className="people__actions">
                 <button

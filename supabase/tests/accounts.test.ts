@@ -17,7 +17,7 @@ let rpcError: TestDb['rpcError'];
 interface Profile {
   id: string;
   name: string;
-  avatar: number;
+  avatar: string;
   games: number;
   saved: boolean;
   hasCode: boolean;
@@ -63,12 +63,12 @@ describe('recovery codes', () => {
     const code = await newCode(PHONE);
 
     const opened = await redeem(LAPTOP, code);
-    expect(opened).toMatchObject({ id: phone.id, name: 'Ana', avatar: 3 });
+    expect(opened).toMatchObject({ id: phone.id, name: 'Ana', avatar: '3' });
     expect((await profile(LAPTOP)).id).toBe(phone.id);
 
     // Both devices now edit and read the same profile.
     await rpc('update_profile', [LAPTOP, 'Ana K', 'FR', 5]);
-    expect(await profile(PHONE)).toMatchObject({ name: 'Ana K', avatar: 5 });
+    expect(await profile(PHONE)).toMatchObject({ name: 'Ana K', avatar: '5' });
     expect((await db.query('select 1 from encheres.devices')).rows).toHaveLength(1);
   });
 

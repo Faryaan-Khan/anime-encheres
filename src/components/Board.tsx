@@ -44,6 +44,12 @@ export interface BoardProps {
   onLeave?: () => void;
 }
 
+/**
+ * Seconds a player who has to bid gets before the minimum is bid for them.
+ * Same as encheres.auto_bid_seconds() and AUTO_BID_MS in LocalGame.
+ */
+export const AUTO_BID_SECONDS = 8;
+
 /** Seconds a result stays on screen before the game moves on by itself. */
 const NEXT_AFTER = 5;
 /** The same, once this player cannot buy any more: they are only watching. */
@@ -292,6 +298,7 @@ export function Board({
                 onPass={onPass}
                 passesLeft={passCosts(view) ? passesLeft(view, view.turn) : null}
                 mustBid={!canPass(view, view.turn)}
+                autoBidIn={AUTO_BID_SECONDS - (view.idle ?? 0)}
               />
             </>
           ) : (

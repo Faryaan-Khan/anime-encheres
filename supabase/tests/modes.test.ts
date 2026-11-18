@@ -203,7 +203,7 @@ describe('seasons', () => {
   }
   const records = (who: string) => rpc<Records>('get_profile', [who]);
 
-  it('start everyone from zero each month and keep the results of the month before', async () => {
+  it('drop every mode to its bracket each month and keep the results of the month before', async () => {
     await named(ANA, 'Ana');
     await named(BEN, 'Ben');
     await setTrophies(ANA, 2950, 'naruto');
@@ -213,14 +213,13 @@ describe('seasons', () => {
 
     const ana = await records(ANA);
     expect(ana.season).toBe(new Date().toISOString().slice(0, 7));
-    expect(ana.trophies).toBe(0);
+    // Below 500 kept; 2000 and up to 1999.
+    const mode = (id: string) => ana.modes.find((m) => m.mode === id);
+    expect(mode('naruto')).toMatchObject({ trophies: 1999, best: 2950, seasonBest: 1999, bestRank: 1 });
+    expect(mode('mix')).toMatchObject({ trophies: 400, best: 400, seasonBest: 400, bestRank: 1 });
+    expect(ana.trophies).toBe(overallScore({ naruto: 1999, mix: 400 }));
     expect(ana.rank).toBeNull();
-    expect(ana.modes).toMatchObject([
-      { mode: 'mix', trophies: 0, best: 400, seasonBest: 0, bestRank: 1 },
-      { mode: 'naruto', trophies: 0, best: 2950, seasonBest: 0, bestRank: 1 },
-    ]);
     expect(ana.peak).toBe(2950);
-    expect(ana.bestRank).toBe(1);
     expect(ana.history).toHaveLength(1);
     expect(ana.history[0]).toMatchObject({
       season: '2020-01',
@@ -233,26 +232,64 @@ describe('seasons', () => {
       { mode: 'mix', trophies: 400, rank: 1 },
     ]);
     const ben = await records(BEN);
+    expect(ben.modes).toMatchObject([{ mode: 'naruto', trophies: 999 }]); // 1000-1499 to 999
     expect(ben.history[0]).toMatchObject({ rank: 2, players: 2 });
-    expect(ben.history[0].modes).toMatchObject([{ mode: 'naruto', rank: 2 }]);
 
     // The new season's tables are empty until someone plays.
     expect((await rpc<Board>('leaderboard', [ANA, 'naruto', null])).rows).toEqual([]);
     expect((await rpc<Board>('leaderboard', [ANA, 'overall', null])).rows).toEqual([]);
   });
 
+  it('keep sliding an idle player down a bracket every month, never below 500 from above', async () => {
+    await named(ANA, 'Ana');
+    await setTrophies(ANA, 2400, 'naruto');
+    const seen: number[] = [];
+    for (const month of ['2020-01', '2020-02', '2020-03', '2020-04', '2020-05']) {
+      await setSeason(month);
+      seen.push((await records(ANA)).modes[0].trophies);
+    }
+    expect(seen).toEqual([1999, 1499, 999, 500, 500]);
+  });
+
   it('count a game played in the new season', async () => {
     await named(ANA, 'Ana');
     await named(BEN, 'Ben');
     await setTrophies(ANA, 900, 'naruto');
+    await setTrophies(BEN, 900, 'naruto');
     await setSeason('2020-01');
     const waiting = await search(ANA, 'Ana', 'naruto');
     await search(BEN, 'Ben', 'naruto');
     await rpc('resign', [waiting.code, BEN]);
     const ana = await records(ANA);
-    expect(ana.modes).toMatchObject([{ mode: 'naruto', trophies: 30, seasonBest: 30, best: 900 }]);
+    expect(ana.modes).toMatchObject([{ mode: 'naruto', trophies: 530, seasonBest: 530, best: 900 }]);
     expect(ana.rank).toBe(1);
     expect((await rpc<Board>('leaderboard', [ANA, 'naruto', null])).rows.map((r) => r.name)).toEqual(['Ana', 'Ben']);
+  });
+
+  it('let names change freely below 500 trophies, monthly from 500, and never after Legend', async () => {
+    const rename = (name: string) => rpc<{ name: string; nameRule: string }>('update_profile', [ANA, name, null, '']);
+    await named(ANA, 'Ana');
+    expect((await rename('Ana2')).name).toBe('Ana2');
+    expect((await rename('Ana3')).nameRule).toBe('free');
+
+    await setTrophies(ANA, 600, 'naruto');
+    await db.query(`update encheres.profiles set name_changed_at = now() - interval '31 days'`);
+    const changed = await rename('Ana4');
+    expect(changed).toMatchObject({ name: 'Ana4', nameRule: 'cooldown' });
+    expect(await rpcError('update_profile', [ANA, 'Ana5', null, ''])).toContain('NAME_COOLDOWN');
+    // A quick-match search with another name keeps the profile's name.
+    await search(ANA, 'Someone', 'naruto');
+    expect((await rpc<{ name: string }>('get_profile', [ANA])).name).toBe('Ana4');
+
+    await setTrophies(ANA, 2250, 'naruto');
+    const legend = await rpc<{ nameRule: string; legendAt: string | null }>('get_profile', [ANA]);
+    expect(legend.nameRule).toBe('locked');
+    expect(legend.legendAt).not.toBeNull();
+    await db.query(`update encheres.profiles set name_changed_at = now() - interval '400 days'`);
+    expect(await rpcError('update_profile', [ANA, 'Ana6', null, ''])).toContain('NAME_LOCKED');
+    // Dropping out of the league later does not unlock it.
+    await setTrophies(ANA, 100, 'naruto');
+    expect((await rpc<{ nameRule: string }>('get_profile', [ANA])).nameRule).toBe('locked');
   });
 
   it('do nothing again within the same month', async () => {

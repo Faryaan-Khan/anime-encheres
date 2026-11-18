@@ -4,7 +4,9 @@ import { judge } from '../game/verdict';
 import { useI18n } from '../i18n';
 import type { StringKey } from '../i18n/strings';
 import { CharacterCard } from './CharacterCard';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { MODES } from '../match/config';
+import { modeName } from '../modes';
 import { play } from '../sound';
 import { Confetti, CountUp } from './Effects';
 
@@ -13,7 +15,10 @@ interface Props {
   /** `undefined` hides the button (online guest: only the host can restart). */
   onRematch?: () => void;
   /** Quick matches: look for a new opponent instead of a rematch. */
-  onFindAnother?: () => void;
+  /** Quick matches: search again, in this match's mode or another. */
+  onFindAnother?: (mode?: string) => void;
+  /** Quick matches: the mode this match was played in. */
+  mode?: string;
   /** The seat that gave up or ran out of time, if the game ended that way. */
   forfeit?: Seat | null;
   /** Extra line under the explanation. */
@@ -35,6 +40,7 @@ export function Final({
   view,
   onRematch,
   onFindAnother,
+  mode,
   forfeit = null,
   footnote,
   trophies,
@@ -147,9 +153,7 @@ export function Final({
 
       <div className="final__actions">
         {onFindAnother ? (
-          <button type="button" className="btn btn--primary" onClick={onFindAnother} disabled={busy}>
-            {t('match.again')}
-          </button>
+          <PlayAgain mode={mode} busy={Boolean(busy)} onFind={onFindAnother} />
         ) : onRematch ? (
           <button type="button" className="btn btn--primary" onClick={onRematch} disabled={busy}>
             {t('final.rematch')}
@@ -162,5 +166,34 @@ export function Final({
         </button>
       </div>
     </main>
+  );
+}
+
+/**
+ * After a quick match: straight into another one in the same mode, or pick
+ * another mode right here and search in it.
+ */
+function PlayAgain({ mode, busy, onFind }: { mode?: string; busy: boolean; onFind(mode?: string): void }) {
+  const { t } = useI18n();
+  const [choosing, setChoosing] = useState(false);
+  return (
+    <div className="again">
+      <button type="button" className="btn btn--primary btn--wide" onClick={() => onFind()} disabled={busy}>
+        {mode ? t('match.again.mode', { mode: modeName(mode, t) }) : t('match.again')}
+      </button>
+      {choosing ? (
+        <div className="again__modes" role="group" aria-label={t('match.mode')}>
+          {MODES.filter((id) => id !== mode).map((id) => (
+            <button key={id} type="button" className="chip" onClick={() => onFind(id)} disabled={busy}>
+              {modeName(id, t)}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <button type="button" className="btn btn--wide" onClick={() => setChoosing(true)} disabled={busy}>
+          {t('match.again.other')}
+        </button>
+      )}
+    </div>
   );
 }

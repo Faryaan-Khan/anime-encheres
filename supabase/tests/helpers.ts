@@ -18,6 +18,7 @@ export const MIGRATIONS = [
   '0011_autopilot.sql',
   '0012_passes_and_scales.sql',
   '0013_old_site_and_auto_bid.sql',
+  '0014_seasons_names_avatars.sql',
 ];
 
 export function readMigration(file: string): string {

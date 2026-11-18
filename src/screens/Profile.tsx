@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from 'react';
-import { AVATARS, Avatar } from '../components/Avatar';
+import { Avatar, AvatarPicker, avatarCharacter } from '../components/Avatar';
 import { countryFlag, countryName, countryOptions } from '../data/countries';
 import { useI18n } from '../i18n';
 import type { StringKey } from '../i18n/strings';
@@ -32,7 +32,7 @@ export function Profile() {
   const [error, setError] = useState<StringKey | null>(null);
   const [name, setName] = useState('');
   const [country, setCountry] = useState('');
-  const [avatar, setAvatar] = useState(0);
+  const [avatar, setAvatar] = useState('');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   // What happened on the way back from Google, shown in the account section.
@@ -43,7 +43,7 @@ export function Profile() {
     setProfile(p);
     setName(p.name === 'Player' && p.games === 0 ? '' : p.name);
     setCountry(p.country ?? '');
-    setAvatar(p.avatar);
+    setAvatar(avatarCharacter(p.avatar) ?? '');
   };
 
   useEffect(() => {
@@ -137,6 +137,8 @@ export function Profile() {
     const end = Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1);
     return Math.max(1, Math.ceil((end - now.getTime()) / 86400000));
   })();
+  const nameRule = profile?.nameRule ?? 'free';
+
   const seasonLabel = (season: string | null) => {
     if (!season) return '';
     const [y, m] = season.split('-').map(Number);
@@ -147,7 +149,7 @@ export function Profile() {
     <main className="page">
       <section className="hero-card" style={{ '--league': overall.color } as CSSProperties}>
         <div className="hero-card__top">
-          <Avatar index={profile.avatar} size="lg" />
+          <Avatar value={profile.avatar} size="lg" />
           <div>
             <h1 className="hero-card__name">{profile.name}</h1>
             <p className="hero-card__sub">
@@ -158,6 +160,9 @@ export function Profile() {
               )}
               <span>#{profile.tag}</span>
             </p>
+            {profile.legendAt && (
+              <p className="legend-mark">{t('profile.legendSince', { date: shortDate(profile.legendAt, lang) })}</p>
+            )}
           </div>
         </div>
         <div className="hero-card__score">
@@ -178,6 +183,7 @@ export function Profile() {
           <span>{t('profile.season', { season: seasonLabel(profile.season) })}</span>
           <span>{daysLeft === 1 ? t('profile.season.endsOne') : t('profile.season.ends', { n: daysLeft })}</span>
           <span>{t('profile.overall.hint')}</span>
+          <span>{t('profile.season.floor')}</span>
         </p>
         <div className="form__actions">
           <button type="button" className="btn" onClick={() => navigate('/leaderboard')}>
@@ -327,9 +333,17 @@ export function Profile() {
             value={name}
             maxLength={20}
             autoComplete="nickname"
+            disabled={nameRule !== 'free'}
             onChange={(e) => setName(e.target.value)}
           />
         </label>
+        <p className="name-rule">
+          {nameRule === 'locked'
+            ? t('profile.name.locked')
+            : nameRule === 'cooldown'
+              ? t('profile.name.cooldown', { date: shortDate(profile.nameFreeAt ?? '', lang) })
+              : t('profile.name.free')}
+        </p>
         <label className="field">
           <span>{t('profile.country')}</span>
           <select value={country} onChange={(e) => setCountry(e.target.value)}>
@@ -343,20 +357,7 @@ export function Profile() {
         </label>
         <fieldset className="field">
           <legend>{t('profile.avatar')}</legend>
-          <div className="avatars">
-            {AVATARS.map((_, index) => (
-              <label key={index} className="avatars__choice">
-                <input
-                  type="radio"
-                  name="avatar"
-                  checked={avatar === index}
-                  onChange={() => setAvatar(index)}
-                  aria-label={`${t('profile.avatar')} ${index + 1}`}
-                />
-                <Avatar index={index} />
-              </label>
-            ))}
-          </div>
+          <AvatarPicker value={avatar} onChange={setAvatar} />
         </fieldset>
         {error && (
           <p className="alert" role="alert">
@@ -564,4 +565,11 @@ function GoogleMark() {
       <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.8 6.1C6.6 42.6 14.6 48 24 48z" />
     </svg>
   );
+}
+
+/** A date as the player reads it, e.g. 19 Dec 2026. */
+function shortDate(iso: string, lang: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat(lang, { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
 }
