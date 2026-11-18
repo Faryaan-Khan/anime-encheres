@@ -17,6 +17,7 @@ export const MIGRATIONS = [
   '0010_fair_play.sql',
   '0011_autopilot.sql',
   '0012_passes_and_scales.sql',
+  '0013_old_site_and_auto_bid.sql',
 ];
 
 export function readMigration(file: string): string {

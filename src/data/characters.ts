@@ -125,6 +125,17 @@ export function scaleFactor(scale: string | undefined | null): number {
   return top ? 100 / top : 1;
 }
 
+/**
+ * Every character's place on the shared scale, strongest first (ties by
+ * name). Same order as the "Overall rank" column in docs/POWER_RATINGS.md.
+ */
+const overallOrder = CHARACTERS.slice().sort((a, b) => b.power - a.power || a.name.localeCompare(b.name));
+const overallRanks = new Map(overallOrder.map((c, i) => [c.id, i + 1]));
+
+export function overallRank(id: string): number {
+  return overallRanks.get(id) ?? CHARACTERS.length;
+}
+
 /** `powerIn` by id. */
 export function powerOf(id: string, scale: string | undefined | null): number {
   return powerIn(getCharacter(id), scale);

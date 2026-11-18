@@ -2693,3 +2693,10 @@ input {
     animation: none;
   }
 }
+
+.chars__overall {
+  padding: 0 0.45rem;
+  border: 1.5px solid currentColor;
+  border-radius: 999px;
+  color: var(--spot);
+}

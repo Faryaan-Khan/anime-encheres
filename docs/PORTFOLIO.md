@@ -54,7 +54,7 @@ Pick three or four.
   stored only as hashes), input validation in every function, and a strict Content
   Security Policy on the site.
 - Set up CI with GitHub Actions (type check, 191 tests, production build) and continuous
-  deployment to Netlify.
+  deployment to Cloudflare Pages.
 
 ## Skills demonstrated
 
@@ -67,7 +67,7 @@ Pick three or four.
 | Security thinking | Threat model in `docs/ARCHITECTURE.md`; tests asserting what a rival and an outsider cannot see |
 | Testing | Unit, property-style random playthroughs, database integration, cross-implementation parity and a two-browser end-to-end test |
 | Internationalisation | `src/i18n`: typed dictionaries where a missing translation fails the build |
-| Delivery | CI workflow, Netlify configuration, deployment guide |
+| Delivery | CI workflow, hosting configuration, deployment guide |
 
 ## Questions you should be ready for
 

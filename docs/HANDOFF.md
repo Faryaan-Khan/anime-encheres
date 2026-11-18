@@ -18,14 +18,14 @@ in French, is **Enchères Animés**. The repository and URLs keep `anime-enchere
 
 | Thing | Where |
 | --- | --- |
-| Live site | https://anime-encheres.netlify.app |
+| Live site | https://anime-encheres.pages.dev (Cloudflare Pages). The old address, https://anime-encheres.netlify.app, still serves an older build until it can be turned into a redirect |
 | Source | https://github.com/Faryaan-Khan/anime-encheres (branch `main`) |
-| Hosting | Netlify, builds and deploys every push to `main` |
+| Hosting | Cloudflare Pages (account faryaank@gmail.com, project `anime-encheres`), builds and deploys every push to `main`; headers in `public/_headers` |
 | Database | Supabase project `iwlmrwwuslebvaqjahnt` (URL and publishable key are in `.env`; both are public by design) |
 | Edge Function | `opponent` in the same Supabase project: the stronger computer opponent |
 | CI | GitHub Actions: type check, tests, build (`.github/workflows/ci.yml`) |
 
-Nothing runs on anyone's computer or browser. The site is served by Netlify and the game
+Nothing runs on anyone's computer or browser. The site is served by Cloudflare Pages and the game
 state lives in Supabase, so the game keeps working whatever happens to the machine it was
 built from. The only manual step in the whole system is applying a new database migration
 (see "Changing the database").
@@ -36,15 +36,15 @@ built from. The only manual step in the whole system is applying a new database 
 npm install
 npm run dev          # local site, talks to the live database through .env
 npm run typecheck    # TypeScript strict
-npm test             # 217 unit and database tests (no external service needed)
+npm test             # 220 unit and database tests (no external service needed)
 npm run test:e2e     # real browsers against the real SQL; needs Chrome (CHROME_PATH)
 npm run ratings      # after editing src/data/rosters.json
 npm run build:opponent  # after editing src/bot/: rebuild the Edge Function bundle
 npm run build
 ```
 
-To ship a change: commit, push to `main`, wait for CI, and Netlify deploys within about a
-minute. If the change needs new database functions, apply the migration **before** pushing
+To ship a change: commit, push to `main`, wait for CI, and Cloudflare Pages deploys within
+about a minute. If the change needs new database functions, apply the migration **before** pushing
 the client that calls them.
 
 ### Conventions
@@ -106,6 +106,7 @@ Migrations, to be run in this order in the Supabase SQL editor. All are idempote
 | `0010_fair_play.sql` | Automatic draw for a player who cannot buy, presence (`seen_at`, `leaving`), 30 s clock with 3 strikes enforced in `get_room`; `play` split into `encheres.play_as` |
 | `0011_autopilot.sql` | A player who cannot buy any more is never forfeited (leaving, disconnecting or "Forfeit"); the computer finishes at once; results move on after 12 s; `encheres.sweep_games()` every minute via pg_cron; leaderboard top 1000 plus the player's neighbours (`around`) |
 | `0012_passes_and_scales.sql` | Whole-pool decks, 3 passes per player (`rooms.pass_limit`, `room_players.passes`, `encheres.can_pass`), strikes reset by the player's own move (time-outs in a row), `rooms.scale` for display |
+| `0013_old_site_and_auto_bid.sql` | A player out of passes facing a card nobody bid on gets the minimum bid after 5 s (`enforce`, any room, no strike). Temporary: requests from the old Netlify address (older client) may pass without limit (`encheres.old_client`, `room_players.old_site`) |
 
 Functions the client calls:
 
@@ -170,7 +171,7 @@ Things that have bitten this project, so that they do not again:
 - **Floating point.** The opponent's arithmetic is written with explicit
   `double precision` casts and the same order of operations as the TypeScript, so that
   both round the same way. Keep that when editing.
-- **The site's content policy** (`netlify.toml`) names the Supabase host. A new backend
+- **The site's content policy** (`public/_headers`; `netlify.toml` for the old host) names the Supabase host. A new backend
   host must be added to `connect-src` or the browser blocks it.
 
 ## How the main pieces work
@@ -222,7 +223,8 @@ Short versions; details and reasons are in `docs/ARCHITECTURE.md`.
 - **Passes.** Each player has 3 passes (`settings.passLimit`). A pass costs one only when
   it skips a card nobody has bid on (`passCosts`); conceding a card the other player bid
   on is free, and so is the automatic pass for a player who cannot bid. Out of passes
-  with no bid on the table, the player must bid (`canPass`, error `NO_PASSES_LEFT`). The
+  with no bid on the table, the player must bid (`canPass`, error `NO_PASSES_LEFT`); after
+  5 seconds the minimum is bid for them (server `enforce`; offline `LocalGame`). The
   bots bid the minimum wherever they would have passed (`byRules`, `bot_choice`); a
   timed-out player out of passes gets the minimum bid. The scoreboard shows the passes as
   ✕ marks, with a buzzer sound.
@@ -232,7 +234,11 @@ Short versions; details and reasons are in `docs/ARCHITECTURE.md`.
   only: the verdict and every bot use shared power. Judging on the stretched scale was
   tried and dropped: it made the universe's top card decide almost every game (×3 gaps
   in Demon Slayer) and weakened the look-ahead opponent. The Characters page
-  (`#/characters`) lists everyone with both scales and the reason for each rating.
+  (`#/characters`) shows the top 100 of everyone under "All" (a search finds anyone), and
+  each universe in full on its own scale, with the reason for each rating; a universe's
+  strongest also shows its overall rank (`overallRank`), as a guide to how strong that
+  universe is. The full list with every rank is in `docs/POWER_RATINGS.md` and
+  `docs/power-ratings.csv` (generated by `npm run ratings`).
 - **Leaderboards** show the top 1000; a player below that gets `around`: themselves and
   the players directly above and below, shown after a gap.
 - **Friends.** Players exchange a seven-character tag. A request must be accepted. There
@@ -248,18 +254,15 @@ country); monthly seasons from zero with history; recovery codes; friends and
 invitations; feedback form with rights requests; match recording; stronger opponent in
 an Edge Function; rarity cards; dark theme; sound; security headers; French and English.
 
-**Pending as of 18 Nov 2026: the latest client is not live.** Netlify skipped the deploy
-of `main@78d8dfc` (three passes, Characters page, animated How to play, universe scales)
-because the free team ran out of build credits for the billing period (16 Nov to 15 Dec).
-The site still serves `main@0bc5ee8`. The database (0012) and the Edge Function are already
-on the new rules, so that the old client keeps working: the pass limit is switched off for
-now (`rooms.pass_limit` default set to 99, running rooms updated). **Once the new client is
-live**, switch it back on in the SQL editor:
-`alter table encheres.rooms alter column pass_limit set default 3;` (rooms already playing
-keep 99 until they end). Ways to get it live: a paid Netlify plan, moving hosting to a host
-with free deploys (new address: Google sign-in domains, Supabase redirect URLs and Google
-brand verification would have to be redone), or waiting for the credits to reset on 16 Dec.
-Netlify charges every production deploy: batch changes into fewer pushes to `main`.
+**Hosting moved on 18 Nov 2026** from Netlify to Cloudflare Pages
+(https://anime-encheres.pages.dev), after Netlify's free credits ran out (there, each
+production deploy and every GB of traffic costs credits). Netlify cannot publish again
+before its credits reset on 16 Dec, so `anime-encheres.netlify.app` still serves build
+`main@0bc5ee8`, which knows nothing about the pass limit; `0013_old_site_and_auto_bid.sql` lets
+requests from that origin pass without limit. **To do on or after 16 Dec:** turn the
+Netlify site into a redirect to the new address (one deploy, with a `public/_redirects`
+line `/* https://anime-encheres.pages.dev/:splat 301`), then remove the old-site
+exemption (`encheres.old_client`) in a new migration.
 
 Google sign-in is on and the Google app is published (not "Testing"). Branding: app name
 "Anime Auction Draft", logo `public/logo.svg` (PNG sizes made by `npm run logo`), home

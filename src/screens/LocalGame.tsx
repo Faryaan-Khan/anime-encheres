@@ -4,7 +4,7 @@ import { Board } from '../components/Board';
 import { Final } from '../components/Final';
 import { DEFAULT_OPTIONS, SettingsFields, toSettings, type GameOptions } from '../components/SettingsFields';
 import { poolFor } from '../data/characters';
-import { canStillBuy, toView } from '../game/engine';
+import { canPass, canStillBuy, toView } from '../game/engine';
 import { useI18n } from '../i18n';
 import type { StringKey } from '../i18n/strings';
 import { BOT_SEAT, useLocalGame } from '../local/useLocalGame';
@@ -13,6 +13,8 @@ import { readStored, writeStored } from '../storage';
 
 /** How long the computer appears to think before it acts, in milliseconds. */
 const BOT_DELAY = 900;
+/** How long a player who has to bid gets before the minimum is bid for them. */
+const AUTO_BID_MS = 5000;
 
 type Opponent = 'friend' | BotLevel;
 
@@ -46,6 +48,22 @@ export function LocalGame({ solo = false }: { solo?: boolean }) {
     const timer = window.setTimeout(playBot, BOT_DELAY);
     return () => window.clearTimeout(timer);
   }, [botToAct, playBot]);
+
+  // A player out of passes, facing a card nobody has bid on, has to bid: after
+  // a few seconds the minimum is bid for them (as the server does online).
+  // The computer handles its own turns.
+  const mustBid =
+    state !== null &&
+    state.phase === 'bidding' &&
+    state.highBidder === null &&
+    !(bot !== null && state.turn === BOT_SEAT) &&
+    !canPass(state, state.turn);
+  const { bid: placeBid } = game;
+  useEffect(() => {
+    if (!mustBid || !state) return;
+    const timer = window.setTimeout(() => placeBid(state.settings.minBid), AUTO_BID_MS);
+    return () => window.clearTimeout(timer);
+  }, [mustBid, state, placeBid]);
 
   if (!state) return <LocalSetup solo={solo} onStart={game.start} />;
 

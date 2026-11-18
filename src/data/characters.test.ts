@@ -6,6 +6,7 @@ import {
   UNIVERSES,
   getCharacter,
   initials,
+  overallRank,
   poolFor,
   powerIn,
   scaleFactor,
@@ -95,5 +96,20 @@ describe('universe scales', () => {
     expect(scaleOf([])).toBe(ALL_SCALE);
     expect(scaleFactor('one-piece')).toBeCloseTo(100 / 58);
     expect(scaleFactor(ALL_SCALE)).toBe(1);
+  });
+});
+
+describe('overall ranking', () => {
+  it('ranks everyone once, strongest first', () => {
+    const ranks = CHARACTERS.map((c) => overallRank(c.id));
+    expect(new Set(ranks).size).toBe(CHARACTERS.length);
+    expect(Math.min(...ranks)).toBe(1);
+    expect(Math.max(...ranks)).toBe(CHARACTERS.length);
+    expect(overallRank(slug('Zeno'))).toBe(1);
+    for (const a of CHARACTERS) {
+      for (const b of CHARACTERS) {
+        if (a.power > b.power) expect(overallRank(a.id)).toBeLessThan(overallRank(b.id));
+      }
+    }
   });
 });

@@ -44,7 +44,7 @@ if (!chromePath) {
 
 const db = new PGlite();
 await db.exec('create role anon nologin; create role authenticated nologin;');
-for (const file of ['0001_init.sql', '0002_matchmaking.sql', '0003_ranking.sql', '0004_character_powers.sql', '0005_accounts_and_opponent.sql', '0006_modes_and_friends.sql', '0007_seasons.sql', '0008_opponent_brain.sql', '0009_google_accounts.sql', '0010_fair_play.sql', '0011_autopilot.sql', '0012_passes_and_scales.sql']) {
+for (const file of ['0001_init.sql', '0002_matchmaking.sql', '0003_ranking.sql', '0004_character_powers.sql', '0005_accounts_and_opponent.sql', '0006_modes_and_friends.sql', '0007_seasons.sql', '0008_opponent_brain.sql', '0009_google_accounts.sql', '0010_fair_play.sql', '0011_autopilot.sql', '0012_passes_and_scales.sql', '0013_old_site_and_auto_bid.sql']) {
   await db.exec(readFileSync(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8'));
 }
 
@@ -199,7 +199,10 @@ try {
         if (!(await sees(page, '.stamp'))) {
           const hidden = await page.$eval('.stage .card__name', (e) => e.textContent);
           assert(!(await sees(rival, '.stage .card--face')), 'rival card is face down');
-          assert(!(await rival.content()).includes(hidden), `"${hidden}" is absent from the rival's page`);
+          // Whole names only: with whole-universe decks "Goten" and "Gotenks" can both be in play.
+          const names = await rival.$$eval('.card__name, .history li, .slot', (els) => els.map((e) => e.textContent.trim()));
+          const html = await rival.content();
+          assert(!names.includes(hidden) && !html.includes(`>${hidden}<`), `"${hidden}" is absent from the rival's page`);
           secrecyChecks++;
         }
         acted = true;
@@ -537,9 +540,11 @@ try {
   // --- Characters and How to play ----------------------------------------------
 
   await solo.goto(`${base}#/characters`, { waitUntil: 'networkidle2' });
-  assert((await text(solo)).includes(`${CHARACTER_COUNT} characters`), 'every character is listed');
+  assert((await solo.$$('.chars__row')).length === 100 && (await text(solo)).includes(`The 100 strongest of ${CHARACTER_COUNT}`), 'the top 100 of everyone');
   await click(solo, 'One Piece');
   await until(solo, async () => (await solo.$eval('.chars__row .chars__power strong', (e) => e.textContent)) === '100', 'One Piece on its own scale');
+  // textContent: rows below the fold are skipped by innerText (content-visibility).
+  assert((await solo.$eval('.chars__overall', (e) => e.textContent)) === '#48 across all', 'the strongest of One Piece shows its overall rank');
   assert((await solo.$$('.chars__row')).length === ONE_PIECE_COUNT, 'only One Piece characters');
   await snap(solo, 'characters');
   await solo.goto(`${base}#/rules`, { waitUntil: 'networkidle2' });
