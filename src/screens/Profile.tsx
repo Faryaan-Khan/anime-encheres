@@ -12,7 +12,7 @@ import {
   updateProfile,
   type Profile as ProfileData,
 } from '../online/profile';
-import { MODES } from '../match/config';
+import { RATINGS } from '../match/config';
 import { modeName } from '../modes';
 import { badgesOf, leagueOf, nextLeague } from '../ranking';
 import { CountUp } from '../components/Effects';
@@ -198,7 +198,7 @@ export function Profile() {
       <section>
         <h2 className="page__subhead">{t('profile.modes')}</h2>
         <ul className="mode-tiles">
-          {MODES.map((mode) => {
+          {RATINGS.map((mode) => {
             const rating = profile.modes.find((m) => m.mode === mode);
             const trophies = rating?.trophies ?? 0;
             const league = leagueOf(trophies);

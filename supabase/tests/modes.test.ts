@@ -145,8 +145,9 @@ describe('modes', () => {
       { mode: 'mix', trophies: 30 },
       { mode: 'naruto', trophies: 30 },
     ]);
-    // 30 in one universe and 30 in mixed, which counts double: 90 over 9 shares.
-    expect(ana.trophies).toBe(10);
+    // 30 in one universe and 30 in mixed, which counts double: 90 over 10 shares
+    // (seven universes, mixed twice, 1v1v1).
+    expect(ana.trophies).toBe(9);
     expect(ana.peak).toBe(30);
     const recent = (await rpc<{ recent: Array<{ mode: string }> }>('get_profile', [ANA])).recent;
     expect(recent.map((m) => m.mode)).toEqual(['mix', 'naruto']);

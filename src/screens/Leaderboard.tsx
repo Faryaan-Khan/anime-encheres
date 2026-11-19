@@ -3,7 +3,7 @@ import { Avatar } from '../components/Avatar';
 import { countryFlag, countryName } from '../data/countries';
 import { useI18n } from '../i18n';
 import type { StringKey } from '../i18n/strings';
-import { MODES } from '../match/config';
+import { RATINGS } from '../match/config';
 import { modeName } from '../modes';
 import { toOnlineError } from '../online/api';
 import { ONLINE_AVAILABLE } from '../online/config';
@@ -71,7 +71,7 @@ export function Leaderboard() {
             <span>{t('board.scope')}</span>
             <select value={scope} onChange={(e) => setScope(e.target.value)}>
               <option value={OVERALL}>{t('board.overall')}</option>
-              {MODES.map((id) => (
+              {RATINGS.map((id) => (
                 <option key={id} value={id}>
                   {modeName(id, t)}
                 </option>

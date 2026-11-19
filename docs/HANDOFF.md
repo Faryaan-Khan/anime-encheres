@@ -36,7 +36,7 @@ built from. The only manual step in the whole system is applying a new database 
 npm install
 npm run dev          # local site, talks to the live database through .env
 npm run typecheck    # TypeScript strict
-npm test             # 241 unit and database tests (no external service needed)
+npm test             # 251 unit and database tests (no external service needed)
 npm run test:e2e     # real browsers against the real SQL; needs Chrome (CHROME_PATH)
 npm run ratings      # after editing src/data/rosters.json
 npm run build:opponent  # after editing src/bot/: rebuild the Edge Function bundle
@@ -112,6 +112,7 @@ Migrations, to be run in this order in the Supabase SQL editor. All are idempote
 | `0015_public_rooms.sql` | Public rooms: `rooms.public`, `rooms.verse`, `public.public_rooms` (open lobbies whose host was heard from in the last minute); `create_room` gains `p_public` and `p_verse`; in public rooms `room_view` adds each player's `tag` and `avatar` (never in other rooms, so stand-ins are not given away) |
 | `0016_team_rooms.sql` | 2v2 rooms (`rooms.format` = `duel`/`teams`/`trio`, `rooms.lineup`, table `room_members` for each side's second member). `seat_of` also finds teammates; `member_of`, `active_member`, `new_lineup`, `free_slots`, `take_slot`, `free_place`; `switch_side`, `leave_room`; `join_room`, `start_game`, `play`, `get_room`, `leaving`, `create_room` (`p_format`), `public_rooms` and `room_view` replaced (views carry `format`, and for teams `members`, `active`, `youMember`) |
 | `0017_three_players.sql` | 1v1v1: seats 0–2 (constraints widened), `play_as` and `begin_game` for two or three players (next seat = `(seat + 1) % n`; sold once everyone but the high bidder has passed), `create_room` accepts `trio`, `settle_trio` records trio games with `matches.places` and `profile2` (no trophies) |
+| `0018_ranked_trio.sql` | Ranked 1v1v1: `find_trio` (queue per universe, stand-ins fill empty seats after the usual wait: `trio_fill`), `rooms.bot_seats` and `left_seats`, `enforce_trio`, `bot_step_trio`, `trio_leave`, `trio_finish`, `trio_bot_move`, `bot_choice_seat` (bot_choice for any seat); `settle_trio` ranks (givers-up last) and moves the single `trio` rating (pairwise win/loss, averaged). `is_mode('trio')`, `total_weight` + 1 (overall over 10 shares). `enforce`, `bot_step`, `resign`, `leave_queue` branch off for 1v1v1 and are otherwise as before |
 
 Functions the client calls:
 
@@ -166,12 +167,11 @@ Things that have bitten this project, so that they do not again:
 - **A statement does not see its own writes.** In `roll_season`, updating ratings and
   recomputing overall scores in one statement used the old ratings. Use two statements.
 - **Where the latest version of a function lives.** Later migrations replace functions
-  from earlier ones. As of 0017: `play_as`, `begin_game`, `create_room` and `settle_trio` are in
-  0017; `join_room`, `start_game`, `play`, `get_room`, `leaving`, `seat_of`, `public_rooms`
+  from earlier ones. As of 0018: `enforce`, `bot_step`, `resign`, `leave_queue`, `settle_trio`,
+  `is_mode` and `total_weight` are in 0018; `play_as`, `begin_game` and `create_room` in 0017; `join_room`, `start_game`, `play`, `get_room`, `leaving`, `seat_of`, `public_rooms`
   and `room_view` in 0016; `profile_for`, `profile_json`, `roll_season`,
-  `update_profile` and `auto_bid_seconds` in 0014; `enforce` and `touch` in 0013;
-  `bot_choice` in 0012; `bot_step`,
-  `leaderboard`, `resign` and `sweep_abandoned` in 0011; `settle_match` in 0006;
+  `update_profile` and `auto_bid_seconds` in 0014; `touch` in 0013; `bot_choice` in 0012;
+  `leaderboard` and `sweep_abandoned` in 0011; `settle_match` in 0006;
   `end_by_forfeit` in 0003. Copy from the newest file when replacing one.
 - **Rules exist in two languages.** The auction (TypeScript engine and SQL `play_as`) and
   the rule-based opponent (TypeScript `byRules` and SQL `bot_choice`) are each kept in
@@ -196,8 +196,9 @@ Short versions; details and reasons are in `docs/ARCHITECTURE.md`.
   -26 for a loss, between -8 and -44; never below zero. The server computes the winner
   from its own copy of the power ratings.
 - **Overall score.** A weighted average of a player's trophies over every mode. `mix`
-  counts double; a mode never played counts as zero. With seven universes that is nine
-  shares. It is what the world ranking and the profile headline show.
+  counts double; a mode never played counts as zero; 1v1v1 (`trio`) is one mode. With seven
+  universes that is ten shares (nine before 0018, so every overall score dropped by a tenth
+  that day). It is what the world ranking and the profile headline show.
 - **Seasons.** On the first of each month (UTC), after each player's result for the
   month is filed in `season_results`, every mode drops to the floor of its bracket
   (`encheres.season_floor`, mirrored by `seasonFloor` in `src/ranking.ts`): below 500
@@ -261,7 +262,17 @@ Short versions; details and reasons are in `docs/ARCHITECTURE.md`.
   `GameState.players` and `passed` are arrays, `Seat` is 0 | 1 | 2. `judgeAll` (verdict.ts)
   gives power, places and winner for any number of teams; `judge(a, b)` is the two-team
   case. The computer opponents (`src/bot/`, `bot_choice`, the Edge Function) only play
-  two-player games. Offline "Three players" is a same-device game; rooms take `trio`.
+  two-player games, except `bot_choice_seat`, which plays any seat of a 1v1v1 (it reads the
+  drawer as the informed rival). Offline "Three players" is a same-device game; rooms take
+  `trio`.
+- **Ranked 1v1v1.** The client's queue id is `trio:<universe or mix>` (`match/config.ts`:
+  `trioQueue`, `trioVerse`, `ratingOf`); trophies go to the `trio` rating. `find_trio` is
+  polled like `find_match`; three players of one universe start a game, stand-ins fill the
+  rest after `opponent_after_seconds`. Giving up (resign, leaving, third time-out) adds the
+  seat to `bot_seats` and `left_seats`: a stand-in plays it out, it is placed last. When no
+  person is left, `trio_finish` plays the game out at once. Trophies: for each real player,
+  win_gain/loss_cost against each other seat by place (a stand-in counts at the player's own
+  level), averaged.
 - **Rooms.** Private (reached by code or invitation) or public (listed on the Online
   page, `public_rooms`, refreshed every 5 s). Never ranked. Format `duel` or `teams`
   (2v2): the auction stays between two sides (seats 0 and 1) with one budget and roster
@@ -280,9 +291,9 @@ Short versions; details and reasons are in `docs/ARCHITECTURE.md`.
 ## State of things
 
 Done and live: same-device and offline play against two computer levels; private online
-rooms; a Characters page; an animated How to play; quick matches in eight modes with 3 passes per player, a 30-second clock, three time-outs in a row, automatic wins over players who leave, and an autopilot that settles the match once a player cannot buy any more; server-played opponent; profiles
+rooms; a Characters page; an animated How to play; quick matches in eight modes (1v1, and 1v1v1 with its own ranking) with 3 passes per player, a 30-second clock, three time-outs in a row, automatic wins over players who leave, and an autopilot that settles the match once a player cannot buy any more; server-played opponent; profiles
 with statistics, badges, a character as profile picture and country; leaderboards (overall, per mode, friends,
-country); monthly seasons with bracket floors and history; name rules; Play again / Change verse after a match; recovery codes; friends and
+country); monthly seasons with bracket floors and history; name rules; Play again / Change verse after a match; public rooms; 2v2 and 1v1v1 rooms; offline teams and three players; recovery codes; friends and
 invitations; feedback form with rights requests; match recording; stronger opponent in
 an Edge Function; rarity cards; dark theme; sound; security headers; French and English.
 
@@ -344,9 +355,6 @@ Google account, so test it by hand after changes.
 
 ### Waiting on the owner
 
-- **Ranked 1v1v1** (requested 19 Nov 2026): matchmaking in any verse with one shared 1v1v1
-  rating and leaderboard, counted in the overall score. Rooms, public rooms, 2v2 and
-  offline 1v1v1/teams are done.
 - **When to switch off the computer opponent.** The owner's idea is once there are
   enough players (he mentioned about ten thousand).
 

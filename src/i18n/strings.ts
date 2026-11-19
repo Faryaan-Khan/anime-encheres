@@ -143,18 +143,23 @@ const fr = {
   'home.invite': '{name} t’invite dans son salon',
 
   'mode.mix': 'Tout mélangé',
+  'mode.trio': '1v1v1',
+  'match.format': 'Format',
+  'match.format.duel': '1 contre 1',
+  'match.format.trio': '1 contre 1 contre 1',
+  'match.format.trio.hint': 'Trois joueurs, chacun son équipe. Un seul classement 1v1v1, quel que soit l’univers.',
   'match.mode': 'Mode',
   'match.mode.hint': 'Chaque mode a ses propres trophées. Tout mélangé compte double dans le score global.',
   'match.searching.mode': 'Recherche d’un adversaire en {mode}…',
 
   'board.scope': 'Classement',
   'board.overall': 'Score global',
-  'board.overall.hint': 'Moyenne de tes trophées dans tous les modes. Tout mélangé compte double.',
+  'board.overall.hint': 'Moyenne de tes trophées dans tous les modes, 1v1v1 compris. Tout mélangé compte double.',
   'board.tab.friends': 'Amis',
   'board.empty.friends': 'Ajoute des amis pour les voir ici.',
 
   'profile.overall': 'Score global',
-  'profile.overall.hint': 'Moyenne de tous les modes, Tout mélangé compte double.',
+  'profile.overall.hint': 'Moyenne de tous les modes, 1v1v1 compris ; Tout mélangé compte double.',
   'profile.tag': 'Ton tag de joueur : {tag}',
   'profile.modes': 'Trophées par mode',
 
@@ -628,18 +633,23 @@ const en: Record<StringKey, string> = {
   'home.invite': '{name} invites you to a room',
 
   'mode.mix': 'All mixed',
+  'mode.trio': '1v1v1',
+  'match.format': 'Format',
+  'match.format.duel': '1 vs 1',
+  'match.format.trio': '1 vs 1 vs 1',
+  'match.format.trio.hint': 'Three players, each with their own team. One 1v1v1 ranking, whatever the universe.',
   'match.mode': 'Mode',
   'match.mode.hint': 'Each mode has its own trophies. All mixed counts double in the overall score.',
   'match.searching.mode': 'Looking for an opponent in {mode}…',
 
   'board.scope': 'Ranking',
   'board.overall': 'Overall score',
-  'board.overall.hint': 'The average of your trophies in every mode. All mixed counts double.',
+  'board.overall.hint': 'The average of your trophies in every mode, 1v1v1 included. All mixed counts double.',
   'board.tab.friends': 'Friends',
   'board.empty.friends': 'Add friends to see them here.',
 
   'profile.overall': 'Overall score',
-  'profile.overall.hint': 'The average of every mode, with All mixed counting double.',
+  'profile.overall.hint': 'The average of every mode, 1v1v1 included, with All mixed counting double.',
   'profile.tag': 'Your player tag: {tag}',
   'profile.modes': 'Trophies by mode',
 

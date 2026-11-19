@@ -174,7 +174,7 @@ describe('ranked games', () => {
       const [winner, loser] = expected.winner === 0 ? [ana, ben] : [ben, ana];
       expect(result.deltas![expected.winner]).toBe(30);
       expect(result.deltas![expected.winner === 0 ? 1 : 0]).toBe(0);
-      // Trophies belong to the mode; the profile's own number is the overall score (30 / 9).
+      // Trophies belong to the mode; the profile's own number is the overall score (30 / 10).
       expect(winner).toMatchObject({ trophies: 3, peak: 30, wins: 1, losses: 0, streak: 1, rank: 1 });
       expect(winner.modes).toMatchObject([{ mode: 'one-piece', trophies: 30, best: 30, games: 1, wins: 1 }]);
       expect(loser).toMatchObject({ trophies: 0, wins: 0, losses: 1, streak: 0, rank: 2 });
@@ -363,12 +363,12 @@ describe('leaderboards', () => {
   });
 
   it('rank the world by overall score, where mixed counts double', async () => {
-    // Seven universes and mixed: nine shares. Ana adds 450 in mixed, worth 900.
+    // Seven universes, mixed twice and 1v1v1: ten shares. Ana adds 450 in mixed, worth 900.
     await setTrophies(ANA, 450, 'mix');
     const board = await rpc<Board>('leaderboard', [ANA, 'overall', null]);
-    expect(board.rows.map((r) => [r.name, r.value])).toEqual([['Ana', 144], ['Ben', 100], ['Cam', 72]]);
+    expect(board.rows.map((r) => [r.name, r.value])).toEqual([['Ana', 130], ['Ben', 90], ['Cam', 65]]);
     expect((await rpc<Board>('leaderboard', [ANA, 'all', null])).rows).toEqual(board.rows);
-    expect((await profile(ANA)).trophies).toBe(144);
+    expect((await profile(ANA)).trophies).toBe(130);
   });
 
   it('can be limited to one country', async () => {

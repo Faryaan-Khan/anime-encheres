@@ -1,12 +1,12 @@
 import { AddFriend } from './AddFriend';
 import { getCharacter, powerOf, scaleFactor } from '../data/characters';
 import type { GameView, Seat } from '../game/types';
-import { judgeAll } from '../game/verdict';
+import { describeGap, judgeAll } from '../game/verdict';
 import { useI18n } from '../i18n';
 import type { StringKey } from '../i18n/strings';
 import { CharacterCard } from './CharacterCard';
 import { useEffect, useState } from 'react';
-import { MODES } from '../match/config';
+import { MODES, trioQueue, trioVerse } from '../match/config';
 import { modeName } from '../modes';
 import { play } from '../sound';
 import { Confetti, CountUp } from './Effects';
@@ -49,8 +49,19 @@ export function Final({
   onHome,
 }: Props) {
   const { t, money } = useI18n();
-  const verdict = judgeAll(view.players.map((p) => p.team.map((id) => getCharacter(id).power)));
+  const judged = judgeAll(view.players.map((p) => p.team.map((id) => getCharacter(id).power)));
   const three = view.players.length === 3;
+  // In a ranked 1v1v1 the server's places count: a player who gave up is last.
+  const verdict = (() => {
+    const result = view.result;
+    if (!three || !result?.places) return judged;
+    const winner = (result.winner ?? null) as Seat | null;
+    const left = result.left ?? [];
+    // The margin is over the best of the others still in the game.
+    const rest = judged.power.filter((_, seat) => seat !== winner && !left.includes(seat));
+    const gap = winner === null || rest.length === 0 ? 0 : judged.power[winner] - Math.max(...rest);
+    return { ...judged, ...(winner === null ? { margin: 'tie' as const, ratio: 1 } : describeGap(gap)), places: result.places, winner };
+  })();
   // A forfeit decides a two-player game whatever the teams look like.
   const winner: Seat | null = forfeit !== null && !three ? (forfeit === 0 ? 1 : 0) : verdict.winner;
   // On a shared screen (you = null) any win is celebrated; sharing first place is a tie.
@@ -195,9 +206,9 @@ function PlayAgain({ mode, busy, onFind }: { mode?: string; busy: boolean; onFin
       </button>
       {choosing ? (
         <div className="again__modes" role="group" aria-label={t('match.mode')}>
-          {MODES.filter((id) => id !== mode).map((id) => (
+          {(mode && trioVerse(mode) !== null ? MODES.map(trioQueue) : MODES).filter((id) => id !== mode).map((id) => (
             <button key={id} type="button" className="chip" onClick={() => onFind(id)} disabled={busy}>
-              {modeName(id, t)}
+              {modeName(trioVerse(id) ?? id, t)}
             </button>
           ))}
         </div>

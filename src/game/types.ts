@@ -150,6 +150,8 @@ export interface MatchResult {
   power: number[];
   /** Three-player games: each seat's finishing place, 1 to 3 (ties share a place). */
   places?: number[];
+  /** Ranked 1v1v1: seats that gave up (placed last). */
+  left?: number[];
   /** Trophy change of each seat; `null` in private rooms. */
   deltas: number[] | null;
   /** New trophies of each seat in that mode; an entry is `null` for a seat without a profile. */

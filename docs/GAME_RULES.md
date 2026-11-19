@@ -103,6 +103,13 @@ minimum bid), the rest of the game plays out by itself and your result counts ev
 leave; against the computer it finishes straight away. To play with a friend instead, create
 a private room and share its code, or invite them from your friends list.
 
+A quick match can also be 1 vs 1 vs 1, in any universe or all mixed. If fewer than three
+players are found, others join from the server. Giving up (leaving, or the third time-out
+in a row) places you last; your seat is played out so the other two can finish. 1v1v1 has
+a single ranking whatever the universe. Your trophies come from comparing your place
+with each of the other two, as in a one-against-one game, averaged: against players of
+your level that is about +30 for first, +2 for second and -26 for last.
+
 ### Trophies and leagues
 
 Quick matches are ranked, and every mode has its own trophies. A win earns about 30
@@ -111,9 +118,9 @@ costs about 26, and you never go below zero. Trophies place you in a league: Bro
 Silver (300), Gold (600), Platinum (1000), Diamond (1500), Legend (2200). You are paired
 with players close to your level in that mode. Private rooms never change trophies.
 
-Your overall score is the average of your trophies in every mode, with the mixed mode
-counting double because it is the hardest: you need to know every series. A mode you have
-never played counts as zero.
+Your overall score is the average of your trophies in every mode (each universe, all
+mixed, and 1v1v1), with the mixed mode counting double because it is the hardest: you need
+to know every series. A mode you have never played counts as zero.
 
 Each month is a season. On the first day of the month every mode drops to the floor of
 its bracket, so players stay with players of their level: below 500 nothing changes;
@@ -257,6 +264,14 @@ si tu pars ; contre l'ordinateur, elle se termine tout de suite. Pour
 jouer avec un ami, crée plutôt un salon privé et partage son code, ou invite-le depuis ta
 liste d'amis.
 
+Une partie rapide peut aussi se jouer en 1 contre 1 contre 1, dans n'importe quel univers
+ou tout mélangé. S'il y a moins de trois joueurs, d'autres arrivent depuis le serveur.
+Abandonner (quitter, ou la troisième fois de suite hors temps) te classe dernier ; ta place
+est jouée jusqu'au bout pour que les deux autres finissent. Le 1v1v1 a un seul classement,
+quel que soit l'univers. Tes trophées viennent de la comparaison de ta place avec chacun
+des deux autres, comme en un contre un, en moyenne : contre des joueurs de ton niveau,
+environ +30 pour le premier, +2 pour le deuxième et -26 pour le dernier.
+
 ### Trophées et ligues
 
 Les parties rapides sont classées, et chaque mode a ses propres trophées. Une victoire
@@ -266,7 +281,8 @@ Les trophées te placent dans une ligue : Bronze, Argent (300), Or (600), Platin
 Diamant (1500), Légende (2200). Tu es associé à des joueurs proches de ton niveau dans ce
 mode. Les salons privés ne changent jamais les trophées.
 
-Ton score global est la moyenne de tes trophées dans tous les modes ; le mode Tout mélangé
+Ton score global est la moyenne de tes trophées dans tous les modes (chaque univers, Tout
+mélangé et 1v1v1) ; le mode Tout mélangé
 compte double, car c'est le plus difficile : il faut connaître toutes les séries. Un mode
 jamais joué compte pour zéro.
 

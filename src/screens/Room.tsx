@@ -138,7 +138,8 @@ function Game({ view, room, matched }: { view: GameView; room: OnlineRoom; match
           maxStrikes: view.maxStrikes ?? 3,
         }
       : undefined;
-  const rivalSeat: Seat | null = view.you === null ? null : view.you === 0 ? 1 : 0;
+  // One against one only: with three, nobody is singled out as "the rival".
+  const rivalSeat: Seat | null = view.you === null || view.players.length !== 2 ? null : view.you === 0 ? 1 : 0;
   const rivalAbsent = rivalSeat === null ? 0 : (view.absent?.[rivalSeat] ?? 0) + elapsed;
   const away =
     live && rivalSeat !== null && rivalAbsent >= AWAY_SHOWN_AFTER
