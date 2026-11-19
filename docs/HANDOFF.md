@@ -296,7 +296,7 @@ Short versions; details and reasons are in `docs/ARCHITECTURE.md`.
   (`CardZoom`, a modal dialog, size `xl`) with a sound for its tier (`card-D` to `card-S`,
   and `card-apex` for a universe's number one, in `sound.ts`); up close it tilts with a
   finger as well as a mouse (`touch-action: none` on `.card--xl`), and on A, S and number
-  one cards a shimmer sound follows the pointer (`startShimmer`). The richer sounds use a
+  one cards light glints (short bright tings, pitch along the diagonal, more of them the faster the pointer moves) follow it (`startShimmer`). The richer sounds use a
   small synthesis kit in `sound.ts`: a hall reverb (`space`), glass bells (`bell`), harp
   (`pluck`), swelling pads and a choir "aah" (`pad`), and `impact`. The top bar is glass
   (`backdrop-filter`, with an opaque fallback) and Back plays `back`.

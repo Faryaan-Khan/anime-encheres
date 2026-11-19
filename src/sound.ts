@@ -501,7 +501,7 @@ export function play(sound: Sound): void {
 }
 
 // ---------------------------------------------------------------------------
-// Shimmer: a sound that follows a finger or the mouse across a card
+// Shimmer: the glint of light on a foil card, following a finger or the mouse
 // ---------------------------------------------------------------------------
 
 export interface Shimmer {
@@ -510,96 +510,45 @@ export interface Shimmer {
   stop(): void;
 }
 
-/** A pentatonic scale, for sparkles that always sound right together. */
-const SPARKLE = [4186, 3520, 3136, 2637, 2349, 2093, 1760, 1568];
+/** High notes of a pentatonic scale, so glints always sound right together. */
+const GLINT = [2637, 2960, 3520, 3951, 4699, 5274, 5920, 7040];
 
 /**
- * The shimmer of a card held up close: glittering air whose pitch follows the
- * height on the card and which pans with the pointer. It swells with speed and
- * fades when the pointer rests. S cards add a singing-glass tone; a universe's
- * number one adds more, and brighter, sparkling bells.
+ * Light catching a foil card as it moves: tiny bright "tings", nothing more.
+ * The pitch follows the diagonal the light travels along (top-left low,
+ * bottom-right high), they come faster as the pointer moves faster, and stop
+ * when it rests. Stronger cards glint more often and a little brighter.
  */
 export function startShimmer(level: 'A' | 'S' | 'apex'): Shimmer | null {
   const ctx = audio();
   if (!ctx || !master) return null;
-  try {
-    if (!noiseBuffer) noise(ctx, { dur: 0.01, from: 1000, to: 1000, gain: 0.0001 });
-    const loud = level === 'apex' ? 0.16 : level === 'S' ? 0.12 : 0.09;
-    const src = ctx.createBufferSource();
-    src.buffer = noiseBuffer;
-    src.loop = true;
-    const band = ctx.createBiquadFilter();
-    band.type = 'bandpass';
-    band.Q.value = 7;
-    band.frequency.value = 6000;
-    const air = ctx.createGain();
-    air.gain.value = 0;
-    const panner = typeof ctx.createStereoPanner === 'function' ? ctx.createStereoPanner() : null;
-    const bus = ctx.createGain();
-    if (panner) bus.connect(panner).connect(master);
-    else bus.connect(master);
-    const send = ctx.createGain();
-    send.gain.value = 0.6;
-    bus.connect(send).connect(space(ctx));
-    src.connect(band).connect(air).connect(bus);
-    src.start();
-
-    let glass: OscillatorNode | null = null;
-    const glassGain = ctx.createGain();
-    glassGain.gain.value = 0;
-    if (level !== 'A') {
-      glass = ctx.createOscillator();
-      glass.type = 'sine';
-      glass.frequency.value = 1500;
-      glass.connect(glassGain).connect(bus);
-      glass.start();
-    }
-
-    let lastSparkle = 0;
-    let stopped = false;
-    return {
-      move(x, y, speed) {
-        if (stopped) return;
-        const now = ctx.currentTime;
-        const amount = Math.min(1, speed / 2.2);
-        band.frequency.setTargetAtTime(3500 + (1 - y) * 7500, now, 0.05);
-        panner?.pan.setTargetAtTime(x * 1.6 - 0.8, now, 0.05);
-        air.gain.cancelScheduledValues(now);
-        air.gain.setTargetAtTime(loud * (0.25 + amount), now, 0.03);
-        air.gain.setTargetAtTime(0, now + 0.12, 0.18);
-        if (glass) {
-          glass.frequency.setTargetAtTime(1200 + (1 - y) * 1800, now, 0.08);
-          glassGain.gain.cancelScheduledValues(now);
-          glassGain.gain.setTargetAtTime((level === 'apex' ? 0.03 : 0.022) * amount, now, 0.05);
-          glassGain.gain.setTargetAtTime(0, now + 0.15, 0.2);
-        }
-        // Sparkles: more of them the faster the pointer moves, higher near the top.
-        const gap = level === 'apex' ? 0.07 : level === 'S' ? 0.12 : 0.2;
-        if (now - lastSparkle > gap && Math.random() < 0.25 + amount) {
-          lastSparkle = now;
-          const freq = SPARKLE[Math.min(SPARKLE.length - 1, Math.floor(y * SPARKLE.length))];
-          bell(ctx, {
-            freq,
-            dur: level === 'apex' ? 1.4 : 0.8,
-            gain: level === 'apex' ? 0.035 : 0.022,
-            wet: 0.7,
-            pan: x * 1.6 - 0.8,
-          });
-        }
-      },
-      stop() {
-        if (stopped) return;
-        stopped = true;
-        const now = ctx.currentTime;
-        air.gain.cancelScheduledValues(now);
-        air.gain.setTargetAtTime(0, now, 0.08);
-        glassGain.gain.cancelScheduledValues(now);
-        glassGain.gain.setTargetAtTime(0, now, 0.08);
-        src.stop(now + 0.6);
-        glass?.stop(now + 0.6);
-      },
-    };
-  } catch {
-    return null;
-  }
+  const every = level === 'apex' ? 0.06 : level === 'S' ? 0.08 : 0.11; // shortest gap, in seconds
+  const loud = level === 'apex' ? 0.055 : level === 'S' ? 0.048 : 0.04;
+  let last = 0;
+  let travelled = 0;
+  return {
+    move(x, y, speed) {
+      const now = ctx.currentTime;
+      // Glints need movement: a resting pointer is silent.
+      travelled += Math.min(speed, 6) * 0.016;
+      if (speed < 0.15 || now - last < every || travelled < 0.04) return;
+      last = now;
+      travelled = 0;
+      const step = Math.min(GLINT.length - 1, Math.floor(((x + y) / 2) * GLINT.length));
+      const freq = GLINT[step];
+      const gain = loud * Math.min(1, 0.45 + speed / 3);
+      const pan = x * 1.4 - 0.7;
+      try {
+        // A quick bright ting, and a faint second partial that gives it sparkle.
+        tone(ctx, { freq, dur: 0.09, type: 'sine', gain, attack: 0.002, wet: 0.12, pan });
+        tone(ctx, { freq: freq * 2.01, dur: 0.05, type: 'sine', gain: gain * 0.35, attack: 0.002, wet: 0.12, pan });
+        if (level === 'apex') tone(ctx, { freq: freq * 1.5, at: 0.025, dur: 0.07, type: 'sine', gain: gain * 0.5, attack: 0.002, wet: 0.15, pan });
+      } catch {
+        /* a nicety only */
+      }
+    },
+    stop() {
+      travelled = 0;
+    },
+  };
 }
