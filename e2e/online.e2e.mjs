@@ -359,6 +359,7 @@ try {
   assert(!/cpu|computer|ordi|bot/i.test(names[1]), `the opponent has an ordinary name (${names[1]})`);
   // During an online game: no top bar, and the back gesture does not leave it.
   assert(!(await sees(solo, '.topbar')), 'the top bar is hidden during an online game');
+  assert(!(await sees(solo, '.footer')), 'the footer links are hidden during an online game');
   await solo.evaluate(() => history.back());
   await sleep(700);
   assert((await sees(solo, '.scoreboard')) && solo.url().includes('#/match'), 'going back does not leave the game');
@@ -380,7 +381,7 @@ try {
     'the game was played and judged on the server',
   );
   await until(solo, async () => /trophies/i.test(await text(solo)), 'the trophy line');
-  assert(await sees(solo, '.topbar'), 'the top bar is back on the results screen');
+  assert(await sees(solo, '.topbar') && (await sees(solo, '.footer')), 'the top bar and footer are back on the results screen');
   // A friend request to the opponent looks sent, as to anyone.
   await snap(solo, 'final-add-friend');
   assert(await click(solo, 'Add friend'), 'the opponent can be added as a friend');
