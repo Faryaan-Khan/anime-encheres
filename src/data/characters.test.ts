@@ -113,3 +113,18 @@ describe('overall ranking', () => {
     }
   });
 });
+
+describe('card pictures', () => {
+  it('each belong to a character, and each is listed in the credits', async () => {
+    const { readdirSync, readFileSync } = await import('node:fs');
+    const folder = new URL('../assets/cards/', import.meta.url);
+    const pictures = readdirSync(folder).filter((f) => /\.(png|jpe?g|webp|avif)$/.test(f));
+    const credits = readFileSync(new URL('CREDITS.md', folder), 'utf8');
+    const ids = new Set(CHARACTERS.map((c) => c.id));
+    for (const file of pictures) {
+      expect(ids.has(file.replace(/\.[^.]+$/, '')), `${file} matches a character id`).toBe(true);
+      expect(credits.includes(`| ${file} |`), `${file} is in CREDITS.md`).toBe(true);
+    }
+    expect(pictures.length).toBeGreaterThanOrEqual(15);
+  });
+});

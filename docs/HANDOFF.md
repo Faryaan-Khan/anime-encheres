@@ -397,7 +397,10 @@ Google account, so test it by hand after changes.
   sure app builds cannot include the web pictures (a build setting that leaves them out).
   The owner will send the pictures as zip files named after the characters; convert them
   to small WebP (about 420×588) named by character id in `src/assets/cards/`. The first
-  six (Zeno, Grand Priest, Whis, Vados, Beerus, Gogeta) went live on 19 Nov 2026.
+  six (Zeno, Grand Priest, Whis, Vados, Beerus, Gogeta) went live on 19 Nov 2026, and nine
+  more the same day (Frieza, Champa, Vegito, Jiren, Goku, Broly, Vegeta, Gohan, Zamasu):
+  pictures not already 5:7 are cropped to it at the sides. A test checks that every file
+  matches a character id and is listed in `CREDITS.md`.
 
 ### Waiting on the owner
 
