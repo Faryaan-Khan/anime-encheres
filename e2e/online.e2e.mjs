@@ -794,7 +794,8 @@ try {
 
   // --- Dark theme, notices -------------------------------------------------------
 
-  await click(solo, '☾');
+  // The theme switch is the button with the sun/moon icon.
+  await solo.evaluate(() => document.querySelector('.topbar .icon-btn:has(.theme-icon)').click());
   await until(solo, () => solo.evaluate(() => document.documentElement.dataset.theme === 'dark'), 'the dark theme');
   // The colours fade over a quarter of a second.
   await until(

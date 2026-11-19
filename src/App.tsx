@@ -1,5 +1,6 @@
 import { Suspense, lazy } from 'react';
 import { BackButton } from './components/BackButton';
+import { ThemeIcon } from './components/ThemeIcon';
 import { useI18n } from './i18n';
 import { navigate, useRoute } from './router';
 import { setSoundOn, useSoundOn } from './sound';
@@ -53,7 +54,7 @@ export function App() {
             title={t(theme === 'dark' ? 'tools.theme.light' : 'tools.theme.dark')}
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
           >
-            {theme === 'dark' ? '☀' : '☾'}
+            <ThemeIcon />
           </button>
           <button
             type="button"
