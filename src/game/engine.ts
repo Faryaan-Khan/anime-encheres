@@ -1,5 +1,5 @@
 /**
- * Pure auction engine.
+ * Pure auction engine, for two players or three.
  *
  * Every function takes a state and returns a new one; nothing is mutated and
  * there is no I/O, which makes the rules easy to test. The Postgres functions
@@ -7,8 +7,8 @@
  * and `supabase/tests/parity.test.ts` checks the two against each other.
  *
  * Rules in short (see docs/GAME_RULES.md):
- *  - Players alternate as drawer. Only the drawer sees the card.
- *  - The drawer speaks first, then players alternate: bid or pass.
+ *  - Players take turns as drawer. Only the drawer sees the card.
+ *  - The drawer speaks first, then each player in turn (seat order): bid or pass.
  *  - A pass is final for the current card.
  *  - The card goes to the last bidder standing, who pays their bid.
  *    If nobody bids, the card is discarded.
@@ -34,7 +34,12 @@ export const DEFAULT_SETTINGS: Settings = {
 /** How many cards each player may skip in a game (see `Settings.passLimit`). */
 export const PASS_LIMIT = 3;
 
-const other = (seat: Seat): Seat => (seat === 0 ? 1 : 0);
+/** The seat after this one, in a game of `count` players. */
+const after = (seat: Seat, count: number): Seat => ((seat + 1) % count) as Seat;
+
+/** Every seat of a game. */
+export const seatsOf = (state: { players: ReadonlyArray<unknown> }): Seat[] =>
+  state.players.map((_, i) => i as Seat);
 
 /** Fisher–Yates shuffle; `rng` is injectable so tests are deterministic. */
 export function shuffle<T>(items: readonly T[], rng: () => number = Math.random): T[] {
@@ -65,7 +70,8 @@ export function validateSettings(settings: Settings, poolSize: number): void {
 
 export interface CreateGameOptions {
   settings: Settings;
-  names: [string, string];
+  /** Two names, or three. */
+  names: string[];
   /** Character ids to deal from. */
   pool: readonly string[];
   rng?: () => number;
@@ -77,14 +83,18 @@ export interface CreateGameOptions {
 export function createGame(options: CreateGameOptions): GameState {
   const { settings, names, pool, rng = Math.random } = options;
   validateSettings(settings, pool.length);
+  if (names.length < 2 || names.length > 3 || pool.length < settings.teamSize * names.length) {
+    throw new GameError('INVALID_INPUT');
+  }
   // Every card of the chosen universe (or of all of them) is in the deck.
   const deck = options.deck?.slice() ?? shuffle(pool, rng);
-  const drawer: Seat = options.firstDrawer ?? (rng() < 0.5 ? 0 : 1);
+  const drawer: Seat =
+    options.firstDrawer ?? (names.length === 2 ? (rng() < 0.5 ? 0 : 1) : (Math.floor(rng() * names.length) as Seat));
   const player = (name: string): PlayerState => ({ name, budget: settings.budget, team: [], passes: 0 });
   return {
     settings: { ...settings, passLimit: settings.passLimit ?? PASS_LIMIT },
     scale: scaleOf(pool),
-    players: [player(names[0]), player(names[1])],
+    players: names.map(player),
     deck,
     phase: 'draw',
     round: 1,
@@ -93,7 +103,7 @@ export function createGame(options: CreateGameOptions): GameState {
     card: null,
     highBid: 0,
     highBidder: null,
-    passed: [false, false],
+    passed: names.map(() => false),
     history: [],
   };
 }
@@ -138,8 +148,7 @@ export function canBid(state: GameState, seat: Seat): boolean {
 
 /** True when no further card can be sold. */
 export function isGameOver(state: GameState): boolean {
-  const seats: Seat[] = [0, 1];
-  const someoneCanStillBuy = seats.some(
+  const someoneCanStillBuy = seatsOf(state).some(
     (s) => !isTeamFull(state, s) && state.players[s].budget >= state.settings.minBid,
   );
   return state.deck.length === 0 || !someoneCanStillBuy;
@@ -149,12 +158,9 @@ function clone(state: GameState): GameState {
   return {
     ...state,
     settings: { ...state.settings },
-    players: [
-      { ...state.players[0], team: state.players[0].team.slice() },
-      { ...state.players[1], team: state.players[1].team.slice() },
-    ],
+    players: state.players.map((p) => ({ ...p, team: p.team.slice() })),
     deck: state.deck.slice(),
-    passed: [state.passed[0], state.passed[1]],
+    passed: state.passed.slice(),
     history: state.history.slice(),
   };
 }
@@ -166,8 +172,10 @@ function clone(state: GameState): GameState {
  * is always a fresh clone.
  */
 function settle(s: GameState): GameState {
+  const count = s.players.length;
   for (;;) {
-    if (s.highBidder !== null && s.passed[other(s.highBidder)]) {
+    // Everyone but the high bidder has passed: sold.
+    if (s.highBidder !== null && s.passed.every((passed, seat) => passed || seat === s.highBidder)) {
       const winner = s.highBidder;
       s.players[winner].budget -= s.highBid;
       s.players[winner].team.push(s.card!);
@@ -175,18 +183,18 @@ function settle(s: GameState): GameState {
       s.phase = 'reveal';
       return s;
     }
-    if (s.passed[0] && s.passed[1]) {
+    if (s.passed.every(Boolean)) {
       s.history.push({ round: s.round, card: s.card!, winner: null, price: 0 });
       s.phase = 'reveal';
       return s;
     }
     if (s.passed[s.turn]) {
-      s.turn = other(s.turn);
+      s.turn = after(s.turn, count);
       continue;
     }
     if (!canBid(s, s.turn)) {
       s.passed[s.turn] = true;
-      s.turn = other(s.turn);
+      s.turn = after(s.turn, count);
       continue;
     }
     return s;
@@ -203,7 +211,7 @@ export function draw(state: GameState, seat: Seat): GameState {
   s.turn = s.drawer;
   s.highBid = 0;
   s.highBidder = null;
-  s.passed = [false, false];
+  s.passed = s.players.map(() => false);
   return settle(s);
 }
 
@@ -221,7 +229,7 @@ export function bid(state: GameState, seat: Seat, amount: number): GameState {
   const s = clone(state);
   s.highBid = amount;
   s.highBidder = seat;
-  s.turn = other(seat);
+  s.turn = after(seat, s.players.length);
   return settle(s);
 }
 
@@ -232,7 +240,7 @@ export function pass(state: GameState, seat: Seat): GameState {
   const s = clone(state);
   if (passCosts(s)) s.players[seat].passes = (s.players[seat].passes ?? 0) + 1;
   s.passed[seat] = true;
-  s.turn = other(seat);
+  s.turn = after(seat, s.players.length);
   return settle(s);
 }
 
@@ -243,13 +251,13 @@ export function next(state: GameState): GameState {
   s.card = null;
   s.highBid = 0;
   s.highBidder = null;
-  s.passed = [false, false];
+  s.passed = s.players.map(() => false);
   if (isGameOver(s)) {
     s.phase = 'finished';
     return s;
   }
   s.round += 1;
-  s.drawer = other(s.drawer);
+  s.drawer = after(s.drawer, s.players.length);
   s.turn = s.drawer;
   s.phase = 'draw';
   // A drawer who can no longer buy anything would only hold the other player
@@ -282,17 +290,14 @@ export function toView(
     version: meta.version ?? 0,
     you: viewer === 'all' ? null : viewer,
     settings: { ...state.settings, passLimit: state.settings.passLimit ?? PASS_LIMIT, poolSize: meta.poolSize ?? 0 },
-    players: [
-      { seat: 0, ...state.players[0], passes: state.players[0].passes ?? 0, team: state.players[0].team.slice() },
-      { seat: 1, ...state.players[1], passes: state.players[1].passes ?? 0, team: state.players[1].team.slice() },
-    ],
+    players: state.players.map((p, seat) => ({ seat: seat as Seat, ...p, passes: p.passes ?? 0, team: p.team.slice() })),
     phase: state.phase,
     round: state.round,
     drawer: state.drawer,
     turn: state.turn,
     highBid: state.highBid,
     highBidder: state.highBidder,
-    passed: [state.passed[0], state.passed[1]],
+    passed: state.passed.slice(),
     scale: state.scale ?? 'all',
     deckCount: state.deck.length,
     card: revealed || drawerPeek ? state.card : null,

@@ -4,12 +4,14 @@ import {
   bid,
   canBid,
   canPass,
+  canStillBuy,
   createGame,
   draw,
   isGameOver,
   next,
   pass,
   requiredBid,
+  seatsOf,
   shuffle,
   toView,
 } from './engine';
@@ -351,5 +353,96 @@ describe('random playthroughs keep the books balanced', () => {
     }
     const seen = [...g.players[0].team, ...g.players[1].team];
     expect(new Set(seen).size).toBe(seen.length);
+  });
+});
+
+describe('three players', () => {
+  const trio = (firstDrawer: Seat = 0) =>
+    createGame({
+      settings: { budget: 100, teamSize: 2, minBid: 10, increment: 10 },
+      names: ['A', 'B', 'C'],
+      pool,
+      deck: pool,
+      firstDrawer,
+    });
+
+  it('starts with three players and needs enough cards for every team', () => {
+    const s = trio();
+    expect(s.players.map((p) => p.name)).toEqual(['A', 'B', 'C']);
+    expect(s.passed).toEqual([false, false, false]);
+    expectError(
+      () =>
+        createGame({
+          settings: { budget: 100, teamSize: 4, minBid: 10, increment: 10 },
+          names: ['A', 'B', 'C'],
+          pool: pool.slice(0, 10),
+        }),
+      'INVALID_INPUT',
+    );
+    expectError(() => createGame({ settings: DEFAULT_SETTINGS, names: ['A', 'B', 'C', 'D'], pool }), 'INVALID_INPUT');
+  });
+
+  it('bids go round in seat order from the drawer, and the card goes when both others have passed', () => {
+    let s = draw(trio(1), 1);
+    expect(s.turn).toBe(1);
+    s = bid(s, 1, 10);
+    expect(s.turn).toBe(2);
+    s = bid(s, 2, 20);
+    expect(s.turn).toBe(0);
+    s = pass(s, 0);
+    expect(s.turn).toBe(1);
+    expect(s.phase).toBe('bidding');
+    s = bid(s, 1, 30);
+    // Seat 0 passed for good: back to seat 2.
+    expect(s.turn).toBe(2);
+    s = pass(s, 2);
+    expect(s.phase).toBe('reveal');
+    expect(s.history.at(-1)).toMatchObject({ winner: 1, price: 30 });
+    expect(s.players[1].budget).toBe(70);
+  });
+
+  it('discards a card all three pass on, and passes the draw round the table', () => {
+    let s = draw(trio(0), 0);
+    s = pass(pass(pass(s, 0), 1), 2);
+    expect(s.history.at(-1)?.winner).toBeNull();
+    expect(s.players.map((p) => p.passes)).toEqual([1, 1, 1]);
+    s = next(s);
+    expect(s.drawer).toBe(1);
+    s = next(pass(pass(pass(draw(s, 1), 1), 2), 0));
+    expect(s.drawer).toBe(2);
+    s = next(pass(pass(pass(draw(s, 2), 2), 0), 1));
+    expect(s.drawer).toBe(0);
+  });
+
+  it('skips a player who cannot buy, and ends once nobody can', () => {
+    let s = trio(0);
+    // Seat 1 fills its team.
+    for (let i = 0; i < 2; i++) {
+      s = draw(s, s.drawer);
+      while (s.phase === 'bidding') s = s.turn === 1 ? bid(s, 1, s.highBid + 10) : pass(s, s.turn);
+      s = next(s);
+    }
+    expect(s.players[1].team).toHaveLength(2);
+    expect(canStillBuy(s, 1)).toBe(false);
+    // Its turns are skipped: only seats 0 and 2 bid now.
+    if (s.phase === 'draw') s = draw(s, s.drawer);
+    expect(s.turn).not.toBe(1);
+    let guard = 0;
+    while (s.phase !== 'finished' && guard++ < 200) {
+      if (s.phase === 'reveal') s = next(s);
+      else if (s.phase === 'draw') s = draw(s, s.drawer);
+      else s = s.highBidder === null ? bid(s, s.turn, 10) : pass(s, s.turn);
+      if (s.phase === 'bidding') expect(s.turn).not.toBe(1);
+    }
+    expect(s.phase).toBe('finished');
+    expect(s.players.every((p) => !canStillBuy(s, seatsOf(s)[s.players.indexOf(p)]))).toBe(true);
+  });
+
+  it('shows the card only to the drawer', () => {
+    const s = draw(trio(2), 2);
+    expect(toView(s, 2).card).toBe(s.card);
+    expect(toView(s, 0).card).toBeNull();
+    expect(toView(s, 1).card).toBeNull();
+    expect(toView(s, 0).players).toHaveLength(3);
   });
 });

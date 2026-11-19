@@ -44,7 +44,7 @@ if (!chromePath) {
 
 const db = new PGlite();
 await db.exec('create role anon nologin; create role authenticated nologin;');
-for (const file of ['0001_init.sql', '0002_matchmaking.sql', '0003_ranking.sql', '0004_character_powers.sql', '0005_accounts_and_opponent.sql', '0006_modes_and_friends.sql', '0007_seasons.sql', '0008_opponent_brain.sql', '0009_google_accounts.sql', '0010_fair_play.sql', '0011_autopilot.sql', '0012_passes_and_scales.sql', '0013_old_site_and_auto_bid.sql', '0014_seasons_names_avatars.sql', '0015_public_rooms.sql', '0016_team_rooms.sql']) {
+for (const file of ['0001_init.sql', '0002_matchmaking.sql', '0003_ranking.sql', '0004_character_powers.sql', '0005_accounts_and_opponent.sql', '0006_modes_and_friends.sql', '0007_seasons.sql', '0008_opponent_brain.sql', '0009_google_accounts.sql', '0010_fair_play.sql', '0011_autopilot.sql', '0012_passes_and_scales.sql', '0013_old_site_and_auto_bid.sql', '0014_seasons_names_avatars.sql', '0015_public_rooms.sql', '0016_team_rooms.sql', '0017_three_players.sql']) {
   await db.exec(readFileSync(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8'));
 }
 
@@ -582,7 +582,7 @@ try {
   await t1.goto(`${base}#/online`, { waitUntil: 'networkidle2' });
   await t1.type('input[autocomplete=nickname]', 'Tia');
   await t1.evaluate(() => {
-    document.querySelectorAll('input[name=format]')[1].click();
+    document.querySelectorAll('input[name=format]')[2].click();
     document.querySelectorAll('input[name=budget]')[0].click();
     document.querySelectorAll('input[name=teamSize]')[0].click();
   });
@@ -622,7 +622,11 @@ try {
           await until(mate, async () => (await sees(mate, '.stage .card--face')) || (await sees(mate, '.stamp')), 'the teammate to see the card');
           if (!(await sees(mate, '.stamp'))) {
             assert((await text(mate)).includes('plays this round for your side') || (await text(mate)).includes('Only your side sees the card'), 'the teammate is told who plays');
-            for (const rival of rivals) assert(!(await sees(rival, '.stage .card--face')), 'the other side does not see the card');
+            const round = await roundOf(page);
+            for (const rival of rivals) {
+              if ((await sees(rival, '.stamp')) || (await roundOf(rival)) !== round) continue;
+              assert(!(await sees(rival, '.stage .card--face')), 'the other side does not see the card');
+            }
             sidesChecked++;
           }
         }
@@ -643,6 +647,79 @@ try {
   assert(teamRounds > 0 && sidesChecked > 0, 'the 2v2 game was played');
   assert(faceoffs.size >= 2, `different face-offs came up (${[...faceoffs].join('; ')})`);
   console.log(`PASS  2v2: four players, ${teamRounds} rounds, ${faceoffs.size} face-offs, the drawing side sees the card (${sidesChecked} checks)`);
+
+  // --- 1v1v1 room --------------------------------------------------------------
+
+  const trio = [await phone('r1'), await phone('r2'), await phone('r3')];
+  const [r1, r2, r3] = trio;
+  await r1.goto(`${base}#/online`, { waitUntil: 'networkidle2' });
+  await r1.type('input[autocomplete=nickname]', 'Xia');
+  await r1.evaluate(() => {
+    document.querySelectorAll('input[name=format]')[1].click();
+    document.querySelectorAll('input[name=budget]')[0].click();
+    document.querySelectorAll('input[name=teamSize]')[0].click();
+  });
+  await click(r1, 'Create the room');
+  await until(r1, () => sees(r1, '.lobby__code'), 'the 1v1v1 lobby');
+  const trioCode = await r1.$eval('.lobby__code', (e) => e.textContent.trim());
+  for (const [page, name] of [[r2, 'Yan'], [r3, 'Zoe']]) {
+    await page.goto(`${base}#/room/${trioCode}`, { waitUntil: 'networkidle2' });
+    await until(page, () => sees(page, 'input[autocomplete=nickname]'), 'the join form');
+    await page.type('input[autocomplete=nickname]', name);
+    await click(page, 'Join');
+    await until(page, () => sees(page, '.lobby__code'), 'the 1v1v1 lobby');
+  }
+  await until(r1, () => click(r1, 'Start the game'), 'three players in the lobby');
+  for (const page of trio) await until(page, () => sees(page, '.scoreboard--three'), 'the 1v1v1 board');
+  await snap(r2, 'trio-board');
+  let trioRounds = 0;
+  for (let step = 0; step < 600; step++) {
+    if ((await Promise.all(trio.map((p) => sees(p, '.final')))).every(Boolean)) break;
+    let acted = false;
+    for (const page of trio) {
+      if (await click(page, 'Draw a card')) {
+        trioRounds++;
+        await until(page, async () => (await sees(page, '.stage .card--face')) || (await sees(page, '.stamp')), 'the drawn card');
+        if (!(await sees(page, '.stamp'))) {
+          const round = await roundOf(page);
+          for (const other of trio.filter((p) => p !== page)) {
+            // A screen still showing the last result has that card face up: only
+            // screens on this round's auction count.
+            if ((await sees(other, '.stamp')) || (await roundOf(other)) !== round) continue;
+            assert(!(await sees(other, '.stage .card--face')), 'only the drawer sees the card');
+          }
+        }
+        acted = true;
+        break;
+      }
+      if (await sees(page, '.bid__actions button:not(:disabled)')) {
+        await click(page, Math.random() < 0.5 ? 'Bid ' : 'Pass');
+        acted = true;
+        break;
+      }
+    }
+    await sleep(acted ? 200 : 400);
+  }
+  for (const page of trio) await until(page, () => sees(page, '.final'), 'the 1v1v1 final screen');
+  const trioTeams = await r3.$$eval('.team__head h2', (els) => els.map((e) => e.textContent));
+  assert(trioTeams.length === 3 && trioTeams.every((n) => /^(1st|2nd|3rd)/.test(n)), `three teams with places (${trioTeams})`);
+  await snap(r3, 'trio-final');
+  console.log(`PASS  1v1v1 room: three players, ${trioRounds} rounds, only the drawer sees the card, places shown`);
+
+  // --- 1v1v1 on one device ---------------------------------------------------------
+
+  const couch = await phone('couch');
+  await couch.goto(`${base}#/local`, { waitUntil: 'networkidle2' });
+  await couch.evaluate(() => document.querySelectorAll('input[name=opponent]')[1].click());
+  await until(couch, async () => (await couch.$$('.form__trio input')).length === 3, 'three name fields');
+  const nameFields = await couch.$$('.form__trio input');
+  for (const [i, name] of ['Ann', 'Bob', 'Cid'].entries()) await nameFields[i].type(name);
+  await click(couch, 'Start the game');
+  await until(couch, () => sees(couch, '.scoreboard--three'), 'the offline 1v1v1 board');
+  const seated = await couch.$$eval('.player__name', (els) => els.map((e) => e.textContent));
+  assert(seated.join('|') === 'Ann|Bob|Cid', `three players on one device (${seated})`);
+  assert(await click(couch, 'Draw a card'), 'the first player can draw');
+  console.log('PASS  1v1v1 on one device: three names, three teams');
 
   // --- Home ---------------------------------------------------------------------
 

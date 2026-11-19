@@ -16,8 +16,11 @@ const BOT_DELAY = 900;
 /** How long a player who has to bid gets before the minimum is bid for them. */
 const AUTO_BID_MS = AUTO_BID_SECONDS * 1000;
 
-/** `teams`: two teams share the device, any number of people in each. */
-type Opponent = 'friend' | 'teams' | BotLevel;
+/**
+ * `teams`: two teams share the device, any number of people in each.
+ * `three`: three players share the device.
+ */
+type Opponent = 'friend' | 'three' | 'teams' | BotLevel;
 
 /**
  * A game on this device: setup form, then the board, then the final screen.
@@ -107,33 +110,35 @@ interface SetupProps {
 function LocalSetup({ solo, onStart }: SetupProps) {
   const { t } = useI18n();
   const [opponent, setOpponent] = useState<Opponent>(solo ? 'normal' : 'friend');
-  const [names, setNames] = useState<[string, string]>(() => [
+  const [names, setNames] = useState<string[]>(() => [
     readStored('ae.name') ?? '',
     readStored('ae.name2') ?? '',
+    readStored('ae.name3') ?? '',
   ]);
   const [options, setOptions] = useState<GameOptions>(DEFAULT_OPTIONS);
   const [error, setError] = useState<StringKey | null>(null);
-  const againstBot = opponent !== 'friend' && opponent !== 'teams';
+  const againstBot = opponent !== 'friend' && opponent !== 'teams' && opponent !== 'three';
   const teams = opponent === 'teams';
+  const count = opponent === 'three' ? 3 : 2;
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    const first = names[0].trim();
-    const second = againstBot
-      ? t(opponent === 'hard' ? 'bot.name.hard' : 'bot.name.normal')
-      : names[1].trim();
-    if ([first, second].some((n) => n.length < 1 || n.length > 20)) return setError('setup.nameRequired');
-    if (first.toLowerCase() === second.toLowerCase()) return setError('setup.namesDiffer');
+    const chosen = againstBot
+      ? [names[0].trim(), t(opponent === 'hard' ? 'bot.name.hard' : 'bot.name.normal')]
+      : names.slice(0, count).map((n) => n.trim());
+    if (chosen.some((n) => n.length < 1 || n.length > 20)) return setError('setup.nameRequired');
+    if (new Set(chosen.map((n) => n.toLowerCase())).size !== chosen.length) return setError('setup.namesDiffer');
     if (teams) {
-      writeStored('ae.team1', first);
-      writeStored('ae.team2', second);
+      writeStored('ae.team1', chosen[0]);
+      writeStored('ae.team2', chosen[1]);
     } else {
-      writeStored('ae.name', first);
-      if (!againstBot) writeStored('ae.name2', second);
+      writeStored('ae.name', chosen[0]);
+      if (!againstBot) writeStored('ae.name2', chosen[1]);
+      if (count === 3) writeStored('ae.name3', chosen[2]);
     }
     onStart({
       settings: toSettings(options),
-      names: [first, second],
+      names: chosen,
       pool: poolFor(options.universe),
       bot: againstBot ? opponent : undefined,
     });
@@ -141,6 +146,7 @@ function LocalSetup({ solo, onStart }: SetupProps) {
 
   const opponents: Array<{ id: Opponent; label: StringKey; hint: StringKey }> = [
     { id: 'friend', label: 'setup.opponent.friend', hint: 'setup.opponent.friend.hint' },
+    { id: 'three', label: 'setup.opponent.three', hint: 'setup.opponent.three.hint' },
     { id: 'teams', label: 'setup.opponent.teams', hint: 'setup.opponent.teams.hint' },
     { id: 'normal', label: 'setup.opponent.normal', hint: 'setup.opponent.normal.hint' },
     { id: 'hard', label: 'setup.opponent.hard', hint: 'setup.opponent.hard.hint' },
@@ -164,8 +170,8 @@ function LocalSetup({ solo, onStart }: SetupProps) {
                     if ((o.id === 'teams') !== teams) {
                       setNames(
                         o.id === 'teams'
-                          ? [readStored('ae.team1') ?? '', readStored('ae.team2') ?? '']
-                          : [readStored('ae.name') ?? '', readStored('ae.name2') ?? ''],
+                          ? [readStored('ae.team1') ?? '', readStored('ae.team2') ?? '', '']
+                          : [readStored('ae.name') ?? '', readStored('ae.name2') ?? '', readStored('ae.name3') ?? ''],
                       );
                     }
                     setOpponent(o.id);
@@ -180,9 +186,9 @@ function LocalSetup({ solo, onStart }: SetupProps) {
           </div>
         </fieldset>
 
-        <div className={againstBot ? undefined : 'form__pair'}>
-          {([0, 1] as const)
-            .filter((i) => i === 0 || !againstBot)
+        <div className={againstBot ? undefined : count === 3 ? 'form__trio' : 'form__pair'}>
+          {([0, 1, 2] as const)
+            .filter((i) => (againstBot ? i === 0 : i < count))
             .map((i) => (
               <label key={i} className={`field field--seat${i}`}>
                 <span>
@@ -195,7 +201,9 @@ function LocalSetup({ solo, onStart }: SetupProps) {
                           : 'setup.team2'
                         : i === 0
                           ? 'setup.player1'
-                          : 'setup.player2',
+                          : i === 1
+                            ? 'setup.player2'
+                            : 'setup.player3',
                   )}
                 </span>
                 <input
@@ -204,7 +212,7 @@ function LocalSetup({ solo, onStart }: SetupProps) {
                   maxLength={20}
                   autoComplete="off"
                   onChange={(e) => {
-                    const next: [string, string] = [...names];
+                    const next = [...names];
                     next[i] = e.target.value;
                     setNames(next);
                   }}
