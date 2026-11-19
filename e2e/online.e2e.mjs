@@ -44,7 +44,7 @@ if (!chromePath) {
 
 const db = new PGlite();
 await db.exec('create role anon nologin; create role authenticated nologin;');
-for (const file of ['0001_init.sql', '0002_matchmaking.sql', '0003_ranking.sql', '0004_character_powers.sql', '0005_accounts_and_opponent.sql', '0006_modes_and_friends.sql', '0007_seasons.sql', '0008_opponent_brain.sql', '0009_google_accounts.sql', '0010_fair_play.sql', '0011_autopilot.sql', '0012_passes_and_scales.sql', '0013_old_site_and_auto_bid.sql', '0014_seasons_names_avatars.sql', '0015_public_rooms.sql']) {
+for (const file of ['0001_init.sql', '0002_matchmaking.sql', '0003_ranking.sql', '0004_character_powers.sql', '0005_accounts_and_opponent.sql', '0006_modes_and_friends.sql', '0007_seasons.sql', '0008_opponent_brain.sql', '0009_google_accounts.sql', '0010_fair_play.sql', '0011_autopilot.sql', '0012_passes_and_scales.sql', '0013_old_site_and_auto_bid.sql', '0014_seasons_names_avatars.sql', '0015_public_rooms.sql', '0016_team_rooms.sql']) {
   await db.exec(readFileSync(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8'));
 }
 
@@ -574,6 +574,75 @@ try {
   await solo2.goto(`${base}#/online`, { waitUntil: 'networkidle2' });
   await until(solo2, async () => (await text(solo2)).includes('No public rooms right now'), 'a started room leaves the list');
   console.log('PASS  public rooms: listed, joined from the list, friend request, gone once started');
+
+  // --- 2v2 -----------------------------------------------------------------------
+
+  const four = [await phone('t1'), await phone('t2'), await phone('t3'), await phone('t4')];
+  const [t1, t2, t3, t4] = four;
+  await t1.goto(`${base}#/online`, { waitUntil: 'networkidle2' });
+  await t1.type('input[autocomplete=nickname]', 'Tia');
+  await t1.evaluate(() => {
+    document.querySelectorAll('input[name=format]')[1].click();
+    document.querySelectorAll('input[name=budget]')[0].click();
+    document.querySelectorAll('input[name=teamSize]')[0].click();
+  });
+  await click(t1, 'Create the room');
+  await until(t1, () => sees(t1, '.sides'), 'the 2v2 lobby');
+  const teamCode = await t1.$eval('.lobby__code', (e) => e.textContent.trim());
+  for (const [page, name] of [[t2, 'Uma'], [t3, 'Vic'], [t4, 'Wes']]) {
+    await page.goto(`${base}#/room/${teamCode}`, { waitUntil: 'networkidle2' });
+    await until(page, () => sees(page, 'input[autocomplete=nickname]'), 'the join form');
+    await page.type('input[autocomplete=nickname]', name);
+    await click(page, 'Join');
+    await until(page, () => sees(page, '.sides'), 'the 2v2 lobby');
+  }
+  await until(t1, async () => (await t1.$$('.side li:not(.side__empty)')).length === 4, 'four players in the lobby');
+  const sides = await t1.$$eval('.side', (els) => els.map((e) => [...e.querySelectorAll('li strong')].map((s) => s.textContent)));
+  assert(JSON.stringify(sides) === JSON.stringify([['Tia', 'Vic'], ['Uma', 'Wes']]), `two sides of two (${JSON.stringify(sides)})`);
+  await snap(t1, 'teams-lobby');
+  await until(t1, () => click(t1, 'Start the game'), 'the start button');
+  for (const page of four) await until(page, () => sees(page, '.scoreboard'), 'the 2v2 game');
+  const sideOf = new Map([[t1, 0], [t3, 0], [t2, 1], [t4, 1]]);
+
+  let teamRounds = 0;
+  let sidesChecked = 0;
+  const faceoffs = new Set();
+  for (let step = 0; step < 500; step++) {
+    if ((await Promise.all(four.map((p) => sees(p, '.final')))).every(Boolean)) break;
+    let acted = false;
+    for (const page of four) {
+      if (await click(page, 'Draw a card')) {
+        teamRounds++;
+        const line = await page.$eval('.faceoff', (e) => e.textContent).catch(() => '');
+        faceoffs.add(line);
+        await until(page, async () => (await sees(page, '.stage .card--face')) || (await sees(page, '.stamp')), 'the drawn card');
+        if (!(await sees(page, '.stamp'))) {
+          const mate = four.find((p) => p !== page && sideOf.get(p) === sideOf.get(page));
+          const rivals = four.filter((p) => sideOf.get(p) !== sideOf.get(page));
+          await until(mate, async () => (await sees(mate, '.stage .card--face')) || (await sees(mate, '.stamp')), 'the teammate to see the card');
+          if (!(await sees(mate, '.stamp'))) {
+            assert((await text(mate)).includes('plays this round for your side') || (await text(mate)).includes('Only your side sees the card'), 'the teammate is told who plays');
+            for (const rival of rivals) assert(!(await sees(rival, '.stage .card--face')), 'the other side does not see the card');
+            sidesChecked++;
+          }
+        }
+        acted = true;
+        break;
+      }
+      if (await sees(page, '.bid__actions button:not(:disabled)')) {
+        await click(page, Math.random() < 0.6 ? 'Bid ' : 'Pass');
+        acted = true;
+        break;
+      }
+    }
+    await sleep(acted ? 200 : 400);
+  }
+  for (const page of four) await until(page, () => sees(page, '.final'), 'the 2v2 final screen');
+  const finalNames = await t2.$$eval('.team__head h2', (els) => els.map((e) => e.textContent));
+  assert(finalNames.join('|') === 'Tia & Vic|Uma & Wes', `sides are named after their members (${finalNames})`);
+  assert(teamRounds > 0 && sidesChecked > 0, 'the 2v2 game was played');
+  assert(faceoffs.size >= 2, `different face-offs came up (${[...faceoffs].join('; ')})`);
+  console.log(`PASS  2v2: four players, ${teamRounds} rounds, ${faceoffs.size} face-offs, the drawing side sees the card (${sidesChecked} checks)`);
 
   // --- Home ---------------------------------------------------------------------
 

@@ -2888,3 +2888,67 @@ input {
 .add-friend__status {
   color: var(--muted);
 }
+
+/* ---------- 2v2 ---------- */
+
+.sides {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.side {
+  display: grid;
+  align-content: start;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: var(--line);
+  border-top: 10px solid currentColor;
+  border-radius: var(--radius);
+  background: var(--white);
+}
+
+.side h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 1rem;
+}
+
+.side ul {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.side li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  color: var(--ink);
+}
+
+.side li span {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.side .side__empty {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.faceoff {
+  margin: 0;
+  font-weight: 800;
+  text-align: center;
+}
+
+@media (max-width: 360px) {
+  .sides {
+    grid-template-columns: 1fr;
+  }
+}

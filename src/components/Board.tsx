@@ -42,6 +42,11 @@ export interface BoardProps {
    * more. Their result stands and the match is settled without them.
    */
   onLeave?: () => void;
+  /**
+   * 2v2 rooms: who faces off this round, one per side, and, when this
+   * screen's player sits this round out, the teammate playing for them.
+   */
+  faceoff?: { names: [string, string]; teammate: string | null };
 }
 
 /**
@@ -76,6 +81,7 @@ export function Board({
   clock,
   away,
   onLeave,
+  faceoff,
 }: BoardProps) {
   const { t, money } = useI18n();
   const [peeking, setPeeking] = useState(false);
@@ -101,7 +107,8 @@ export function Board({
   const player = (seat: Seat): PlayerView => view.players[seat];
   const drawer = player(view.drawer);
   const bidder = player(view.turn);
-  const mine = (seat: Seat) => mode === 'shared' || view.you === seat;
+  // A teammate sitting this round out watches: their side's moves are not theirs.
+  const mine = (seat: Seat) => mode === 'shared' || (view.you === seat && !faceoff?.teammate);
 
   const { settings } = view;
   const required = view.highBidder === null ? settings.minBid : view.highBid + settings.increment;
@@ -165,6 +172,12 @@ export function Board({
 
       <Scoreboard view={view} />
 
+      {faceoff && view.phase !== 'reveal' && (
+        <p className="faceoff">
+          {t('board.faceoff', { a: faceoff.names[0], b: faceoff.names[1] })}
+        </p>
+      )}
+
       <section className="stage" aria-live="polite">
         <div className={`stage__card${view.phase === 'reveal' ? ' stage__card--reveal' : ''}`}>
           {mode === 'shared' && view.phase === 'bidding' ? (
@@ -209,7 +222,9 @@ export function Board({
             </div>
             {mode === 'personal' && (
               <p className="note">
-                {view.card !== null ? t('board.onlyYou') : t('board.hidden', { name: drawer.name })}
+                {view.card !== null
+                  ? t(faceoff ? 'board.onlySide' : 'board.onlyYou')
+                  : t('board.hidden', { name: drawer.name })}
               </p>
             )}
             {mode === 'shared' && <p className="note">{t('board.peek', { name: drawer.name })}</p>}
@@ -275,6 +290,8 @@ export function Board({
             <button type="button" className="btn btn--primary btn--wide" onClick={onDraw} disabled={busy}>
               {t('board.draw')}
             </button>
+          ) : faceoff?.teammate && view.you === view.drawer ? (
+            <p className="waiting">{t('board.teammatePlays', { name: faceoff.teammate })}</p>
           ) : (
             <p className="waiting">{t('board.waitDraw', { name: drawer.name })}</p>
           ))}
@@ -301,6 +318,8 @@ export function Board({
                 autoBidIn={AUTO_BID_SECONDS - (view.idle ?? 0)}
               />
             </>
+          ) : faceoff?.teammate && view.you === view.turn ? (
+            <p className="waiting">{t('board.teammatePlays', { name: faceoff.teammate })}</p>
           ) : (
             <p className="waiting">{t('board.waitMove', { name: bidder.name })}</p>
           ))}

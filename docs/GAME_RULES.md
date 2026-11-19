@@ -76,6 +76,12 @@ invite a friend. A public room appears in the list of public rooms on the Play o
 page, where anyone can join it; it is a way to try a universe or to meet players, and
 each player has an "Add friend" button.
 
+A room is 1 vs 1 or 2 vs 2. In 2 vs 2 each side has one budget and one team of
+characters. Each round one player from each side faces off: they draw, bid and pass for
+their side while their teammate watches. Both players of the side that drew see the
+card. The face-offs go through every pairing in a shuffled order, so everyone plays
+against everyone. Players can change side in the room before the game starts.
+
 ### Quick match
 
 "Quick match" finds you an opponent online. You choose a mode: one universe, or all of
@@ -210,6 +216,13 @@ des équipes. Aucun trophée n'est en jeu. Un salon « avec le code » est priv�
 code ou invite un ami. Un salon public apparaît dans la liste des salons publics de la
 page Jouer en ligne, où tout le monde peut le rejoindre ; c'est un moyen d'essayer un
 univers ou de rencontrer des joueurs, et chaque joueur a un bouton « Ajouter en ami ».
+
+Un salon se joue en 1 contre 1 ou en 2 contre 2. En 2 contre 2, chaque camp a un seul
+budget et une seule équipe de personnages. À chaque manche, un joueur de chaque camp
+s'affronte : il tire, mise et passe pour son camp pendant que son coéquipier regarde. Les
+deux joueurs du camp qui a tiré voient la carte. Les duels passent par toutes les
+combinaisons dans un ordre mélangé, pour que tout le monde affronte tout le monde. Avant
+la partie, chacun peut changer de camp dans le salon.
 
 ### Partie rapide
 
