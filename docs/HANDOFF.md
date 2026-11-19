@@ -121,7 +121,9 @@ Functions the client calls:
 | `create_room`, `join_room`, `start_game` | Private rooms |
 | `get_room`, `play` | Read the room as one seat sees it; draw, bid, pass, next |
 | `public_rooms` | Public rooms waiting for players |
+| `switch_side`, `leave_room` | 2v2 lobby: change side; give up a place in a lobby |
 | `find_match`, `leave_queue`, `resign` | Quick match in a mode |
+| `find_trio` | Ranked 1v1v1 in a universe (or mix); `leave_queue` and `resign` work for it too |
 | `leaving` | Beacon from a closing page: the player counts as gone after about 8 s |
 | `claim_forfeit` | Old clients only; the server now ends timed-out and abandoned games itself |
 | `get_profile`, `update_profile` | The player's profile, per-mode trophies, recent games |
