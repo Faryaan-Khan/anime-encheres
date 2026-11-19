@@ -4,8 +4,8 @@
  * The page never bounces past its ends (overscroll-behavior in styles.css):
  * that keeps the bottom at the footer even after a fast flick, which nothing
  * else can promise on iPhone. It also switches off the browser's own pull to
- * refresh, so this brings it back: an arrow follows the finger down from the
- * top and, past the mark, turns into a reload.
+ * refresh, so this brings it back: a ring comes down with the finger and
+ * fills as it is pulled; full, it reloads the page and spins while it does.
  */
 const MARK = 72; // how far to pull, in pixels (after resistance)
 const MOST = 110;
@@ -15,7 +15,11 @@ export function initPullToRefresh(): void {
   const badge = document.createElement('div');
   badge.className = 'ptr';
   badge.setAttribute('aria-hidden', 'true');
-  badge.innerHTML = '<span class="ptr__arrow">↓</span>';
+  // A track and an arc that fills; r = 15 on a 36 box, so the arc is 2π·15 long.
+  badge.innerHTML =
+    '<svg viewBox="0 0 36 36"><circle class="ptr__track" cx="18" cy="18" r="15"/>' +
+    '<circle class="ptr__fill" cx="18" cy="18" r="15" pathLength="100"/></svg>';
+  const fill = badge.querySelector<SVGCircleElement>('.ptr__fill')!;
   document.body.append(badge);
 
   let startY: number | null = null;
@@ -23,8 +27,10 @@ export function initPullToRefresh(): void {
 
   const show = (distance: number) => {
     const ready = distance >= MARK;
-    badge.style.transform = `translate(-50%, ${distance - 56}px) rotate(${ready ? 180 : (distance / MARK) * 150}deg)`;
-    badge.style.opacity = String(Math.min(1, distance / (MARK * 0.6)));
+    badge.style.transform = `translate(-50%, ${distance - 56}px)`;
+    badge.style.opacity = String(Math.min(1, distance / (MARK * 0.5)));
+    // The further the pull, the more of the ring is drawn; full at the mark.
+    fill.style.strokeDashoffset = String(100 - Math.min(100, (distance / MARK) * 100));
     badge.classList.toggle('ptr--ready', ready);
   };
   const reset = () => {
@@ -68,8 +74,6 @@ export function initPullToRefresh(): void {
     if (startY === null) return;
     if (pull >= MARK) {
       badge.classList.add('ptr--loading');
-      const arrow = badge.querySelector('.ptr__arrow');
-      if (arrow) arrow.textContent = '↻';
       window.location.reload();
       return;
     }

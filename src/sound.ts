@@ -428,20 +428,31 @@ const SOUNDS: Record<Sound, (ctx: AudioContext) => void> = {
   },
 
   // Opening a card up close: the stronger the card, the bigger the moment.
-  // D: a card flicked onto the table.
+  // The lower tiers keep their own shape (a flick, a chime, a rising run) and
+  // lead into A step by step: in A's key, with a little more of its hall, its
+  // bells and its swell at each tier.
+  // D: a card flicked onto the table, a single note and a faint bell.
   'card-D': (ctx) => {
-    noise(ctx, { dur: 0.12, from: 2200, to: 900, gain: 0.14 });
-    tone(ctx, { freq: 440, dur: 0.12, type: 'sine', gain: 0.12 });
+    noise(ctx, { dur: 0.12, from: 2200, to: 900, gain: 0.14, wet: 0.08 });
+    tone(ctx, { freq: 494, dur: 0.16, type: 'sine', gain: 0.12, wet: 0.12 });
+    bell(ctx, { freq: 1976, at: 0.02, dur: 0.7, gain: 0.02, wet: 0.22 });
   },
-  // C: the flick and a two-note chime.
+  // C: the flick and a two-note chime, each note with a bell's ring.
   'card-C': (ctx) => {
-    noise(ctx, { dur: 0.12, from: 2200, to: 900, gain: 0.14 });
-    arpeggio(ctx, [523, 659], 0.07, { type: 'sine', gain: 0.14, dur: 0.22 });
+    noise(ctx, { dur: 0.12, from: 2200, to: 900, gain: 0.14, wet: 0.14 });
+    [659, 831].forEach((freq, i) => {
+      tone(ctx, { freq, at: i * 0.07, dur: 0.26, type: 'sine', gain: 0.13, wet: 0.22, pan: i ? 0.15 : -0.15 });
+      bell(ctx, { freq: freq * 2, at: i * 0.07, dur: 1.1, gain: 0.034, wet: 0.32, pan: i ? 0.2 : -0.2 });
+    });
   },
-  // B: a rising three-note arpeggio.
+  // B: a rising three-note run, bells answering above it, a hint of a swell.
   'card-B': (ctx) => {
-    noise(ctx, { dur: 0.16, from: 1800, to: 3600, gain: 0.14 });
-    arpeggio(ctx, [523, 659, 784], 0.07, { type: 'triangle', gain: 0.16, dur: 0.26 });
+    noise(ctx, { dur: 0.2, from: 1800, to: 4200, gain: 0.13, wet: 0.25 });
+    pad(ctx, { freqs: [330, 494], dur: 1.4, attack: 0.15, gain: 0.022, wet: 0.45, open: 2800 });
+    [659, 831, 988].forEach((freq, i) => {
+      tone(ctx, { freq, at: i * 0.07, dur: 0.3, type: 'triangle', gain: 0.14, wet: 0.3, pan: -0.3 + i * 0.3 });
+      bell(ctx, { freq: freq * 2, at: 0.03 + i * 0.07, dur: 1.5, gain: 0.05, wet: 0.5, pan: -0.4 + i * 0.4 });
+    });
   },
   // A: a soft swell and a cascade of glass bells, in a hall.
   'card-A': (ctx) => {
