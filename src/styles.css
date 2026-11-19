@@ -3326,3 +3326,42 @@ input {
     transform: rotate(270deg);
   }
 }
+
+/* ---------- Theme switch icon: sun in light mode, moon in dark ---------- */
+
+.theme-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  overflow: visible;
+}
+
+.theme-icon__sun,
+.theme-icon__rays,
+.theme-icon__moon {
+  transform-box: view-box;
+  transform-origin: 12px 12px;
+  transition:
+    transform 0.55s cubic-bezier(0.45, 1.35, 0.4, 1),
+    opacity 0.3s ease;
+}
+
+/* Light: the sun. The moon waits, small and turned away. */
+.theme-icon__moon {
+  opacity: 0;
+  transform: rotate(-100deg) scale(0.4);
+}
+
+/* Dark: the rays fold in, the sun spins away, the moon turns into place. */
+[data-theme='dark'] .theme-icon__rays {
+  transform: scale(0.5);
+}
+
+[data-theme='dark'] .theme-icon__sun {
+  opacity: 0;
+  transform: rotate(100deg) scale(0.4);
+}
+
+[data-theme='dark'] .theme-icon__moon {
+  opacity: 1;
+  transform: rotate(0) scale(1);
+}
