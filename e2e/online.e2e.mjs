@@ -44,7 +44,7 @@ if (!chromePath) {
 
 const db = new PGlite();
 await db.exec('create role anon nologin; create role authenticated nologin;');
-for (const file of ['0001_init.sql', '0002_matchmaking.sql', '0003_ranking.sql', '0004_character_powers.sql', '0005_accounts_and_opponent.sql', '0006_modes_and_friends.sql', '0007_seasons.sql', '0008_opponent_brain.sql', '0009_google_accounts.sql', '0010_fair_play.sql', '0011_autopilot.sql', '0012_passes_and_scales.sql', '0013_old_site_and_auto_bid.sql', '0014_seasons_names_avatars.sql', '0015_public_rooms.sql', '0016_team_rooms.sql', '0017_three_players.sql']) {
+for (const file of ['0001_init.sql', '0002_matchmaking.sql', '0003_ranking.sql', '0004_character_powers.sql', '0005_accounts_and_opponent.sql', '0006_modes_and_friends.sql', '0007_seasons.sql', '0008_opponent_brain.sql', '0009_google_accounts.sql', '0010_fair_play.sql', '0011_autopilot.sql', '0012_passes_and_scales.sql', '0013_old_site_and_auto_bid.sql', '0014_seasons_names_avatars.sql', '0015_public_rooms.sql', '0016_team_rooms.sql', '0017_three_players.sql', '0018_ranked_trio.sql']) {
   await db.exec(readFileSync(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8'));
 }
 
@@ -720,6 +720,39 @@ try {
   assert(seated.join('|') === 'Ann|Bob|Cid', `three players on one device (${seated})`);
   assert(await click(couch, 'Draw a card'), 'the first player can draw');
   console.log('PASS  1v1v1 on one device: three names, three teams');
+
+  // --- Ranked 1v1v1 ------------------------------------------------------------
+
+  const lone = await phone('lone');
+  await lone.goto(`${base}#/match`, { waitUntil: 'networkidle2' });
+  await until(lone, () => sees(lone, 'input[name=format]'), 'the quick-match page');
+  await lone.type('input[autocomplete=nickname]', 'Lou');
+  await lone.evaluate(() => {
+    document.querySelectorAll('input[name=format]')[1].click();
+  });
+  await until(lone, async () => (await text(lone)).includes('One 1v1v1 ranking'), 'the 1v1v1 explanation');
+  await lone.evaluate(() => {
+    [...document.querySelectorAll('input[name=mode]')].find((i) => i.closest('label').textContent.startsWith('Bleach')).click();
+  });
+  await click(lone, 'Find an opponent');
+  await until(lone, async () => (await text(lone)).includes('1v1v1 · Bleach'), 'the 1v1v1 search');
+  // Nobody else is looking: two players join from the server.
+  await until(lone, () => sees(lone, '.scoreboard--three'), 'a 1v1v1 game', 40000);
+  const trioRoom = (
+    await db.query(`select code, bot_seats from encheres.rooms where format = 'trio' and matched order by created_at desc limit 1`)
+  ).rows[0];
+  assert(trioRoom.bot_seats.length === 2, `two seats filled from the server (${trioRoom.bot_seats})`);
+  assert(!/computer|ordinateur/i.test(await text(lone)), 'the 1v1v1 board does not mention the computer');
+  await snap(lone, 'trio-ranked');
+  await click(lone, 'Forfeit');
+  await until(lone, () => click(lone, 'Confirm forfeit'), 'the confirmation');
+  await until(lone, () => sees(lone, '.final'), 'the 1v1v1 final screen', 20000);
+  const places = await lone.$$eval('.team__head h2', (els) => els.map((e) => e.textContent));
+  assert(places.length === 3 && places.some((p) => p.startsWith('3rd') && p.includes('Lou')), `the player who gave up is last (${places})`);
+  await until(lone, async () => /trophies/i.test(await text(lone)), 'the 1v1v1 trophy line');
+  assert(await sees(lone, '.again'), 'play again is offered');
+  assert((await text(lone)).includes('Play again: 1v1v1 · Bleach'), 'play again in the same 1v1v1 queue');
+  console.log('PASS  ranked 1v1v1: queue by universe, two stand-ins, giving up places last, trophies');
 
   // --- Home ---------------------------------------------------------------------
 

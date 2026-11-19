@@ -3,9 +3,9 @@ import { useNow } from '../hooks';
 import { play } from '../sound';
 import { MIX_ID } from '../data/characters';
 import { useI18n } from '../i18n';
-import { MATCH_SETTINGS, MODES, isMode } from '../match/config';
+import { MATCH_SETTINGS, MODES, TRIO, isQueue, trioQueue, trioVerse } from '../match/config';
 import { modeName } from '../modes';
-import { findMatch, leaveQueue, resign } from '../online/api';
+import { findMatch, findTrio, leaveQueue, resign } from '../online/api';
 import { ONLINE_AVAILABLE } from '../online/config';
 import { getProfile, type Profile } from '../online/profile';
 import { leagueOf } from '../ranking';
@@ -37,7 +37,7 @@ export function Match() {
   const [name, setName] = useState(() => readStored('ae.name') ?? '');
   const [mode, setMode] = useState(() => {
     const stored = readStored(MODE_KEY);
-    return isMode(stored) ? stored : MIX_ID;
+    return isQueue(stored) ? stored : MIX_ID;
   });
   const [searching, setSearching] = useState(false);
   const [invalid, setInvalid] = useState(false);
@@ -71,7 +71,7 @@ export function Match() {
     navigate('/');
   };
   const findAnother = (next?: string) => {
-    if (next && isMode(next)) {
+    if (next && isQueue(next)) {
       setMode(next);
       writeStored(MODE_KEY, next);
     }
@@ -121,6 +121,10 @@ export function Match() {
   };
 
   const trophiesIn = (id: string) => profile?.modes.find((m) => m.mode === id)?.trophies ?? 0;
+  // The queue is a 1v1 mode, or `trio:<mode>` for 1v1v1 in that universe.
+  const verse = trioVerse(mode);
+  const three = verse !== null;
+  const universe = verse ?? mode;
 
   return (
     <main className="page">
@@ -128,15 +132,44 @@ export function Match() {
       <p>{t('match.rules')}</p>
       <form className="form" onSubmit={submit} noValidate>
         <fieldset className="field">
+          <legend>{t('match.format')}</legend>
+          <div className="options">
+            {[false, true].map((trio) => (
+              <label key={String(trio)} className="option">
+                <input
+                  type="radio"
+                  name="format"
+                  checked={three === trio}
+                  onChange={() => setMode(trio ? trioQueue(universe) : universe)}
+                />
+                <span>{t(trio ? 'match.format.trio' : 'match.format.duel')}</span>
+              </label>
+            ))}
+          </div>
+          {three && (
+            <small className="note">
+              {t('match.format.trio.hint')}{' '}
+              {t('match.level', { league: t(leagueOf(trophiesIn(TRIO)).key), n: trophiesIn(TRIO) })}
+            </small>
+          )}
+        </fieldset>
+        <fieldset className="field">
           <legend>{t('match.mode')}</legend>
           <div className="modes">
             {MODES.map((id) => (
               <label key={id} className="modes__choice">
-                <input type="radio" name="mode" checked={mode === id} onChange={() => setMode(id)} />
+                <input
+                  type="radio"
+                  name="mode"
+                  checked={universe === id}
+                  onChange={() => setMode(three ? trioQueue(id) : id)}
+                />
                 <span>
                   <strong>{modeName(id, t)}</strong>
                   <small>
-                    {t('match.level', { league: t(leagueOf(trophiesIn(id)).key), n: trophiesIn(id) })}
+                    {three
+                      ? t('online.format.trio')
+                      : t('match.level', { league: t(leagueOf(trophiesIn(id)).key), n: trophiesIn(id) })}
                   </small>
                 </span>
               </label>
@@ -195,7 +228,11 @@ function Searching({ name, mode, onFound, onCancel }: SearchingProps) {
     const poll = async () => {
       if (stopped) return;
       try {
-        const view = await findMatch(name, MATCH_SETTINGS, mode, waitingCode);
+        const verse = trioVerse(mode);
+        const view =
+          verse === null
+            ? await findMatch(name, MATCH_SETTINGS, mode, waitingCode)
+            : await findTrio(name, verse, waitingCode);
         if (stopped) {
           // Cancelled while the request was in flight: do not leave anyone waiting.
           if (view.code) {

@@ -43,10 +43,11 @@ describe('badges', () => {
 
 describe('the overall score', () => {
   it('averages every mode, counting mixed double and unplayed modes as zero', () => {
-    expect(OVERALL_SHARES).toBe(9);
+    expect(OVERALL_SHARES).toBe(10);
     expect(overallScore({})).toBe(0);
-    expect(overallScore({ naruto: 900 })).toBe(100);
-    expect(overallScore({ mix: 900 })).toBe(200);
-    expect(overallScore({ naruto: 900, mix: 450 })).toBe(200);
+    expect(overallScore({ naruto: 900 })).toBe(90);
+    expect(overallScore({ mix: 900 })).toBe(180);
+    expect(overallScore({ naruto: 900, mix: 450 })).toBe(180);
+    expect(overallScore({ trio: 900 })).toBe(90);
   });
 });

@@ -49,6 +49,13 @@ const NARROW_GAP = POWER_STEP;
 /** Up to three doublings: not close, but not a massacre. */
 const CLEAR_GAP = POWER_STEP * 3;
 
+/** How a gap in team power reads: margin, and how many times stronger. */
+export function describeGap(gap: number): Pick<Verdict, 'margin' | 'ratio'> {
+  if (gap < TIE_GAP) return { margin: 'tie', ratio: 1 };
+  const margin: Margin = gap < NARROW_GAP ? 'narrow' : gap < CLEAR_GAP ? 'clear' : 'crushing';
+  return { margin, ratio: 2 ** (gap / POWER_STEP) };
+}
+
 /** Judges two teams, or three: the strongest wins unless the next one is within a tie's gap. */
 export function judgeAll(teams: ReadonlyArray<readonly number[]>): Verdict {
   const power = teams.map(teamPower);

@@ -191,6 +191,11 @@ export function findMatch(
 }
 
 /** Stops waiting. Resolves to the game if an opponent arrived just before. */
+/** Quick match for three in a universe (or `mix`); polled with the waiting room's code. */
+export function findTrio(name: string, verse: string, waitingCode: string | null): Promise<GameView> {
+  return rpc('find_trio', { p_token: getPlayerToken(), p_name: name, p_verse: verse, p_code: waitingCode });
+}
+
 export function leaveQueue(code: string): Promise<GameView | null> {
   return rpc<GameView | null>('leave_queue', { p_code: code, p_token: getPlayerToken() });
 }

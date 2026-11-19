@@ -30,13 +30,15 @@ export function nextLeague(trophies: number): { league: League; missing: number 
 }
 
 /**
- * The overall score: a weighted average of the trophies in every mode. Mixed
- * counts double because it asks for knowledge of every series, and a mode
- * never played counts as zero. Mirrors `encheres.overall` in the database,
+ * The overall score: a weighted average of the trophies in every mode (each
+ * universe, mixed, and 1v1v1). Mixed counts double because it asks for
+ * knowledge of every series, and a mode never played counts as zero. Mirrors `encheres.overall` in the database,
  * which is the one that counts; this copy explains the number to the player.
  */
 export const MIX_SHARES = 2;
-export const OVERALL_SHARES = UNIVERSES.length + MIX_SHARES;
+/** 1v1v1 has one rating for every universe, which counts as one more mode. */
+export const TRIO_ID = 'trio';
+export const OVERALL_SHARES = UNIVERSES.length + MIX_SHARES + 1;
 
 export function overallScore(trophies: Record<string, number>): number {
   const total = Object.entries(trophies).reduce(
