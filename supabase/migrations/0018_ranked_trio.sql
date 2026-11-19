@@ -948,6 +948,9 @@ begin
 end;
 $$;
 
+-- Stored overall scores were worked out over the old number of shares.
+update encheres.profiles set trophies = encheres.overall(id) where trophies <> encheres.overall(id);
+
 revoke all on function public.find_trio(text, text, text, text) from public;
 grant execute on function public.find_trio(text, text, text, text) to anon, authenticated;
 
