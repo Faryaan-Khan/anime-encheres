@@ -19,6 +19,8 @@ function withoutOnlineFields(view: GameView): GameView {
     matched: _matched,
     public: _public,
     verse: _verse,
+    format: _format,
+    youMember: _youMember,
     forfeit: _forfeit,
     idle: _idle,
     result: _result,

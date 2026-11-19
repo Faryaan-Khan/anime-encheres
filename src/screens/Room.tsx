@@ -7,6 +7,7 @@ import type { GameView, Seat } from '../game/types';
 import { useNow } from '../hooks';
 import { useI18n } from '../i18n';
 import type { StringKey } from '../i18n/strings';
+import { leaveRoom } from '../online/api';
 import { ONLINE_AVAILABLE } from '../online/config';
 import { getFriends, inviteFriend, type Person } from '../online/profile';
 import { useOnlineRoom, type OnlineRoom } from '../online/useOnlineRoom';
@@ -94,7 +95,7 @@ export function ConnectedRoom({ code, matched }: { code: string; matched?: Match
   }
 
   if (view.status === 'lobby') {
-    if (!matched) return <Lobby view={view} room={room} />;
+    if (!matched) return view.format === 'teams' ? <TeamsLobby view={view} room={room} /> : <Lobby view={view} room={room} />;
     return (
       <main className="page">
         <h1 className="display">{t('match.title')}</h1>
@@ -213,6 +214,7 @@ function Game({ view, room, matched }: { view: GameView; room: OnlineRoom; match
     <Board
       view={shownView}
       mode="personal"
+      faceoff={faceoffOf(view)}
       busy={room.busy}
       error={room.actionError}
       onDraw={() => void room.act('draw')}
@@ -350,9 +352,108 @@ function Lobby({ view, room }: { view: GameView; room: OnlineRoom }) {
         <p className="waiting">{t('lobby.waitingHost', { name: view.players[0].name })}</p>
       )}
 
-      <button type="button" className="link" onClick={() => navigate('/')}>
-        {t('lobby.leave')}
-      </button>
+      <LeaveLobby view={view} />
+    </main>
+  );
+}
+
+/** Leaving a lobby gives up the player's place (the host's room stays open). */
+function LeaveLobby({ view }: { view: GameView }) {
+  const { t } = useI18n();
+  const isHost = view.you === 0 && !view.youMember;
+  return (
+    <button
+      type="button"
+      className="link"
+      onClick={() => {
+        if (!isHost && view.code) void leaveRoom(view.code).catch(() => undefined);
+        navigate('/');
+      }}
+    >
+      {t('lobby.leave')}
+    </button>
+  );
+}
+
+/** A 2v2 lobby: two sides of two, a button to change side, the host starts once all four are in. */
+function TeamsLobby({ view, room }: { view: GameView; room: OnlineRoom }) {
+  const { t, money } = useI18n();
+  const isHost = view.you === 0 && !view.youMember;
+  const sides = [0, 1].map((seat) => view.members?.[seat] ?? []);
+  const size = 2;
+  const ready = sides.every((side) => side.length === size);
+
+  return (
+    <main className="page">
+      <p className="lobby__share">{t(view.public ? 'lobby.share.public' : 'lobby.share.group')}</p>
+      <h1 className="lobby__code display">{view.code}</h1>
+
+      <div className="sides">
+        {sides.map((side, seat) => (
+          <section key={seat} className={`side seat${seat}`}>
+            <h2>{t('lobby.side', { n: seat + 1 })}</h2>
+            <ul>
+              {side.map((m) => {
+                const you = view.you === seat && (view.youMember ?? 0) === m.member;
+                return (
+                  <li key={m.member}>
+                    {view.public && <Avatar value={m.avatar} size="sm" />}
+                    <strong>{m.name}</strong>
+                    <span>
+                      {[seat === 0 && m.member === 0 ? t('lobby.host') : null, you ? t('lobby.you') : null]
+                        .filter(Boolean)
+                        .join(', ')}
+                    </span>
+                    {!you && m.tag && <AddFriend tag={m.tag} />}
+                  </li>
+                );
+              })}
+              {Array.from({ length: size - side.length }, (_, i) => (
+                <li key={`empty-${i}`} className="side__empty">
+                  {t('lobby.waitingOne')}
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+      </div>
+
+      {!isHost && (
+        <button type="button" className="btn" onClick={() => void room.switchSide()} disabled={room.busy}>
+          {t('lobby.switchSide')}
+        </button>
+      )}
+
+      <p className="note">
+        {t('lobby.rules.teams', {
+          budget: money(view.settings.budget),
+          teamSize: view.settings.teamSize,
+          pool: view.settings.poolSize,
+        })}
+      </p>
+
+      {isHost && !ready && view.code && <InviteFriends code={view.code} />}
+
+      {room.actionError && (
+        <p className="alert" role="alert">
+          {t(`error.${room.actionError}` as StringKey)}
+        </p>
+      )}
+
+      {isHost ? (
+        <button
+          type="button"
+          className="btn btn--primary btn--wide"
+          onClick={() => void room.start()}
+          disabled={!ready || room.busy}
+        >
+          {t('lobby.start')}
+        </button>
+      ) : (
+        <p className="waiting">{t('lobby.waitingHost', { name: sides[0][0]?.name ?? '' })}</p>
+      )}
+
+      <LeaveLobby view={view} />
     </main>
   );
 }
@@ -411,4 +512,17 @@ function InviteFriends({ code }: { code: string }) {
       )}
     </section>
   );
+}
+
+/** 2v2 rooms: the two members facing off this round, and whether this screen's player sits it out. */
+function faceoffOf(view: GameView): { names: [string, string]; teammate: string | null } | undefined {
+  if (view.format !== 'teams' || !view.members || !view.active) return undefined;
+  const [a, b] = view.active;
+  const name = (seat: number, member: number) => view.members?.[seat]?.find((m) => m.member === member)?.name ?? '';
+  const mine = view.you === null ? null : view.active[view.you];
+  const resting = view.you !== null && view.youMember !== undefined && mine !== undefined && view.youMember !== mine;
+  return {
+    names: [name(0, a), name(1, b)],
+    teammate: resting && view.you !== null ? name(view.you, mine as number) : null,
+  };
 }

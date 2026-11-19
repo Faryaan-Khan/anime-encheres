@@ -5,9 +5,13 @@ import { useI18n } from '../i18n';
 import type { StringKey } from '../i18n/strings';
 import { createRoom, getPublicRooms, joinRoom, toOnlineError, type PublicRoom } from '../online/api';
 import { ONLINE_AVAILABLE } from '../online/config';
+import type { RoomFormat } from '../game/types';
 import { modeName } from '../modes';
 import { navigate } from '../router';
 import { readStored, writeStored } from '../storage';
+
+/** The kinds of room a host can open. */
+const FORMATS: RoomFormat[] = ['duel', 'teams'];
 
 /** Create a room (with its rules) or join one with a code. */
 export function Online() {
@@ -16,6 +20,7 @@ export function Online() {
   const [code, setCode] = useState('');
   const [options, setOptions] = useState<GameOptions>(DEFAULT_OPTIONS);
   const [listed, setListed] = useState(() => readStored('ae.roomPublic') === '1');
+  const [format, setFormat] = useState<RoomFormat>(() => (readStored('ae.roomFormat') as RoomFormat | null) ?? 'duel');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<StringKey | null>(null);
 
@@ -58,9 +63,14 @@ export function Online() {
     e.preventDefault();
     const clean = cleanName();
     writeStored('ae.roomPublic', listed ? '1' : '0');
+    writeStored('ae.roomFormat', format);
     if (clean) {
       void run(() =>
-        createRoom(clean, toSettings(options), poolFor(options.universe), { public: listed, verse: options.universe }),
+        createRoom(clean, toSettings(options), poolFor(options.universe), {
+          public: listed,
+          verse: options.universe,
+          format,
+        }),
       );
     }
   };
@@ -136,6 +146,20 @@ export function Online() {
       <form className="panel" onSubmit={create} noValidate>
         <h2>{t('online.create')}</h2>
         <p className="note">{t('online.create.hint')}</p>
+        <fieldset className="field">
+          <legend>{t('online.format')}</legend>
+          <div className="options options--stack">
+            {FORMATS.map((f) => (
+              <label key={f} className="option">
+                <input type="radio" name="format" checked={format === f} onChange={() => setFormat(f)} />
+                <span>
+                  {t(`online.format.${f}` as StringKey)}
+                  <small>{t(`online.format.${f}.hint` as StringKey)}</small>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
         <SettingsFields value={options} onChange={setOptions} />
         <fieldset className="field">
           <legend>{t('online.visibility')}</legend>
@@ -207,7 +231,10 @@ function PublicRooms({ busy, onJoin }: { busy: boolean; onJoin(room: PublicRoom)
           {rooms.map((room) => (
             <li key={room.code} className="public-rooms__row">
               <span className="public-rooms__what">
-                <strong>{modeName(room.verse, t)}</strong>
+                <strong>
+                  {modeName(room.verse, t)}
+                  {room.format && room.format !== 'duel' && ` · ${t(`online.format.${room.format}` as StringKey)}`}
+                </strong>
                 <small>
                   {t('online.public.rules', {
                     host: room.host,

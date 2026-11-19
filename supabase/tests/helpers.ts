@@ -20,6 +20,7 @@ export const MIGRATIONS = [
   '0013_old_site_and_auto_bid.sql',
   '0014_seasons_names_avatars.sql',
   '0015_public_rooms.sql',
+  '0016_team_rooms.sql',
 ];
 
 export function readMigration(file: string): string {

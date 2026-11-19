@@ -10,6 +10,7 @@ import {
   resign,
   sendLeaving,
   startGame,
+  switchSide,
   toOnlineError,
   type OnlineErrorCode,
   type PlayAction,
@@ -33,6 +34,8 @@ export interface OnlineRoom {
   act(action: PlayAction, amount?: number): Promise<void>;
   /** Matched games: give up. */
   resign(): Promise<void>;
+  /** Teams lobby: move to the other side. */
+  switchSide(): Promise<void>;
   /** When the current view arrived, in milliseconds; `view.idle` is as of then. */
   receivedAt: number;
 }
@@ -156,5 +159,6 @@ export function useOnlineRoom(code: string): OnlineRoom {
   );
 
   const giveUp = useCallback(() => run(() => resign(code)), [code, run]);
-  return { view, loadError, actionError, busy, join, start, act, resign: giveUp, receivedAt };
+  const changeSide = useCallback(() => run(() => switchSide(code)), [code, run]);
+  return { view, loadError, actionError, busy, join, start, act, resign: giveUp, switchSide: changeSide, receivedAt };
 }

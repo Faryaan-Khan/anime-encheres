@@ -8,6 +8,8 @@
 
 export type Seat = 0 | 1;
 
+export type RoomFormat = 'duel' | 'teams' | 'trio';
+
 export type Phase = 'lobby' | 'draw' | 'bidding' | 'reveal' | 'finished';
 
 export interface Settings {
@@ -108,6 +110,18 @@ export interface GameView {
   public?: boolean;
   /** Online rooms: the universe dealt from, or `mix`. */
   verse?: string;
+  /**
+   * Online rooms: `duel` (one against one), `teams` (two sides of two: one
+   * budget and one roster per side, one member of each side facing off each
+   * round) or `trio` (three players).
+   */
+  format?: RoomFormat;
+  /** Teams: each side's members, first member first. */
+  members?: Array<Array<{ member: number; name: string; tag?: string | null; avatar?: string | number | null }>>;
+  /** Teams: the member of each side who plays the current round. */
+  active?: number[] | null;
+  /** Teams: which member of their side the viewer is (0 = first). */
+  youMember?: number;
   /** Online only: the seat that gave up or ran out of time, if any. */
   forfeit?: Seat | null;
   /** Online only: seconds since the last change, as of when this view was read. */

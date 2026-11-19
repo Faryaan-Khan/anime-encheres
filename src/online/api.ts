@@ -3,7 +3,7 @@
  * The browser never touches a table: see supabase/migrations/0001_init.sql.
  */
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import type { GameView, Settings } from '../game/types';
+import type { GameView, RoomFormat, Settings } from '../game/types';
 import { readStored, removeStored, writeStored } from '../storage';
 import { ONLINE_AVAILABLE, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from './config';
 
@@ -14,6 +14,7 @@ export const SERVER_ERRORS = [
   'NOT_IN_ROOM',
   'HOST_ONLY',
   'NEED_TWO_PLAYERS',
+  'ROOM_NOT_READY',
   'ALREADY_PLAYING',
   'NOT_PLAYING',
   'NOT_YOUR_TURN',
@@ -99,6 +100,8 @@ export interface RoomOptions {
   public?: boolean;
   /** The universe id, or `mix`, shown in the list of public rooms. */
   verse?: string;
+  /** One against one (default), or two sides of two. */
+  format?: RoomFormat;
 }
 
 export function createRoom(
@@ -117,6 +120,9 @@ export function createRoom(
     p_pool: pool,
     p_public: options.public ?? false,
     p_verse: options.verse ?? null,
+    // Sent only when needed, so a duel room still works against a database
+    // that predates formats.
+    ...(options.format && options.format !== 'duel' ? { p_format: options.format } : {}),
   });
 }
 
@@ -129,6 +135,7 @@ export interface PublicRoom {
   teamSize: number;
   players: number;
   seats: number;
+  format?: RoomFormat;
   /** This device created it. */
   mine: boolean;
 }
@@ -143,6 +150,16 @@ export function joinRoom(code: string, name: string): Promise<GameView> {
 
 export function getRoom(code: string): Promise<GameView> {
   return rpc('get_room', { p_code: code, p_token: getPlayerToken() });
+}
+
+/** Teams lobby: move to the other side. */
+export function switchSide(code: string): Promise<GameView> {
+  return rpc('switch_side', { p_code: code, p_token: getPlayerToken() });
+}
+
+/** Gives up a place in a lobby (the host's room stays open). */
+export function leaveRoom(code: string): Promise<void> {
+  return rpc('leave_room', { p_code: code, p_token: getPlayerToken() });
 }
 
 export function startGame(code: string): Promise<GameView> {
