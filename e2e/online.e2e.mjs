@@ -382,8 +382,9 @@ try {
   await until(solo, async () => /trophies/i.test(await text(solo)), 'the trophy line');
   assert(await sees(solo, '.topbar'), 'the top bar is back on the results screen');
   // A friend request to the opponent looks sent, as to anyone.
+  await snap(solo, 'final-add-friend');
   assert(await click(solo, 'Add friend'), 'the opponent can be added as a friend');
-  await until(solo, async () => (await text(solo)).includes('Request sent.'), 'the request to be sent');
+  await until(solo, async () => (await text(solo)).includes('Request sent ✓'), 'the request to be sent');
   const ghost = await db.query(`select name from encheres.ghost_requests`);
   assert(ghost.rows.length === 1 && ghost.rows[0].name === names[1], 'the request to the stand-in is kept as sent');
   await snap(solo, 'match-final');
