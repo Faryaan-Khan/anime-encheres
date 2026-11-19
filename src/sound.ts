@@ -501,7 +501,7 @@ export function play(sound: Sound): void {
 }
 
 // ---------------------------------------------------------------------------
-// Shimmer: the glint of light on a foil card, following a finger or the mouse
+// Shine: the sparkle of light on a foil card, following a finger or the mouse
 // ---------------------------------------------------------------------------
 
 export interface Shimmer {
@@ -510,45 +510,103 @@ export interface Shimmer {
   stop(): void;
 }
 
-/** High notes of a pentatonic scale, so glints always sound right together. */
-const GLINT = [2637, 2960, 3520, 3951, 4699, 5274, 5920, 7040];
+/**
+ * The "ting" of light flashing off something polished (the cartoon tooth
+ * sparkle): a few glassy partials that rush up in a blink and ring briefly.
+ */
+function sparkle(ctx: AudioContext, gain: number, pan: number, bright: boolean): void {
+  const notes = bright ? [2637, 3520, 4699, 6272, 8372] : [2637, 3520, 4699, 6272];
+  notes.forEach((freq, i) => {
+    tone(ctx, { freq, at: i * 0.018, dur: 0.35 - i * 0.03, type: 'sine', gain: gain * (1 - i * 0.12), attack: 0.003, wet: 0.45, pan });
+    tone(ctx, { freq: freq * 1.006, at: i * 0.018, dur: 0.25, type: 'sine', gain: gain * 0.4, attack: 0.003, wet: 0.45, pan });
+  });
+}
 
 /**
- * Light catching a foil card as it moves: tiny bright "tings", nothing more.
- * The pitch follows the diagonal the light travels along (top-left low,
- * bottom-right high), they come faster as the pointer moves faster, and stop
- * when it rests. Stronger cards glint more often and a little brighter.
+ * A card held up close shines as it moves. Each swipe starts with a sparkle
+ * ("ting"); while the pointer keeps moving, a soft glassy shimmer (high
+ * partials beating against each other, with a quick twinkle) follows it,
+ * brighter the faster it goes and fading as it slows. Its pitch glides with
+ * the band of light across the card and it pans with the pointer. Stronger
+ * cards shine brighter.
  */
 export function startShimmer(level: 'A' | 'S' | 'apex'): Shimmer | null {
   const ctx = audio();
   if (!ctx || !master) return null;
-  const every = level === 'apex' ? 0.06 : level === 'S' ? 0.08 : 0.11; // shortest gap, in seconds
-  const loud = level === 'apex' ? 0.055 : level === 'S' ? 0.048 : 0.04;
-  let last = 0;
-  let travelled = 0;
-  return {
-    move(x, y, speed) {
-      const now = ctx.currentTime;
-      // Glints need movement: a resting pointer is silent.
-      travelled += Math.min(speed, 6) * 0.016;
-      if (speed < 0.15 || now - last < every || travelled < 0.04) return;
-      last = now;
-      travelled = 0;
-      const step = Math.min(GLINT.length - 1, Math.floor(((x + y) / 2) * GLINT.length));
-      const freq = GLINT[step];
-      const gain = loud * Math.min(1, 0.45 + speed / 3);
-      const pan = x * 1.4 - 0.7;
-      try {
-        // A quick bright ting, and a faint second partial that gives it sparkle.
-        tone(ctx, { freq, dur: 0.09, type: 'sine', gain, attack: 0.002, wet: 0.12, pan });
-        tone(ctx, { freq: freq * 2.01, dur: 0.05, type: 'sine', gain: gain * 0.35, attack: 0.002, wet: 0.12, pan });
-        if (level === 'apex') tone(ctx, { freq: freq * 1.5, at: 0.025, dur: 0.07, type: 'sine', gain: gain * 0.5, attack: 0.002, wet: 0.15, pan });
-      } catch {
-        /* a nicety only */
+  try {
+    const loud = level === 'apex' ? 0.05 : level === 'S' ? 0.04 : 0.032;
+    const bus = ctx.createGain();
+    bus.gain.value = 0;
+    const panner = typeof ctx.createStereoPanner === 'function' ? ctx.createStereoPanner() : null;
+    if (panner) bus.connect(panner).connect(master);
+    else bus.connect(master);
+    const send = ctx.createGain();
+    send.gain.value = 0.5;
+    bus.connect(send).connect(space(ctx));
+
+    // Twinkle: a quick flutter in the shimmer's volume.
+    const twinkle = ctx.createGain();
+    twinkle.gain.value = 0.65;
+    const flutter = ctx.createOscillator();
+    flutter.frequency.value = 13;
+    const flutterDepth = ctx.createGain();
+    flutterDepth.gain.value = 0.35;
+    flutter.connect(flutterDepth).connect(twinkle.gain);
+    twinkle.connect(bus);
+    flutter.start();
+
+    // Glassy partials, each doubled a few cents apart so they shimmer.
+    const base = level === 'A' ? [2349, 3136, 4186] : [2349, 3136, 4186, 5588];
+    const voices: Array<{ osc: OscillatorNode; freq: number }> = [];
+    base.forEach((freq, i) => {
+      for (const cents of [-7, 6]) {
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        osc.detune.value = cents;
+        const g = ctx.createGain();
+        g.gain.value = 1 / (i + 1.5);
+        osc.connect(g).connect(twinkle);
+        osc.start();
+        voices.push({ osc, freq });
       }
-    },
-    stop() {
-      travelled = 0;
-    },
-  };
+    });
+
+    let lastMove = -1;
+    let lastSparkle = -1;
+    let stopped = false;
+    return {
+      move(x, y, speed) {
+        if (stopped) return;
+        const now = ctx.currentTime;
+        const amount = Math.min(1, speed / 2.5);
+        const pan = x * 1.4 - 0.7;
+        // A new swipe (after a pause) flashes first.
+        if (speed > 0.4 && now - lastMove > 0.3 && now - lastSparkle > 0.5) {
+          lastSparkle = now;
+          sparkle(ctx, loud * 1.6, pan, level !== 'A');
+        }
+        lastMove = now;
+        // The shimmer follows the speed, and fades on its own when moves stop.
+        bus.gain.cancelScheduledValues(now);
+        bus.gain.setTargetAtTime(loud * amount, now, 0.06);
+        bus.gain.setTargetAtTime(0, now + 0.1, 0.22);
+        // The light's band slides across the card: the pitch glides with it.
+        const glide = 0.9 + ((x + y) / 2) * 0.22;
+        for (const v of voices) v.osc.frequency.setTargetAtTime(v.freq * glide, now, 0.12);
+        panner?.pan.setTargetAtTime(pan, now, 0.08);
+      },
+      stop() {
+        if (stopped) return;
+        stopped = true;
+        const now = ctx.currentTime;
+        bus.gain.cancelScheduledValues(now);
+        bus.gain.setTargetAtTime(0, now, 0.1);
+        for (const v of voices) v.osc.stop(now + 0.8);
+        flutter.stop(now + 0.8);
+      },
+    };
+  } catch {
+    return null;
+  }
 }
