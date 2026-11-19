@@ -16,6 +16,7 @@
   --stamp: #d81e2c;
   --seat0: #ff5a36;
   --seat1: #2f5bff;
+  --seat2: #12a150;
 
   --font-display: 'Dela Gothic One', 'Arial Black', 'Helvetica Neue', sans-serif;
   --font-body: 'Zen Kaku Gothic New', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -142,6 +143,10 @@ input {
 
 .seat1 {
   color: var(--seat1);
+}
+
+.seat2 {
+  color: var(--seat2);
 }
 
 /* ---------- Shell ---------- */
@@ -659,6 +664,10 @@ input {
 
 .player--seat1 {
   border-top-color: var(--seat1);
+}
+
+.player--seat2 {
+  border-top-color: var(--seat2);
 }
 
 .player--acting {
@@ -1368,6 +1377,10 @@ input {
 
 .team--seat1 {
   border-top-color: var(--seat1);
+}
+
+.team--seat2 {
+  border-top-color: var(--seat2);
 }
 
 .team--winner {
@@ -2949,6 +2962,56 @@ input {
 
 @media (max-width: 360px) {
   .sides {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- Three players ---------- */
+
+.scoreboard--three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.scoreboard--three .player {
+  padding: 0.4rem 0.45rem 0.3rem;
+}
+
+.scoreboard--three .player__name {
+  font-size: 0.85rem;
+}
+
+.scoreboard--three .player__budget {
+  font-size: 1.05rem;
+}
+
+.scoreboard--three .slots {
+  gap: 2px;
+}
+
+.team__place {
+  display: inline-block;
+  margin-right: 0.5rem;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 0.85rem;
+  vertical-align: middle;
+}
+
+.field--seat2 input[type='text'] {
+  border-bottom: 8px solid var(--seat2);
+}
+
+.form__trio {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+@media (max-width: 420px) {
+  .form__trio {
     grid-template-columns: 1fr;
   }
 }

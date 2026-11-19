@@ -56,14 +56,14 @@ function baseline(kind: 'random' | 'honest', state: GameState, seat: Seat, pool:
 }
 
 export function simulate(
-  players: [Player, Player],
+  players: Player[],
   pool: readonly string[],
   rng: () => number,
   rollouts?: number,
   settings: Settings = { budget: 500, teamSize: 5, minBid: 10, increment: 10 },
 ): SimulationResult {
   let state = createGame({ settings, names: ['A', 'B'], pool, rng });
-  const memory: [BotMemory, BotMemory] = [emptyMemory(), emptyMemory()];
+  const memory: BotMemory[] = [emptyMemory(), emptyMemory()];
   const watch = () => {
     for (const seat of [0, 1] as Seat[]) {
       memory[seat] = observe(memory[seat], toView(state, seat), pool);

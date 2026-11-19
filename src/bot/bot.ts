@@ -483,7 +483,7 @@ function seatView(state: GameState, seat: Seat): GameView {
 /** Plays an imagined game to the end with two rule-based players. Returns the winner. */
 function playOut(start: GameState, pool: readonly string[], rng: () => number, style: Style = NORMAL): Seat | null {
   let state = start;
-  const memory: [BotMemory, BotMemory] = [emptyMemory(), emptyMemory()];
+  const memory: BotMemory[] = [emptyMemory(), emptyMemory()];
   for (let steps = 0; state.phase !== 'finished' && steps < 4000; steps++) {
     if (state.phase === 'reveal') {
       state = next(state);

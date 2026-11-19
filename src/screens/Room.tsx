@@ -286,7 +286,8 @@ function Lobby({ view, room }: { view: GameView; room: OnlineRoom }) {
   const { t, money } = useI18n();
   const [copied, setCopied] = useState(false);
   const isHost = view.you === 0;
-  const ready = view.players.length === 2;
+  const seats = view.format === 'trio' ? 3 : 2;
+  const ready = view.players.length === seats;
   const link = `${window.location.origin}${window.location.pathname}#/room/${view.code}`;
 
   const copy = async () => {
@@ -301,7 +302,9 @@ function Lobby({ view, room }: { view: GameView; room: OnlineRoom }) {
 
   return (
     <main className="page">
-      <p className="lobby__share">{t(view.public ? 'lobby.share.public' : 'lobby.share')}</p>
+      <p className="lobby__share">
+        {t(view.public ? 'lobby.share.public' : seats === 3 ? 'lobby.share.group' : 'lobby.share')}
+      </p>
       <h1 className="lobby__code display">{view.code}</h1>
       <button type="button" className="btn" onClick={() => void copy()}>
         {copied ? t('lobby.copied') : t('lobby.copy')}
@@ -320,10 +323,15 @@ function Lobby({ view, room }: { view: GameView; room: OnlineRoom }) {
             {p.seat !== view.you && p.tag && <AddFriend tag={p.tag} />}
           </li>
         ))}
-        {!ready && <li className="lobby__empty">{t('lobby.waiting')}</li>}
+        {Array.from({ length: seats - view.players.length }, (_, i) => (
+          <li key={`empty-${i}`} className="lobby__empty">
+            {t(seats === 3 ? 'lobby.waitingOne' : 'lobby.waiting')}
+          </li>
+        ))}
       </ul>
 
       <p className="note">
+        {seats === 3 && `${t('online.format.trio')} · `}
         {t('lobby.rules', {
           budget: money(view.settings.budget),
           teamSize: view.settings.teamSize,

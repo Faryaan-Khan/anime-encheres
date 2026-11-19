@@ -10,6 +10,8 @@ import type { PGlite } from '@electric-sql/pglite';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { bid, canPass, createGame, draw, next, pass, requiredBid, toView } from '../../src/game/engine';
 import { seeded } from '../../src/game/testing';
+import { judgeAll } from '../../src/game/verdict';
+import { getCharacter, poolFor } from '../../src/data/characters';
 import type { GameState, GameView, Seat } from '../../src/game/types';
 import { createTestDb, type TestDb } from './helpers';
 
@@ -297,5 +299,90 @@ describe('parity with the TypeScript engine', () => {
       [budget, []],
       [budget, []],
     ]);
+  });
+});
+
+describe('parity with the TypeScript engine, three players', () => {
+  const pool3 = poolFor('dragon-ball').slice(0, 36);
+  const tokens = [HOST, GUEST, STRANGER];
+  const placesSeen: string[] = [];
+  const cases = [
+    { seed: 21, budget: 300, teamSize: 4 },
+    { seed: 22, budget: 500, teamSize: 5 },
+    { seed: 23, budget: 60, teamSize: 3 },
+    { seed: 24, budget: 100, teamSize: 2 },
+    { seed: 25, budget: 1000, teamSize: 7 },
+  ];
+
+  it.each(cases)('seed $seed (budget $budget, team of $teamSize)', async ({ seed, budget, teamSize }) => {
+    const rng = seeded(seed);
+    const room = await rpc('create_room', [HOST, 'Ana', budget, teamSize, 10, 10, pool3, false, null, 'trio']);
+    const code = room.code as string;
+    await rpc('join_room', [code, GUEST, 'Ben']);
+    expect(await rpcError('start_game', [code, HOST])).toContain('ROOM_NOT_READY');
+    const cam = await rpc('join_room', [code, STRANGER, 'Cam']);
+    expect(cam.you).toBe(2);
+    await rpc('start_game', [code, HOST]);
+
+    const secret = (
+      await db.query<{ deck: string[]; drawer: number }>('select deck, drawer from encheres.rooms where code = $1', [
+        code,
+      ])
+    ).rows[0];
+    let local: GameState = createGame({
+      settings: { budget, teamSize, minBid: 10, increment: 10 },
+      names: ['Ana', 'Ben', 'Cam'],
+      pool: pool3,
+      deck: secret.deck,
+      firstDrawer: secret.drawer as Seat,
+    });
+
+    const sameAsServer = async () => {
+      for (const seat of [0, 1, 2] as Seat[]) {
+        const server = await rpc('get_room', [code, tokens[seat]]);
+        const expected = toView(local, seat, { code, version: server.version, poolSize: pool3.length });
+        expect(withoutOnlineFields(server)).toEqual(expected);
+      }
+    };
+
+    await sameAsServer();
+    let steps = 0;
+    while (local.phase !== 'finished') {
+      if (++steps > 3000) throw new Error('game did not terminate');
+      if (local.phase === 'draw') {
+        await rpc('play', [code, tokens[local.drawer], 'draw', null]);
+        local = draw(local, local.drawer);
+      } else if (local.phase === 'reveal') {
+        await rpc('play', [code, tokens[Math.floor(rng() * 3)], 'next', null]);
+        local = next(local);
+      } else if (rng() < 0.55 || !canPass(local, local.turn)) {
+        const seat = local.turn;
+        const amount = Math.min(local.players[seat].budget, requiredBid(local) + Math.floor(rng() * 6) * 10);
+        await rpc('play', [code, tokens[seat], 'bid', amount]);
+        local = bid(local, seat, amount);
+      } else {
+        await rpc('play', [code, tokens[local.turn], 'pass', null]);
+        local = pass(local, local.turn);
+      }
+      await sameAsServer();
+    }
+
+    // The server's verdict agrees with the one the final screen computes.
+    const final = await rpc('get_room', [code, HOST]);
+    const verdict = judgeAll(local.players.map((p) => p.team.map((id) => getCharacter(id).power)));
+    expect(final.result?.winner ?? null).toBe(verdict.winner);
+    expect(final.result?.places).toEqual(verdict.places);
+    const match = (
+      await db.query<{ names: string[]; places: number[]; kind: string }>(
+        'select names, places, kind from encheres.matches where room_code = $1',
+        [code],
+      )
+    ).rows[0];
+    expect(match).toEqual({ names: ['Ana', 'Ben', 'Cam'], places: verdict.places, kind: 'private' });
+    placesSeen.push(verdict.places.join(''));
+  });
+
+  it('produced real rankings, not just ties', () => {
+    expect(placesSeen.some((p) => p !== '111')).toBe(true);
   });
 });

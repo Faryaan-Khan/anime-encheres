@@ -34,7 +34,7 @@ export interface BoardProps {
    * times each player has run out of time. When time runs out the server
    * moves for the slow player; the last time-out loses the match.
    */
-  clock?: { seat: Seat; secondsLeft: number; strikes: [number, number]; maxStrikes: number };
+  clock?: { seat: Seat; secondsLeft: number; strikes: number[]; maxStrikes: number };
   /** Quick matches: the rival's device has gone quiet; they lose when this runs out. */
   away?: { seat: Seat; secondsLeft: number };
   /**
@@ -65,7 +65,6 @@ const FINISH_AFTER = 3;
 /** The clock stays out of the way until this many seconds are left. */
 const CLOCK_VISIBLE_FROM = 15;
 
-const rivalOf = (seat: Seat): Seat => (seat === 0 ? 1 : 0);
 
 export function Board({
   view,
@@ -108,6 +107,7 @@ export function Board({
   const drawer = player(view.drawer);
   const bidder = player(view.turn);
   // A teammate sitting this round out watches: their side's moves are not theirs.
+  const rivals = (seat: Seat) => view.players.filter((p) => p.seat !== seat);
   const mine = (seat: Seat) => mode === 'shared' || (view.you === seat && !faceoff?.teammate);
 
   const { settings } = view;
@@ -302,8 +302,10 @@ export function Board({
               <p className={`controls__who seat${view.turn}`}>
                 {t('board.yourMove', { name: bidder.name })}
               </p>
-              {view.highBidder === null && view.passed[rivalOf(view.turn)] && (
-                <p className="note">{t('board.rivalPassed', { name: player(rivalOf(view.turn)).name })}</p>
+              {view.highBidder === null && rivals(view.turn).every((p) => view.passed[p.seat]) && (
+                <p className="note">
+                  {t('board.rivalPassed', { name: rivals(view.turn).map((p) => p.name).join(' & ') })}
+                </p>
               )}
               <BidControls
                 key={`${view.round}-${view.turn}`}
@@ -398,7 +400,7 @@ function useGameSounds(view: GameView, mode: 'shared' | 'personal'): void {
     };
 
     // A pass that skipped the card costs one of the player's three: buzzer.
-    const skipped = [0, 1].some((i) => (view.players[i]?.passes ?? 0) > (before.players[i]?.passes ?? 0));
+    const skipped = view.players.some((_, i) => (view.players[i]?.passes ?? 0) > (before.players[i]?.passes ?? 0));
     if (skipped && before.round === view.round) play('skip');
     const after = skipped ? 450 : 0;
 

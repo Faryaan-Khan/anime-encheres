@@ -6,7 +6,8 @@
  * and by the Postgres functions (online mode), so the UI only knows `GameView`.
  */
 
-export type Seat = 0 | 1;
+/** A player's place: 0 and 1, and 2 in a three-player game. */
+export type Seat = 0 | 1 | 2;
 
 export type RoomFormat = 'duel' | 'teams' | 'trio';
 
@@ -49,7 +50,8 @@ export interface HistoryEntry {
 /** Complete, secret-including state. Never sent to a client in online mode. */
 export interface GameState {
   settings: Settings;
-  players: [PlayerState, PlayerState];
+  /** Two players, or three. */
+  players: PlayerState[];
   /** Remaining cards; index 0 is the top of the deck. */
   deck: string[];
   phase: Exclude<Phase, 'lobby'>;
@@ -61,8 +63,8 @@ export interface GameState {
   card: string | null;
   highBid: number;
   highBidder: Seat | null;
-  /** A pass is final for the current card. */
-  passed: [boolean, boolean];
+  /** A pass is final for the current card. One entry per player. */
+  passed: boolean[];
   history: HistoryEntry[];
   /**
    * The power scale the game is shown on: a universe id when every card comes
@@ -100,7 +102,7 @@ export interface GameView {
   /** See `GameState.scale`. */
   scale?: string;
   highBidder: Seat | null;
-  passed: [boolean, boolean];
+  passed: boolean[];
   deckCount: number;
   card: string | null;
   history: HistoryEntry[];
@@ -131,11 +133,11 @@ export interface GameView {
   /** Quick matches: seconds each move may take. */
   turnSeconds?: number;
   /** Quick matches: times each seat ran out of time (the server then moved for them). */
-  strikes?: [number, number];
+  strikes?: number[];
   /** Quick matches: the time-out that loses the match. */
   maxStrikes?: number;
   /** Quick matches: seconds since each seat's device was last heard from. */
-  absent?: [number, number];
+  absent?: number[];
   /** Quick matches: a player not heard from for this long has left, and loses. */
   awaySeconds?: number;
 }
@@ -145,11 +147,13 @@ export interface MatchResult {
   winner: Seat | null;
   /** Ranked games: the mode (a universe id or `mix`) whose trophies moved. */
   mode?: string | null;
-  power: [number, number];
+  power: number[];
+  /** Three-player games: each seat's finishing place, 1 to 3 (ties share a place). */
+  places?: number[];
   /** Trophy change of each seat; `null` in private rooms. */
-  deltas: [number, number] | null;
+  deltas: number[] | null;
   /** New trophies of each seat in that mode; an entry is `null` for a seat without a profile. */
-  trophies: [number | null, number | null] | null;
+  trophies: Array<number | null> | null;
 }
 
 export type GameErrorCode =

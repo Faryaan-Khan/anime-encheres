@@ -1,7 +1,7 @@
 import { AddFriend } from './AddFriend';
 import { getCharacter, powerOf, scaleFactor } from '../data/characters';
 import type { GameView, Seat } from '../game/types';
-import { judge } from '../game/verdict';
+import { judgeAll } from '../game/verdict';
 import { useI18n } from '../i18n';
 import type { StringKey } from '../i18n/strings';
 import { CharacterCard } from './CharacterCard';
@@ -49,12 +49,19 @@ export function Final({
   onHome,
 }: Props) {
   const { t, money } = useI18n();
-  const powers = (seat: Seat) => view.players[seat].team.map((id) => getCharacter(id).power);
-  const verdict = judge(powers(0), powers(1));
-  // A forfeit decides the game whatever the teams look like.
-  const winner: Seat | null = forfeit !== null ? (forfeit === 0 ? 1 : 0) : verdict.winner;
-  // On a shared screen (you = null) any win is celebrated.
-  const outcome = winner === null ? 'tie' : view.you === null || view.you === winner ? 'win' : 'loss';
+  const verdict = judgeAll(view.players.map((p) => p.team.map((id) => getCharacter(id).power)));
+  const three = view.players.length === 3;
+  // A forfeit decides a two-player game whatever the teams look like.
+  const winner: Seat | null = forfeit !== null && !three ? (forfeit === 0 ? 1 : 0) : verdict.winner;
+  // On a shared screen (you = null) any win is celebrated; sharing first place is a tie.
+  const outcome =
+    winner !== null
+      ? view.you === null || view.you === winner
+        ? 'win'
+        : 'loss'
+      : view.you !== null && verdict.places[view.you] > 1
+        ? 'loss'
+        : 'tie';
 
   useEffect(() => {
     const timer = window.setTimeout(() => play(outcome === 'win' ? 'victory' : outcome === 'loss' ? 'defeat' : 'tie'), 250);
@@ -76,7 +83,7 @@ export function Final({
           <p>
             {verdict.ratio >= 1000
               ? t('final.ratio.huge')
-              : t('final.ratio', {
+              : t(three ? 'final.ratio.next' : 'final.ratio', {
                   n: verdict.ratio < 10 ? verdict.ratio.toFixed(1) : Math.round(verdict.ratio),
                 })}
           </p>
@@ -116,7 +123,10 @@ export function Final({
             className={`team team--seat${player.seat}${winner === player.seat ? ' team--winner' : ''}`}
           >
             <header className="team__head">
-              <h2>{player.name}</h2>
+              <h2>
+                {three && <span className="team__place">{t(`final.place.${verdict.places[player.seat]}` as StringKey)}</span>}
+                {player.name}
+              </h2>
               {view.public && player.seat !== view.you && player.tag && <AddFriend tag={player.tag} />}
               <p className="team__power">
                 {t('final.teamPower', { n: (verdict.power[player.seat] * scaleFactor(view.scale)).toFixed(1) })}

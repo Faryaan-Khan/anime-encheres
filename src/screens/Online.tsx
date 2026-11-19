@@ -11,7 +11,7 @@ import { navigate } from '../router';
 import { readStored, writeStored } from '../storage';
 
 /** The kinds of room a host can open. */
-const FORMATS: RoomFormat[] = ['duel', 'teams'];
+const FORMATS: RoomFormat[] = ['duel', 'trio', 'teams'];
 
 /** Create a room (with its rules) or join one with a code. */
 export function Online() {

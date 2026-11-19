@@ -62,6 +62,15 @@ sees only what a player in its seat would see. "Computer" bids by feel and bluff
 then. "Computer, ultra hard" counts the cards that have come out and plays out the rest of
 the game in its head before every bid.
 
+### Three players
+
+In 1 vs 1 vs 1 each of the three players has their own budget and team. The drawer
+speaks first, then the others in turn: Player 1, Player 2, Player 3, and round again.
+Passing is final for that card, as with two. The card goes to the last bidder once both
+others have passed; if all three pass it is discarded. The draw goes round the table. At
+the end the strongest team wins, and the final screen shows each team's place (teams too
+close to call share a place). Play it on one device ("Three players") or in a room.
+
 ### Teams on one device
 
 Choose "Teams" to play two teams on one phone, with as many people in each as you like.
@@ -76,7 +85,7 @@ invite a friend. A public room appears in the list of public rooms on the Play o
 page, where anyone can join it; it is a way to try a universe or to meet players, and
 each player has an "Add friend" button.
 
-A room is 1 vs 1 or 2 vs 2. In 2 vs 2 each side has one budget and one team of
+A room is 1 vs 1, 1 vs 1 vs 1 or 2 vs 2. In 2 vs 2 each side has one budget and one team of
 characters. Each round one player from each side faces off: they draw, bid and pass for
 their side while their teammate watches. Both players of the side that drew see the
 card. The face-offs go through every pairing in a shuffled order, so everyone plays
@@ -203,6 +212,17 @@ et ne voit que ce qu'un joueur à sa place verrait. « Ordinateur » mise au fee
 bluffe parfois. « Ordinateur ultra » compte les cartes sorties et simule la suite de la
 partie avant chaque mise.
 
+### À trois
+
+En 1 contre 1 contre 1, chacun des trois joueurs a son propre budget et sa propre
+équipe. Celui qui tire parle en premier, puis les autres à tour de rôle : Joueur 1,
+Joueur 2, Joueur 3, et ainsi de suite. Passer est définitif pour cette carte, comme à
+deux. La carte revient au dernier enchérisseur une fois que les deux autres ont passé ;
+si les trois passent, elle est défaussée. Le tirage tourne autour de la table. À la fin,
+l'équipe la plus forte gagne, et l'écran final montre la place de chaque équipe (les
+équipes trop proches partagent une place). Jouez-y sur un seul appareil (« À trois ») ou
+dans un salon.
+
 ### Équipes sur un appareil
 
 Choisis « Équipes » pour jouer à deux équipes sur un seul téléphone, avec autant de
@@ -217,7 +237,7 @@ code ou invite un ami. Un salon public apparaît dans la liste des salons public
 page Jouer en ligne, où tout le monde peut le rejoindre ; c'est un moyen d'essayer un
 univers ou de rencontrer des joueurs, et chaque joueur a un bouton « Ajouter en ami ».
 
-Un salon se joue en 1 contre 1 ou en 2 contre 2. En 2 contre 2, chaque camp a un seul
+Un salon se joue en 1 contre 1, en 1 contre 1 contre 1 ou en 2 contre 2. En 2 contre 2, chaque camp a un seul
 budget et une seule équipe de personnages. À chaque manche, un joueur de chaque camp
 s'affronte : il tire, mise et passe pour son camp pendant que son coéquipier regarde. Les
 deux joueurs du camp qui a tiré voient la carte. Les duels passent par toutes les

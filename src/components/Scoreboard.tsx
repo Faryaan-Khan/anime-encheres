@@ -30,7 +30,7 @@ export function Scoreboard({ view }: { view: GameView }) {
   const { t, money } = useI18n();
   const live = view.phase === 'draw' || view.phase === 'bidding';
   return (
-    <div className="scoreboard">
+    <div className={`scoreboard${view.players.length === 3 ? ' scoreboard--three' : ''}`}>
       {view.players.map((player) => {
         const acting =
           (view.phase === 'draw' && view.drawer === player.seat) ||

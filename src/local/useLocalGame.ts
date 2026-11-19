@@ -12,7 +12,8 @@ const PLAYER_SEAT = 0;
 
 export interface LocalSetup {
   settings: Settings;
-  names: [string, string];
+  /** Two names, or three. */
+  names: string[];
   pool: string[];
   /** Set when the second player is the computer. */
   bot?: BotLevel;
@@ -30,7 +31,8 @@ function load(key: string): Saved | null {
     const raw = readStored(key);
     if (!raw) return null;
     const saved = JSON.parse(raw) as Saved;
-    return saved?.state?.players?.length === 2 && saved.setup ? saved : null;
+    const count = saved?.state?.players?.length ?? 0;
+    return (count === 2 || count === 3) && saved.setup ? saved : null;
   } catch {
     return null;
   }

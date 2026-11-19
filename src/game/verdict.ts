@@ -33,10 +33,12 @@ export type Margin = 'tie' | 'narrow' | 'clear' | 'crushing';
 
 export interface Verdict {
   /** Team power of each seat, on the 1–100 scale. */
-  power: [number, number];
+  power: number[];
+  /** Each seat's place, 1 first; teams within a tie's gap of each other share a place. */
+  places: number[];
   winner: Seat | null;
   margin: Margin;
-  /** How many times stronger the winning team is (1 for a tie). */
+  /** How many times stronger the winning team is than the next one (1 for a tie). */
   ratio: number;
 }
 
@@ -47,10 +49,17 @@ const NARROW_GAP = POWER_STEP;
 /** Up to three doublings: not close, but not a massacre. */
 const CLEAR_GAP = POWER_STEP * 3;
 
-export function judge(teamA: readonly number[], teamB: readonly number[]): Verdict {
-  const power: [number, number] = [teamPower(teamA), teamPower(teamB)];
-  const gap = Math.abs(power[0] - power[1]);
-  if (gap < TIE_GAP) return { power, winner: null, margin: 'tie', ratio: 1 };
+/** Judges two teams, or three: the strongest wins unless the next one is within a tie's gap. */
+export function judgeAll(teams: ReadonlyArray<readonly number[]>): Verdict {
+  const power = teams.map(teamPower);
+  const places = power.map((p) => 1 + power.filter((other) => other - p >= TIE_GAP).length);
+  const order = power.map((p, seat) => ({ p, seat })).sort((a, b) => b.p - a.p || a.seat - b.seat);
+  const gap = order[0].p - order[1].p;
+  if (gap < TIE_GAP) return { power, places, winner: null, margin: 'tie', ratio: 1 };
   const margin: Margin = gap < NARROW_GAP ? 'narrow' : gap < CLEAR_GAP ? 'clear' : 'crushing';
-  return { power, winner: power[0] > power[1] ? 0 : 1, margin, ratio: 2 ** (gap / POWER_STEP) };
+  return { power, places, winner: order[0].seat as Seat, margin, ratio: 2 ** (gap / POWER_STEP) };
+}
+
+export function judge(teamA: readonly number[], teamB: readonly number[]): Verdict {
+  return judgeAll([teamA, teamB]);
 }
