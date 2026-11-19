@@ -10,7 +10,8 @@ import { useI18n } from '../i18n';
 import type { StringKey } from '../i18n/strings';
 import { leaveRoom } from '../online/api';
 import { ONLINE_AVAILABLE } from '../online/config';
-import { getFriends, inviteFriend, type Person } from '../online/profile';
+import { addFriendInRoom, getFriends, inviteFriend, type Person } from '../online/profile';
+import { setImmersive } from '../chrome';
 import { useOnlineRoom, type OnlineRoom } from '../online/useOnlineRoom';
 import { navigate } from '../router';
 import { readStored, writeStored } from '../storage';
@@ -113,6 +114,13 @@ export function ConnectedRoom({ code, matched }: { code: string; matched?: Match
  * before displaying the current state.
  */
 function Game({ view, room, matched }: { view: GameView; room: OnlineRoom; matched?: MatchedHandlers }) {
+  // While the game is on, nothing but the game: no top bar, no back gesture.
+  const playing = view.status === 'playing';
+  useEffect(() => {
+    setImmersive(playing);
+    return () => setImmersive(false);
+  }, [playing]);
+
   const home = matched ? matched.onExit : () => navigate('/');
   // In a quick match, leaving the board means giving up the game.
   const quit = matched ? () => void room.resign() : home;
@@ -196,6 +204,7 @@ function Game({ view, room, matched }: { view: GameView; room: OnlineRoom; match
         onRematch={!matched && view.you === 0 ? () => void room.start() : undefined}
         onFindAnother={matched?.onFindAnother}
         mode={matched?.mode}
+        onAddFriend={view.code ? (seat, member) => addFriendInRoom(view.code as string, seat, member) : undefined}
         forfeit={view.forfeit ?? null}
         trophies={
           view.you !== null && view.result?.deltas && typeof view.result.trophies?.[view.you] === 'number'

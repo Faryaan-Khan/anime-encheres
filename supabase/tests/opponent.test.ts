@@ -380,10 +380,25 @@ describe('once the player cannot buy any more', () => {
       pool.slice(0, 2),
     ]);
 
-  it('the computer finishes its team at once and the game is settled', async () => {
+  it('the computer plays on at its pace while the player watches, as a person would', async () => {
+    const code = await againstComputer();
+    await finish(code);
+    const watching = await rpc('get_room', [code, ANA]);
+    expect(watching.status).toBe('playing');
+    // It does move on, one step at a time, like a person.
+    const before = (await room(code)).version;
+    await idle(code, 30);
+    await rpc('get_room', [code, ANA]);
+    expect((await room(code)).version).toBeGreaterThan(before);
+    expect((await room(code)).status).toBe('playing');
+  });
+
+  it('once the player has gone, the computer finishes its team at once and the game is settled', async () => {
     await rpc('get_profile', [ANA]);
     const code = await againstComputer();
     await finish(code);
+    await db.query(`update encheres.room_players set seen_at = now() - interval '30 seconds' where room_code = $1`, [code]);
+    await db.query(`select encheres.bot_step($1)`, [code]);
     const view = await rpc('get_room', [code, ANA]);
     expect(view.status).toBe('finished');
     expect(view.forfeit ?? null).toBeNull();

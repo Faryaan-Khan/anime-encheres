@@ -174,6 +174,16 @@ export function addFriend(tag: string): Promise<Friends & { status: AddFriendSta
   return call('add_friend', { p_token: getPlayerToken(), p_tag: tag });
 }
 
+/** A friend request from the results screen to the player in a seat (and, in 2v2, a member of that side). */
+export function addFriendInRoom(code: string, seat: number, member = 0): Promise<Friends & { status: AddFriendStatus }> {
+  return call('add_friend_seat', { p_code: code, p_token: getPlayerToken(), p_seat: seat, p_member: member });
+}
+
+/** Declines every friend request waiting. */
+export function declineAllFriends(): Promise<Friends> {
+  return call('decline_all_friends', { p_token: getPlayerToken() });
+}
+
 export function answerFriend(id: string, accept: boolean): Promise<Friends> {
   return call('answer_friend', { p_token: getPlayerToken(), p_friend: id, p_accept: accept });
 }

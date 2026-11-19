@@ -35,8 +35,25 @@ export function parseRoute(hash: string): Route {
   return { name: 'home' };
 }
 
+/** Set while a change of page comes from the app itself, not the browser's back or forward. */
+let fromApp = false;
+
 export function navigate(path: string): void {
+  fromApp = true;
+  // A change to the page already shown fires no event: clear the flag anyway.
+  window.setTimeout(() => (fromApp = false), 0);
   window.location.hash = path;
+}
+
+/**
+ * While locked, the browser's back and forward (and the phone's back gesture)
+ * cannot leave the page shown: it is put straight back. Pages the app itself
+ * opens (navigate) are not held. See chrome.ts.
+ */
+let lockedOn: string | null = null;
+
+export function lockNavigation(on: boolean): void {
+  lockedOn = on ? pathOf(window.location.hash) : null;
 }
 
 /**
@@ -93,7 +110,14 @@ export function useRoute(): Route {
   });
   useEffect(() => {
     const onChange = () => {
-      visit(pathOf(window.location.hash));
+      const path = pathOf(window.location.hash);
+      if (lockedOn !== null && !fromApp && path !== lockedOn) {
+        // Held: back to the game, as if the gesture had not happened.
+        window.location.hash = lockedOn;
+        return;
+      }
+      fromApp = false;
+      visit(path);
       setRoute(parseRoute(window.location.hash));
       window.scrollTo(0, 0);
     };

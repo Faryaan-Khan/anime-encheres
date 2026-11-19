@@ -8,6 +8,7 @@ import { ONLINE_AVAILABLE } from '../online/config';
 import {
   addFriend,
   answerFriend,
+  declineAllFriends,
   dismissInvite,
   getFriends,
   removeFriend,
@@ -154,7 +155,19 @@ export function Friends() {
 
           {data.incoming.length > 0 && (
             <section>
-              <h2 className="page__subhead">{t('friends.incoming')}</h2>
+              <div className="friends__head">
+                <h2 className="page__subhead">{t('friends.incoming')}</h2>
+                {data.incoming.length > 1 && (
+                  <button
+                    type="button"
+                    className="link"
+                    disabled={busy}
+                    onClick={() => void run(() => declineAllFriends())}
+                  >
+                    {t('friends.declineAll')}
+                  </button>
+                )}
+              </div>
               <ul className="leaders">
                 {data.incoming.map((p) =>
                   person(

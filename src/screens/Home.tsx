@@ -11,6 +11,7 @@ export function Home() {
   const { t, money } = useI18n();
   const resumable = hasSavedLocalGame();
   const [invites, setInvites] = useState<Friends['invites']>([]);
+  const [requests, setRequests] = useState(0);
 
   // A friend may be waiting in a private room: show their invitation here.
   useEffect(() => {
@@ -18,7 +19,11 @@ export function Home() {
     let cancelled = false;
     const load = () =>
       getFriends()
-        .then((f) => !cancelled && setInvites(f.invites))
+        .then((f) => {
+          if (cancelled) return;
+          setInvites(f.invites);
+          setRequests(f.incoming.length);
+        })
         .catch(() => undefined);
     void load();
     const timer = window.setInterval(() => {
@@ -88,6 +93,12 @@ export function Home() {
           </button>
           <button type="button" className="link" onClick={() => navigate('/friends')}>
             {t('home.friends')}
+            {/* Friend requests waiting: a count on the link. */}
+            {requests > 0 && (
+              <span className="count-badge" aria-label={t('friends.incoming.count', { n: requests })}>
+                {requests}
+              </span>
+            )}
           </button>
           <button type="button" className="link" onClick={() => navigate('/rules')}>
             {t('home.rules')}

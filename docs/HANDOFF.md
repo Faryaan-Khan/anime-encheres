@@ -36,7 +36,7 @@ built from. The only manual step in the whole system is applying a new database 
 npm install
 npm run dev          # local site, talks to the live database through .env
 npm run typecheck    # TypeScript strict
-npm test             # 251 unit and database tests (no external service needed)
+npm test             # 256 unit and database tests (no external service needed)
 npm run test:e2e     # real browsers against the real SQL; needs Chrome (CHROME_PATH)
 npm run ratings      # after editing src/data/rosters.json
 npm run build:opponent  # after editing src/bot/: rebuild the Edge Function bundle
@@ -113,6 +113,7 @@ Migrations, to be run in this order in the Supabase SQL editor. All are idempote
 | `0016_team_rooms.sql` | 2v2 rooms (`rooms.format` = `duel`/`teams`/`trio`, `rooms.lineup`, table `room_members` for each side's second member). `seat_of` also finds teammates; `member_of`, `active_member`, `new_lineup`, `free_slots`, `take_slot`, `free_place`; `switch_side`, `leave_room`; `join_room`, `start_game`, `play`, `get_room`, `leaving`, `create_room` (`p_format`), `public_rooms` and `room_view` replaced (views carry `format`, and for teams `members`, `active`, `youMember`) |
 | `0017_three_players.sql` | 1v1v1: seats 0–2 (constraints widened), `play_as` and `begin_game` for two or three players (next seat = `(seat + 1) % n`; sold once everyone but the high bidder has passed), `create_room` accepts `trio`, `settle_trio` records trio games with `matches.places` and `profile2` (no trophies) |
 | `0018_ranked_trio.sql` | Ranked 1v1v1: `find_trio` (queue per universe, stand-ins fill empty seats after the usual wait: `trio_fill`), `rooms.bot_seats` and `left_seats`, `enforce_trio`, `bot_step_trio`, `trio_leave`, `trio_finish`, `trio_bot_move`, `bot_choice_seat` (bot_choice for any seat); `settle_trio` ranks (givers-up last) and moves the single `trio` rating (pairwise win/loss, averaged). `is_mode('trio')`, `total_weight` + 1 (overall over 10 shares). `enforce`, `bot_step`, `resign`, `leave_queue` branch off for 1v1v1 and are otherwise as before |
+| `0019_friends_after_match.sql` | `add_friend_seat` (friend request from the results screen by seat/member; to a stand-in it is stored in `ghost_requests` and shown as sent, never answered), `decline_all_friends`, `friends_json` and `remove_friend` with ghost requests; `bot_step`, `bot_step_trio`: the computer keeps its pace while the player watches and finishes at once only after `watching_seconds()` (15) without a poll; `resign` finishes a game against the computer at once for a player who can no longer buy |
 
 Functions the client calls:
 
@@ -128,7 +129,8 @@ Functions the client calls:
 | `claim_forfeit` | Old clients only; the server now ends timed-out and abandoned games itself |
 | `get_profile`, `update_profile` | The player's profile, per-mode trophies, recent games |
 | `leaderboard` | Overall or one mode; world, one country, or friends |
-| `get_friends`, `add_friend`, `answer_friend`, `remove_friend` | Friends by player tag |
+| `get_friends`, `add_friend`, `answer_friend`, `remove_friend`, `decline_all_friends` | Friends by player tag |
+| `add_friend_seat` | Friend request from the results screen to the player in a seat |
 | `invite_friend`, `dismiss_invite` | Invitations to a private room |
 | `recovery_code`, `redeem_code` | Keeping a profile across devices with a code |
 | `link_account(token, intent)` | After Google sign-in: `link` keeps the guest, `fresh` starts a new account; answers `linked`, `created`, `switched` or `already` |
@@ -169,8 +171,9 @@ Things that have bitten this project, so that they do not again:
 - **A statement does not see its own writes.** In `roll_season`, updating ratings and
   recomputing overall scores in one statement used the old ratings. Use two statements.
 - **Where the latest version of a function lives.** Later migrations replace functions
-  from earlier ones. As of 0018: `enforce`, `bot_step`, `resign`, `leave_queue`, `settle_trio`,
-  `is_mode` and `total_weight` are in 0018; `play_as`, `begin_game` and `create_room` in 0017; `join_room`, `start_game`, `play`, `get_room`, `leaving`, `seat_of`, `public_rooms`
+  from earlier ones. As of 0019: `bot_step`, `bot_step_trio`, `resign`, `friends_json` and
+  `remove_friend` are in 0019; `enforce`, `leave_queue`, `settle_trio`, `is_mode` and
+  `total_weight` in 0018; `play_as`, `begin_game` and `create_room` in 0017; `join_room`, `start_game`, `play`, `get_room`, `leaving`, `seat_of`, `public_rooms`
   and `room_view` in 0016; `profile_for`, `profile_json`, `roll_season`,
   `update_profile` and `auto_bid_seconds` in 0014; `touch` in 0013; `bot_choice` in 0012;
   `leaderboard` and `sweep_abandoned` in 0011; `settle_match` in 0006;
@@ -236,8 +239,9 @@ Short versions; details and reasons are in `docs/ARCHITECTURE.md`.
   on after 1.5 s instead of 5, and "Leave (result still counts)" replaces "Forfeit". The
   server never counts them as gone and `resign` from them is not a forfeit, so the
   match is played out and settled, trophies included, without them. Against the
-  computer (online and offline) the computer then finishes its team at once and the
-  final screen follows. Every result moves on by itself after a countdown on the button
+  computer offline, the computer then finishes its team at once and the final screen
+  follows; online it plays on at its usual pace while the player watches, as a person
+  would (since 0019), and finishes at once only once the player has gone. Every result moves on by itself after a countdown on the button
   (`NextButton` in `Board.tsx`); between two people the server moves on after 12 s as a
   backstop. `encheres.sweep_games()` runs every minute through pg_cron
   (job `encheres-sweep`) so games nobody is looking at still end and are settled.
@@ -309,6 +313,15 @@ Short versions; details and reasons are in `docs/ARCHITECTURE.md`.
   still (the later one won). Give each animation its own name.
 - **Leaderboards** show the top 1000; a player below that gets `around`: themselves and
   the players directly above and below, shown after a gap.
+- **Online games are immersive.** While an online game is on (`Game` in `Room.tsx`), the
+  top bar is hidden and the browser's back is held (`setImmersive` in `chrome.ts`,
+  `lockNavigation` in `router.ts`: a hash change not made by `navigate` is undone). The
+  game's own Quit/Forfeit uses `navigate` and works.
+- **Friends after a match.** The results screen of any online game has "Add friend" for the
+  other players (`FriendButtons` in `Final.tsx`, `add_friend_seat`). For a stand-in the
+  server keeps a pretend request (`ghost_requests`), shown under requests sent and never
+  answered, so players do not learn it was the computer. The Friends screen has "Reject
+  all"; the home screen shows the number of requests waiting.
 - **Friends.** Players exchange a seven-character tag. A request must be accepted. There
   is a friends leaderboard, and the host of a private room can invite a friend, who sees
   the invitation on the home screen.
