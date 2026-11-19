@@ -303,7 +303,10 @@ Short versions; details and reasons are in `docs/ARCHITECTURE.md`.
 - **Scrolling on phones.** The page never bounces past its ends
   (`overscroll-behavior-y: none` on html and body), so it stops at the footer even after a
   fast flick. That also turns off the browser's pull to refresh, which
-  `src/pullToRefresh.ts` replaces: pull down at the top, release past the mark to reload.
+  `src/pullToRefresh.ts` replaces: pull down at the top and a ring fills; release when it
+  is full to reload (it spins while the page reloads).
+- **Keyframe names are global.** Two `@keyframes sweep` once made the search radar stand
+  still (the later one won). Give each animation its own name.
 - **Leaderboards** show the top 1000; a player below that gets `around`: themselves and
   the players directly above and below, shown after a gap.
 - **Friends.** Players exchange a seven-character tag. A request must be accepted. There
