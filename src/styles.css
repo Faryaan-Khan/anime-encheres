@@ -82,8 +82,8 @@
 html {
   -webkit-text-size-adjust: 100%;
   /* The page ends at the footer: no bouncing past it into empty background
-     (phones stretch or rubber-band the page otherwise). Same at the top, which
-     also stops a pull from reloading the page in the middle of a game. */
+     (phones stretch or rubber-band the page otherwise). This also turns off
+     the browser's pull to refresh; src/pullToRefresh.ts brings it back. */
   overscroll-behavior-y: none;
   /* Anything the browser still shows beyond the page is the page's own colour. */
   background: var(--paper);
@@ -3253,4 +3253,47 @@ input {
 .card-zoom__close:focus-visible {
   outline: 3px solid #f2f2ec;
   outline-offset: 3px;
+}
+
+/* ---------- Pull to refresh ---------- */
+
+.ptr {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  aspect-ratio: 1;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--white);
+  color: var(--ink);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.18);
+  font-weight: 900;
+  opacity: 0;
+  transform: translate(-50%, -56px);
+  pointer-events: none;
+}
+
+.ptr--back {
+  transition:
+    transform 0.25s ease-out,
+    opacity 0.25s;
+}
+
+.ptr--ready {
+  background: var(--sticker);
+  color: #17171a;
+}
+
+.ptr--loading .ptr__arrow {
+  animation: ptr-spin 0.7s linear infinite;
+}
+
+@keyframes ptr-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }

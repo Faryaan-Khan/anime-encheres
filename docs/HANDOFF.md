@@ -294,9 +294,16 @@ Short versions; details and reasons are in `docs/ARCHITECTURE.md`.
   inside the frame, with the universe and name on a fade at the bottom; cards without one
   keep the universe band and initials. On the Characters page a card opens up close
   (`CardZoom`, a modal dialog, size `xl`) with a sound for its tier (`card-D` to `card-S`,
-  and `card-apex` for a universe's strongest, in `sound.ts`); up close it tilts with a
-  finger as well as a mouse (`touch-action: none` on `.card--xl`). The top bar is glass
+  and `card-apex` for a universe's number one, in `sound.ts`); up close it tilts with a
+  finger as well as a mouse (`touch-action: none` on `.card--xl`), and on A, S and number
+  one cards a shimmer sound follows the pointer (`startShimmer`). The richer sounds use a
+  small synthesis kit in `sound.ts`: a hall reverb (`space`), glass bells (`bell`), harp
+  (`pluck`), swelling pads and a choir "aah" (`pad`), and `impact`. The top bar is glass
   (`backdrop-filter`, with an opaque fallback) and Back plays `back`.
+- **Scrolling on phones.** The page never bounces past its ends
+  (`overscroll-behavior-y: none` on html and body), so it stops at the footer even after a
+  fast flick. That also turns off the browser's pull to refresh, which
+  `src/pullToRefresh.ts` replaces: pull down at the top, release past the mark to reload.
 - **Leaderboards** show the top 1000; a player below that gets `around`: themselves and
   the players directly above and below, shown after a gap.
 - **Friends.** Players exchange a seven-character tag. A request must be accepted. There

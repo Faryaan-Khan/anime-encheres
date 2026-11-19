@@ -1,5 +1,6 @@
-import { useRef, type CSSProperties, type PointerEvent } from 'react';
+import { useEffect, useRef, type CSSProperties, type PointerEvent } from 'react';
 import { getCharacter, getImage, getUniverse, initials, rarityOf, tierOf } from '../data/characters';
+import { startShimmer, type Shimmer } from '../sound';
 
 interface Props {
   /** Character id, or `null` for a face-down card. */
@@ -34,6 +35,10 @@ const canTilt = (pointerType: string, closeUp: boolean) =>
  */
 export function CharacterCard({ id, size = 'lg' }: Props) {
   const ref = useRef<HTMLDivElement>(null);
+  // The sound that follows the pointer across a card held up close.
+  const shimmer = useRef<Shimmer | null>(null);
+  const lastPoint = useRef<{ x: number; y: number; t: number } | null>(null);
+  useEffect(() => () => shimmer.current?.stop(), []);
 
   if (id === null) {
     return (
@@ -54,6 +59,9 @@ export function CharacterCard({ id, size = 'lg' }: Props) {
   // Large cards lean towards the pointer, and the sheen moves with it. Up
   // close they also follow a finger dragged across them.
   const closeUp = size === 'xl';
+  // A, S and a universe's number one sing as the pointer moves over them.
+  const shimmerLevel =
+    closeUp && rarity === 'apex' ? 'apex' : closeUp && tierOf(character) === 'S' ? 'S' : closeUp && tierOf(character) === 'A' ? 'A' : null;
   const lean = (e: PointerEvent<HTMLDivElement>) => {
     if (!ref.current || !canTilt(e.pointerType, closeUp)) return;
     const box = ref.current.getBoundingClientRect();
@@ -64,10 +72,21 @@ export function CharacterCard({ id, size = 'lg' }: Props) {
     ref.current.style.setProperty('--my', `${y * 100}%`);
     ref.current.style.setProperty('--rx', `${(0.5 - y) * angle}deg`);
     ref.current.style.setProperty('--ry', `${(x - 0.5) * angle}deg`);
+    if (shimmerLevel) {
+      const now = performance.now();
+      const before = lastPoint.current;
+      const speed = before ? Math.hypot(x - before.x, y - before.y) / Math.max(0.008, (now - before.t) / 1000) : 0;
+      lastPoint.current = { x, y, t: now };
+      shimmer.current ??= startShimmer(shimmerLevel);
+      shimmer.current?.move(x, y, speed);
+    }
   };
   const rest = () => {
     ref.current?.style.removeProperty('--rx');
     ref.current?.style.removeProperty('--ry');
+    shimmer.current?.stop();
+    shimmer.current = null;
+    lastPoint.current = null;
   };
   const tilt =
     size !== 'sm'
