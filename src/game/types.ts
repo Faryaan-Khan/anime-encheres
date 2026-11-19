@@ -73,6 +73,9 @@ export interface GameState {
 
 export interface PlayerView extends PlayerState {
   seat: Seat;
+  /** Public rooms: the player's friend tag and picture (null without a profile). */
+  tag?: string | null;
+  avatar?: string | number | null;
 }
 
 /**
@@ -101,6 +104,10 @@ export interface GameView {
   history: HistoryEntry[];
   /** Online only: the room was created by matchmaking. */
   matched?: boolean;
+  /** Online rooms: listed for everyone online to join. */
+  public?: boolean;
+  /** Online rooms: the universe dealt from, or `mix`. */
+  verse?: string;
   /** Online only: the seat that gave up or ran out of time, if any. */
   forfeit?: Seat | null;
   /** Online only: seconds since the last change, as of when this view was read. */

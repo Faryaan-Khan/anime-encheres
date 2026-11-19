@@ -1,10 +1,11 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { DEFAULT_OPTIONS, SettingsFields, toSettings, type GameOptions } from '../components/SettingsFields';
 import { poolFor } from '../data/characters';
 import { useI18n } from '../i18n';
 import type { StringKey } from '../i18n/strings';
-import { createRoom, joinRoom, toOnlineError } from '../online/api';
+import { createRoom, getPublicRooms, joinRoom, toOnlineError, type PublicRoom } from '../online/api';
 import { ONLINE_AVAILABLE } from '../online/config';
+import { modeName } from '../modes';
 import { navigate } from '../router';
 import { readStored, writeStored } from '../storage';
 
@@ -14,6 +15,7 @@ export function Online() {
   const [name, setName] = useState(() => readStored('ae.name') ?? '');
   const [code, setCode] = useState('');
   const [options, setOptions] = useState<GameOptions>(DEFAULT_OPTIONS);
+  const [listed, setListed] = useState(() => readStored('ae.roomPublic') === '1');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<StringKey | null>(null);
 
@@ -55,7 +57,12 @@ export function Online() {
   const create = (e: FormEvent) => {
     e.preventDefault();
     const clean = cleanName();
-    if (clean) void run(() => createRoom(clean, toSettings(options), poolFor(options.universe)));
+    writeStored('ae.roomPublic', listed ? '1' : '0');
+    if (clean) {
+      void run(() =>
+        createRoom(clean, toSettings(options), poolFor(options.universe), { public: listed, verse: options.universe }),
+      );
+    }
   };
 
   const join = (e: FormEvent) => {
@@ -64,6 +71,12 @@ export function Online() {
     if (!clean) return;
     if (code.length !== 5) return setError('error.ROOM_NOT_FOUND');
     void run(() => joinRoom(code, clean));
+  };
+
+  const joinListed = (room: PublicRoom) => {
+    if (room.mine) return navigate(`/room/${room.code}`);
+    const clean = cleanName();
+    if (clean) void run(() => joinRoom(room.code, clean));
   };
 
   return (
@@ -78,7 +91,7 @@ export function Online() {
         </button>
       </section>
 
-      <h2 className="page__subhead">{t('online.private')}</h2>
+      <h2 className="page__subhead">{t('online.rooms')}</h2>
 
       <label className="field">
         <span>{t('setup.name')}</span>
@@ -96,6 +109,8 @@ export function Online() {
           {t(error)}
         </p>
       )}
+
+      <PublicRooms busy={busy} onJoin={joinListed} />
 
       <form className="panel" onSubmit={join} noValidate>
         <h2>{t('online.join')}</h2>
@@ -122,6 +137,20 @@ export function Online() {
         <h2>{t('online.create')}</h2>
         <p className="note">{t('online.create.hint')}</p>
         <SettingsFields value={options} onChange={setOptions} />
+        <fieldset className="field">
+          <legend>{t('online.visibility')}</legend>
+          <div className="options options--stack">
+            {[false, true].map((open) => (
+              <label key={String(open)} className="option">
+                <input type="radio" name="visibility" checked={listed === open} onChange={() => setListed(open)} />
+                <span>
+                  {t(open ? 'online.visibility.public' : 'online.visibility.private')}
+                  <small>{t(open ? 'online.visibility.public.hint' : 'online.visibility.private.hint')}</small>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
         <button type="submit" className="btn btn--primary" disabled={busy}>
           {t('online.create.action')}
         </button>
@@ -131,5 +160,72 @@ export function Online() {
         {t('setup.back')}
       </button>
     </main>
+  );
+}
+
+/** How often the list of public rooms is refreshed while on screen. */
+const REFRESH_MS = 5000;
+
+/** Public rooms waiting for players, refreshed every few seconds. */
+function PublicRooms({ busy, onJoin }: { busy: boolean; onJoin(room: PublicRoom): void }) {
+  const { t, money } = useI18n();
+  const [rooms, setRooms] = useState<PublicRoom[] | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = () => {
+      if (document.hidden) return;
+      getPublicRooms()
+        .then((list) => {
+          if (cancelled) return;
+          setRooms(list);
+          setFailed(false);
+        })
+        .catch(() => !cancelled && setFailed(true));
+    };
+    load();
+    const timer = window.setInterval(load, REFRESH_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  return (
+    <section className="panel">
+      <h2>{t('online.public')}</h2>
+      <p className="note">{t('online.public.hint')}</p>
+      {failed && !rooms ? (
+        <p className="alert">{t('error.NETWORK')}</p>
+      ) : !rooms ? (
+        <p className="waiting">{t('online.connecting')}</p>
+      ) : rooms.length === 0 ? (
+        <p className="note">{t('online.public.empty')}</p>
+      ) : (
+        <ul className="public-rooms">
+          {rooms.map((room) => (
+            <li key={room.code} className="public-rooms__row">
+              <span className="public-rooms__what">
+                <strong>{modeName(room.verse, t)}</strong>
+                <small>
+                  {t('online.public.rules', {
+                    host: room.host,
+                    budget: money(room.budget),
+                    teamSize: room.teamSize,
+                  })}
+                </small>
+              </span>
+              <span className="public-rooms__seats">
+                {room.players}/{room.seats}
+              </span>
+              <button type="button" className="btn" disabled={busy} onClick={() => onJoin(room)}>
+                {t(room.mine ? 'online.public.open' : 'online.join.action')}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

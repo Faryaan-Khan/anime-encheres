@@ -1,3 +1,4 @@
+import { AddFriend } from './AddFriend';
 import { getCharacter, powerOf, scaleFactor } from '../data/characters';
 import type { GameView, Seat } from '../game/types';
 import { judge } from '../game/verdict';
@@ -116,6 +117,7 @@ export function Final({
           >
             <header className="team__head">
               <h2>{player.name}</h2>
+              {view.public && player.seat !== view.you && player.tag && <AddFriend tag={player.tag} />}
               <p className="team__power">
                 {t('final.teamPower', { n: (verdict.power[player.seat] * scaleFactor(view.scale)).toFixed(1) })}
               </p>
