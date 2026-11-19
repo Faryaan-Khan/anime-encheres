@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { I18nProvider } from './i18n';
 import { GOOGLE_SIGN_IN } from './online/config';
+import { initPullToRefresh } from './pullToRefresh';
 import { initSound } from './sound';
 import { initTheme } from './theme';
 import '@fontsource/dela-gothic-one/latin-400.css';
@@ -14,6 +15,7 @@ import './styles.css';
 
 initTheme();
 initSound();
+initPullToRefresh();
 
 // Google sends the player back to the site root with a one-time code: show the profile, which completes it.
 const returning = new URLSearchParams(window.location.search);
