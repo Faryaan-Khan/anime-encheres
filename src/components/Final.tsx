@@ -141,11 +141,14 @@ export function Final({
             className={`team team--seat${player.seat}${winner === player.seat ? ' team--winner' : ''}`}
           >
             <header className="team__head">
-              <h2>
-                {three && <span className="team__place">{t(`final.place.${verdict.places[player.seat]}` as StringKey)}</span>}
-                {player.name}
-              </h2>
-              {onAddFriend && <FriendButtons view={view} seat={player.seat} onAddFriend={onAddFriend} />}
+              {/* The name, and in the top right corner the button to add these players. */}
+              <div className="team__title">
+                <h2>
+                  {three && <span className="team__place">{t(`final.place.${verdict.places[player.seat]}` as StringKey)}</span>}
+                  {player.name}
+                </h2>
+                {onAddFriend && <FriendButtons view={view} seat={player.seat} onAddFriend={onAddFriend} />}
+              </div>
               <p className="team__power">
                 {t('final.teamPower', { n: (verdict.power[player.seat] * scaleFactor(view.scale)).toFixed(1) })}
               </p>
@@ -246,19 +249,24 @@ function FriendButtons({
   const members = view.format === 'teams' ? (view.members?.[seat] ?? []) : null;
   if (!members) {
     if (seat === view.you) return null;
-    return <AddFriend send={() => onAddFriend(seat, 0)} />;
+    return (
+      <span className="team__friends">
+        <AddFriend look="button" send={() => onAddFriend(seat, 0)} />
+      </span>
+    );
   }
   const others = members.filter((m) => !(seat === view.you && m.member === (view.youMember ?? 0)));
   if (others.length === 0) return null;
   return (
-    <p className="team__friends">
+    <span className="team__friends">
       {others.map((m) => (
         <AddFriend
           key={m.member}
+          look="button"
           send={() => onAddFriend(seat, m.member)}
           label={t('room.addFriend.named', { name: m.name })}
         />
       ))}
-    </p>
+    </span>
   );
 }

@@ -11,7 +11,10 @@ export function AddFriend({
   tag,
   send,
   label,
+  look = 'link',
 }: {
+  /** `button`: a bold orange button with a +, in the style of the game's buttons. */
+  look?: 'link' | 'button';
   tag?: string;
   send?: () => Promise<{ status: AddFriendStatus }>;
   /** Button text; "Add friend" by default. */
@@ -21,6 +24,17 @@ export function AddFriend({
   const [status, setStatus] = useState<AddFriendStatus | 'busy' | 'error' | null>(null);
 
   if (status && status !== 'busy') {
+    if (look === 'button') {
+      // Short, in the button's place: sent, or already friends; anything else, briefly why not.
+      const done = status === 'sent' || status === 'accepted' || status === 'already';
+      return (
+        <span className={`add-friend__badge${done ? '' : ' add-friend__badge--off'}`} role="status">
+          {done
+            ? t(status === 'sent' ? 'friends.short.sent' : 'friends.short.friends')
+            : t(status === 'error' ? 'error.UNKNOWN' : (`friends.status.${status}` as StringKey))}
+        </span>
+      );
+    }
     return (
       <span className="add-friend__status">
         {t(status === 'error' ? 'error.UNKNOWN' : (`friends.status.${status}` as StringKey))}
@@ -30,7 +44,7 @@ export function AddFriend({
   return (
     <button
       type="button"
-      className="link add-friend"
+      className={look === 'button' ? 'btn btn--friend' : 'link add-friend'}
       disabled={status === 'busy'}
       onClick={() => {
         setStatus('busy');
@@ -40,6 +54,7 @@ export function AddFriend({
       }}
     >
       {label ?? t('room.addFriend')}
+      {look === 'button' && <span aria-hidden="true">+</span>}
     </button>
   );
 }
