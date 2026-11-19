@@ -1,4 +1,5 @@
 import { AddFriend } from './AddFriend';
+import type { AddFriendStatus } from '../online/profile';
 import { getCharacter, powerOf, scaleFactor } from '../data/characters';
 import type { GameView, Seat } from '../game/types';
 import { describeGap, judgeAll } from '../game/verdict';
@@ -15,6 +16,11 @@ interface Props {
   view: GameView;
   /** `undefined` hides the button (online guest: only the host can restart). */
   onRematch?: () => void;
+  /**
+   * Online games: a friend request to the player in a seat (and, in 2v2, a
+   * member of that side). Every other player gets the button.
+   */
+  onAddFriend?: (seat: number, member: number) => Promise<{ status: AddFriendStatus }>;
   /** Quick matches: look for a new opponent instead of a rematch. */
   /** Quick matches: search again, in this match's mode or another. */
   onFindAnother?: (mode?: string) => void;
@@ -40,6 +46,7 @@ const VERDICT: Record<'narrow' | 'clear' | 'crushing', StringKey> = {
 export function Final({
   view,
   onRematch,
+  onAddFriend,
   onFindAnother,
   mode,
   forfeit = null,
@@ -138,7 +145,7 @@ export function Final({
                 {three && <span className="team__place">{t(`final.place.${verdict.places[player.seat]}` as StringKey)}</span>}
                 {player.name}
               </h2>
-              {view.public && player.seat !== view.you && player.tag && <AddFriend tag={player.tag} />}
+              {onAddFriend && <FriendButtons view={view} seat={player.seat} onAddFriend={onAddFriend} />}
               <p className="team__power">
                 {t('final.teamPower', { n: (verdict.power[player.seat] * scaleFactor(view.scale)).toFixed(1) })}
               </p>
@@ -218,5 +225,40 @@ function PlayAgain({ mode, busy, onFind }: { mode?: string; busy: boolean; onFin
         </button>
       )}
     </div>
+  );
+}
+
+/**
+ * "Add friend" for the players of one team on the results screen: the player
+ * of that seat, or in 2v2 each member of the side other than this screen's
+ * player (named, since a side has two).
+ */
+function FriendButtons({
+  view,
+  seat,
+  onAddFriend,
+}: {
+  view: GameView;
+  seat: number;
+  onAddFriend: (seat: number, member: number) => Promise<{ status: AddFriendStatus }>;
+}) {
+  const { t } = useI18n();
+  const members = view.format === 'teams' ? (view.members?.[seat] ?? []) : null;
+  if (!members) {
+    if (seat === view.you) return null;
+    return <AddFriend send={() => onAddFriend(seat, 0)} />;
+  }
+  const others = members.filter((m) => !(seat === view.you && m.member === (view.youMember ?? 0)));
+  if (others.length === 0) return null;
+  return (
+    <p className="team__friends">
+      {others.map((m) => (
+        <AddFriend
+          key={m.member}
+          send={() => onAddFriend(seat, m.member)}
+          label={t('room.addFriend.named', { name: m.name })}
+        />
+      ))}
+    </p>
   );
 }

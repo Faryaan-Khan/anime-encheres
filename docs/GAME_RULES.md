@@ -100,7 +100,8 @@ card, or passes) and counts it; the third time in a row loses the match (any mov
 closing the page and not coming back within a few seconds, gives the win to your
 opponent. Once you cannot buy anything more (your team is full, or you cannot afford the
 minimum bid), the rest of the game plays out by itself and your result counts even if you
-leave; against the computer it finishes straight away. To play with a friend instead, create
+leave. During an online game the top bar is hidden and going back does not leave the
+game; use Forfeit (or Quit in a room) to stop. To play with a friend instead, create
 a private room and share its code, or invite them from your friends list.
 
 A quick match can also be 1 vs 1 vs 1, in any universe or all mixed. If fewer than three
@@ -141,6 +142,10 @@ character of each series. Rarity is only a picture of the power rating; the rati
 what counts.
 
 ### Friends
+
+After any online game, quick match or room, the results screen has an "Add friend" button
+for the other players. Requests you receive are on the Friends screen (the home screen shows
+how many are waiting): accept or decline each one, or decline them all at once.
 
 Your profile has a player tag. Give it to a friend, or type theirs in the Friends screen,
 and once they accept you appear in each other's friends leaderboard. When you create a
@@ -260,7 +265,8 @@ pour toi (tire la carte, ou passe) et le compte ; la troisième fois de suite, l
 Quitter la partie, ou fermer la page sans revenir dans les secondes qui suivent, donne la
 victoire à l'adversaire. Quand tu ne peux plus rien acheter (équipe complète, ou plus de
 quoi payer l'enchère minimale), la suite se joue toute seule et ton résultat compte même
-si tu pars ; contre l'ordinateur, elle se termine tout de suite. Pour
+si tu pars. Pendant une partie en ligne, la barre du haut disparaît et le retour arrière
+ne fait pas quitter la partie ; utilise Abandonner (ou Quitter dans un salon). Pour
 jouer avec un ami, crée plutôt un salon privé et partage son code, ou invite-le depuis ta
 liste d'amis.
 
@@ -305,6 +311,11 @@ fort de chaque série. La rareté n'est qu'une image de la note de puissance ; c
 note qui compte.
 
 ### Amis
+
+Après chaque partie en ligne, rapide ou en salon, l'écran des résultats a un bouton
+« Ajouter en ami » pour les autres joueurs. Les demandes reçues sont dans l'écran Amis
+(l'accueil indique combien attendent) : accepte ou refuse chacune, ou refuse-les toutes
+d'un coup.
 
 Ton profil a un tag de joueur. Donne-le à un ami, ou saisis le sien dans l'écran Amis, et
 une fois la demande acceptée vous apparaissez dans le classement d'amis l'un de l'autre.

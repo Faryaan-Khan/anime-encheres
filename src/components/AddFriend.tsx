@@ -4,10 +4,19 @@ import type { StringKey } from '../i18n/strings';
 import { addFriend, type AddFriendStatus } from '../online/profile';
 
 /**
- * Sends a friend request to the player with this tag, then says what came of
- * it. Shown next to other players in public rooms.
+ * Sends a friend request, then says what came of it: to the player with this
+ * tag (public room lobbies), or through `send` (the results screen, by seat).
  */
-export function AddFriend({ tag }: { tag: string }) {
+export function AddFriend({
+  tag,
+  send,
+  label,
+}: {
+  tag?: string;
+  send?: () => Promise<{ status: AddFriendStatus }>;
+  /** Button text; "Add friend" by default. */
+  label?: string;
+}) {
   const { t } = useI18n();
   const [status, setStatus] = useState<AddFriendStatus | 'busy' | 'error' | null>(null);
 
@@ -25,12 +34,12 @@ export function AddFriend({ tag }: { tag: string }) {
       disabled={status === 'busy'}
       onClick={() => {
         setStatus('busy');
-        addFriend(tag)
+        (send ? send() : addFriend(tag ?? ''))
           .then((r) => setStatus(r.status))
           .catch(() => setStatus('error'));
       }}
     >
-      {t('room.addFriend')}
+      {label ?? t('room.addFriend')}
     </button>
   );
 }

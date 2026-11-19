@@ -44,7 +44,7 @@ if (!chromePath) {
 
 const db = new PGlite();
 await db.exec('create role anon nologin; create role authenticated nologin;');
-for (const file of ['0001_init.sql', '0002_matchmaking.sql', '0003_ranking.sql', '0004_character_powers.sql', '0005_accounts_and_opponent.sql', '0006_modes_and_friends.sql', '0007_seasons.sql', '0008_opponent_brain.sql', '0009_google_accounts.sql', '0010_fair_play.sql', '0011_autopilot.sql', '0012_passes_and_scales.sql', '0013_old_site_and_auto_bid.sql', '0014_seasons_names_avatars.sql', '0015_public_rooms.sql', '0016_team_rooms.sql', '0017_three_players.sql', '0018_ranked_trio.sql']) {
+for (const file of ['0001_init.sql', '0002_matchmaking.sql', '0003_ranking.sql', '0004_character_powers.sql', '0005_accounts_and_opponent.sql', '0006_modes_and_friends.sql', '0007_seasons.sql', '0008_opponent_brain.sql', '0009_google_accounts.sql', '0010_fair_play.sql', '0011_autopilot.sql', '0012_passes_and_scales.sql', '0013_old_site_and_auto_bid.sql', '0014_seasons_names_avatars.sql', '0015_public_rooms.sql', '0016_team_rooms.sql', '0017_three_players.sql', '0018_ranked_trio.sql', '0019_friends_after_match.sql']) {
   await db.exec(readFileSync(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8'));
 }
 
@@ -357,6 +357,11 @@ try {
   const names = await solo.$$eval('.player__name', (els) => els.map((e) => e.textContent));
   assert(names.length === 2 && names[0].startsWith('Cam'), 'the player sits in the first seat');
   assert(!/cpu|computer|ordi|bot/i.test(names[1]), `the opponent has an ordinary name (${names[1]})`);
+  // During an online game: no top bar, and the back gesture does not leave it.
+  assert(!(await sees(solo, '.topbar')), 'the top bar is hidden during an online game');
+  await solo.evaluate(() => history.back());
+  await sleep(700);
+  assert((await sees(solo, '.scoreboard')) && solo.url().includes('#/match'), 'going back does not leave the game');
   let moves = 0;
   for (let step = 0; step < 2400 && !(await sees(solo, '.final')); step++) {
     if (await click(solo, 'Draw a card')) moves++;
@@ -375,6 +380,12 @@ try {
     'the game was played and judged on the server',
   );
   await until(solo, async () => /trophies/i.test(await text(solo)), 'the trophy line');
+  assert(await sees(solo, '.topbar'), 'the top bar is back on the results screen');
+  // A friend request to the opponent looks sent, as to anyone.
+  assert(await click(solo, 'Add friend'), 'the opponent can be added as a friend');
+  await until(solo, async () => (await text(solo)).includes('Request sent.'), 'the request to be sent');
+  const ghost = await db.query(`select name from encheres.ghost_requests`);
+  assert(ghost.rows.length === 1 && ghost.rows[0].name === names[1], 'the request to the stand-in is kept as sent');
   await snap(solo, 'match-final');
   // Changing verse first: the other universes are offered, and picking one searches in it.
   assert(await click(solo, 'Change verse'), 'the verse can be changed after a game');

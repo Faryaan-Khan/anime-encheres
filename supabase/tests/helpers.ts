@@ -23,6 +23,7 @@ export const MIGRATIONS = [
   '0016_team_rooms.sql',
   '0017_three_players.sql',
   '0018_ranked_trio.sql',
+  '0019_friends_after_match.sql',
 ];
 
 export function readMigration(file: string): string {
