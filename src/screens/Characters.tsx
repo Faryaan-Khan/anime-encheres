@@ -8,9 +8,11 @@ import {
   getUniverse,
   overallRank,
   powerIn,
+  rarityOf,
   tierOf,
   type Character,
 } from '../data/characters';
+import { play } from '../sound';
 import { useI18n } from '../i18n';
 
 /**
@@ -87,7 +89,17 @@ export function Characters() {
 
       <ol className="chars__list">
         {rows.map(({ character, rank }) => (
-          <CharacterRow key={character.id} character={character} rank={rank} scale={scale} onOpen={setZoomed} />
+          <CharacterRow
+            key={character.id}
+            character={character}
+            rank={rank}
+            scale={scale}
+            onOpen={(opened) => {
+              // Each tier has its own sound; a universe's strongest, the biggest.
+              play(rarityOf(opened) === 'apex' ? 'card-apex' : `card-${tierOf(opened)}`);
+              setZoomed(opened);
+            }}
+          />
         ))}
       </ol>
 

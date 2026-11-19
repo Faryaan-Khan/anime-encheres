@@ -29,7 +29,14 @@ export type Sound =
   | 'defeat'
   | 'tie'
   | 'trophy'
-  | 'error';
+  | 'error'
+  | 'back'
+  | 'card-D'
+  | 'card-C'
+  | 'card-B'
+  | 'card-A'
+  | 'card-S'
+  | 'card-apex';
 
 const KEY = 'ae.sound';
 let enabled = readStored(KEY) !== 'off';
@@ -235,6 +242,56 @@ const SOUNDS: Record<Sound, (ctx: AudioContext) => void> = {
   tie: (ctx) => arpeggio(ctx, [523, 523, 659], 0.12, { type: 'triangle', gain: 0.18 }),
   trophy: (ctx) => arpeggio(ctx, [1319, 1568, 2093], 0.05, { type: 'sine', gain: 0.12, dur: 0.18 }),
   error: (ctx) => tone(ctx, { freq: 140, dur: 0.18, type: 'square', gain: 0.12 }),
+  // Going back a page: a soft swipe and a low click.
+  back: (ctx) => {
+    noise(ctx, { dur: 0.16, from: 2600, to: 700, gain: 0.1 });
+    tone(ctx, { freq: 520, to: 360, at: 0.02, dur: 0.09, type: 'sine', gain: 0.14 });
+  },
+
+  // Opening a card up close: the stronger the card, the bigger the moment.
+  // D: a card flicked onto the table.
+  'card-D': (ctx) => {
+    noise(ctx, { dur: 0.12, from: 2200, to: 900, gain: 0.14 });
+    tone(ctx, { freq: 440, dur: 0.12, type: 'sine', gain: 0.12 });
+  },
+  // C: the flick and a two-note chime.
+  'card-C': (ctx) => {
+    noise(ctx, { dur: 0.12, from: 2200, to: 900, gain: 0.14 });
+    arpeggio(ctx, [523, 659], 0.07, { type: 'sine', gain: 0.14, dur: 0.22 });
+  },
+  // B: a rising three-note arpeggio.
+  'card-B': (ctx) => {
+    noise(ctx, { dur: 0.16, from: 1800, to: 3600, gain: 0.14 });
+    arpeggio(ctx, [523, 659, 784], 0.07, { type: 'triangle', gain: 0.16, dur: 0.26 });
+  },
+  // A: a whoosh up, a brighter run and a sparkle.
+  'card-A': (ctx) => {
+    noise(ctx, { dur: 0.3, from: 600, to: 5000, gain: 0.16 });
+    arpeggio(ctx, [659, 784, 988, 1319], 0.065, { at: 0.12, type: 'square', gain: 0.09, dur: 0.24 });
+    noise(ctx, { at: 0.38, dur: 0.4, from: 5000, to: 9000, gain: 0.06 });
+  },
+  // S: a deep hit, a power chord and a long shimmer.
+  'card-S': (ctx) => {
+    tone(ctx, { freq: 110, to: 50, dur: 0.5, type: 'sine', gain: 0.5 });
+    noise(ctx, { dur: 0.45, from: 400, to: 6000, gain: 0.18 });
+    [196, 294, 392].forEach((freq) => tone(ctx, { freq, at: 0.08, dur: 0.7, type: 'sawtooth', gain: 0.06 }));
+    arpeggio(ctx, [784, 988, 1175, 1568, 1976], 0.06, { at: 0.2, type: 'square', gain: 0.07, dur: 0.22 });
+    noise(ctx, { at: 0.45, dur: 0.9, from: 6000, to: 10000, gain: 0.07 });
+  },
+  // The strongest of a universe: thunder, a sweep up, a full chord that rings
+  // out and a fall of sparkles.
+  'card-apex': (ctx) => {
+    tone(ctx, { freq: 70, to: 35, dur: 0.9, type: 'sine', gain: 0.6 });
+    noise(ctx, { dur: 0.6, from: 120, to: 900, gain: 0.3, q: 0.7 });
+    noise(ctx, { at: 0.1, dur: 0.7, from: 300, to: 8000, gain: 0.18 });
+    [262, 330, 392, 523].forEach((freq, i) => {
+      tone(ctx, { freq, at: 0.35, dur: 1.4, type: 'triangle', gain: 0.1 });
+      tone(ctx, { freq: freq * 1.004, at: 0.35 + i * 0.01, dur: 1.4, type: 'sine', gain: 0.07 });
+    });
+    tone(ctx, { freq: 1047, at: 0.35, dur: 1.2, type: 'square', gain: 0.05 });
+    arpeggio(ctx, [2093, 1760, 1568, 1319, 1175, 1047], 0.07, { at: 0.55, type: 'sine', gain: 0.08, dur: 0.3 });
+    noise(ctx, { at: 0.5, dur: 1.4, from: 7000, to: 11000, gain: 0.06 });
+  },
 };
 
 export function play(sound: Sound): void {
