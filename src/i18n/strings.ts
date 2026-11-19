@@ -283,6 +283,10 @@ const fr = {
   'setup.teamSize': 'Taille de l’équipe',
   'setup.start': 'Lancer la partie',
   'setup.back': 'Retour',
+  'nav.back': 'Retour',
+  'chars.open': 'Voir la carte de {name} en grand',
+  'chars.close': 'Fermer',
+  'nav.home': 'Accueil',
   'setup.nameRequired': 'Chaque joueur a besoin d’un pseudo (20 caractères max).',
   'setup.namesDiffer': 'Choisissez des pseudos différents.',
 
@@ -422,7 +426,7 @@ const fr = {
   'final.empty': 'Aucun personnage',
   'final.rematch': 'Revanche',
   'final.waitRematch': 'Seul l’hôte peut lancer la revanche.',
-  'final.home': 'Retour à l’accueil',
+  'final.home': 'Accueil',
 
   'rules.title': 'Comment on joue',
   'rules.h.round': 'Une manche',
@@ -773,6 +777,10 @@ const en: Record<StringKey, string> = {
   'setup.teamSize': 'Team size',
   'setup.start': 'Start the game',
   'setup.back': 'Back',
+  'nav.back': 'Back',
+  'chars.open': 'See {name}’s card up close',
+  'chars.close': 'Close',
+  'nav.home': 'Home',
   'setup.nameRequired': 'Each player needs a name (20 characters at most).',
   'setup.namesDiffer': 'Pick different names.',
 
@@ -912,7 +920,7 @@ const en: Record<StringKey, string> = {
   'final.empty': 'No characters',
   'final.rematch': 'Rematch',
   'final.waitRematch': 'Only the host can start a rematch.',
-  'final.home': 'Back to home',
+  'final.home': 'Home',
 
   'rules.title': 'How to play',
   'rules.h.round': 'A round',

@@ -159,10 +159,50 @@ input {
 }
 
 .topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.5rem;
   padding: 0.6rem 0;
+  background: var(--paper);
+}
+
+/* Inner pages: a thin rule shows where the bar ends once the page scrolls under it. */
+.topbar--inner {
+  box-shadow: 0 2px 0 color-mix(in srgb, var(--ink) 12%, transparent);
+}
+
+.topbar__start {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.topbar__back {
+  flex: none;
+  padding: 0.35rem 0.8rem;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--white);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.topbar__back:focus-visible {
+  outline: 3px solid var(--seat1);
+}
+
+/* On a phone the inner pages keep the bar short: the back button replaces the name. */
+@media (max-width: 480px) {
+  .topbar--inner .topbar__brand {
+    display: none;
+  }
 }
 
 .topbar__brand {
@@ -3014,4 +3054,167 @@ input {
   .form__trio {
     grid-template-columns: 1fr;
   }
+}
+
+/* ---------- Cards with a picture ---------- */
+
+/* The picture fills the card inside its frame; the name sits on a fade that
+   melts into the picture instead of a solid band. */
+.card--photo .card__art {
+  position: absolute;
+  inset: 0;
+  background: var(--card-back);
+}
+
+.card--photo .card__art::before {
+  display: none;
+}
+
+.card--photo .card__art img {
+  /* Pictures are made at the card's own 5:7, so the whole picture shows. */
+  object-position: 50% 50%;
+}
+
+.card--photo .card__name {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1;
+  display: grid;
+  gap: 0.1rem;
+  align-content: end;
+  min-height: 42%;
+  padding: 0 0.6rem 0.7rem;
+  background: linear-gradient(
+    to top,
+    rgb(10 10 14 / 0.92) 0%,
+    rgb(10 10 14 / 0.7) 28%,
+    rgb(10 10 14 / 0.3) 62%,
+    transparent 100%
+  );
+  text-shadow: 0 1px 3px rgb(0 0 0 / 0.6);
+}
+
+.card__verse {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--spot) 55%, #ffffff);
+}
+
+.card--photo .card__tier {
+  top: 0.45rem;
+}
+
+.card--sm.card--photo .card__name {
+  min-height: 48%;
+  padding: 0 0.2rem 0.3rem;
+}
+
+.card--sm.card--photo .card__tier {
+  top: 0.25rem;
+}
+
+/* ---------- A card up close ---------- */
+
+.card--xl {
+  width: min(80vw, 22rem);
+  border-width: 5px;
+  border-radius: 20px;
+}
+
+.card--xl.card--face::after {
+  border-radius: 15px;
+  box-shadow: inset 0 0 0 5px var(--rarity, transparent);
+}
+
+.card--xl .card__name {
+  font-size: 1.6rem;
+}
+
+.card--xl .card__verse {
+  font-size: 0.95rem;
+}
+
+.card--xl .card__initials {
+  font-size: 6rem;
+}
+
+.card--xl .card__tier {
+  width: 2.6rem;
+  font-size: 1.15rem;
+}
+
+.card--xl:not(.card--photo) .card__tier {
+  top: 2.4rem;
+}
+
+.card--xl .card__universe {
+  font-size: 1rem;
+}
+
+.card-zoom {
+  width: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  margin: 0;
+  padding: 1.5rem 1rem;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+}
+
+.card-zoom[open] {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 1rem;
+  min-height: 100%;
+}
+
+.card-zoom::backdrop {
+  background: rgb(10 10 14 / 0.82);
+  backdrop-filter: blur(3px);
+}
+
+.card-zoom__caption {
+  max-width: 22rem;
+  margin: 0;
+  color: #f2f2ec;
+  text-align: center;
+}
+
+.card-zoom__caption strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+}
+
+.card-zoom__close {
+  padding: 0.5rem 1.4rem;
+  border: 2px solid #f2f2ec;
+  border-radius: 999px;
+  background: none;
+  color: #f2f2ec;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.chars__card {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+}
+
+.chars__card:focus-visible {
+  outline: 3px solid var(--seat1);
+  outline-offset: 3px;
+  border-radius: 10px;
+}
+
+.card-zoom__close:focus-visible {
+  outline: 3px solid #f2f2ec;
+  outline-offset: 3px;
 }

@@ -284,6 +284,16 @@ Short versions; details and reasons are in `docs/ARCHITECTURE.md`.
   refuses draw/bid/pass from the member sitting out. Both members of the drawing side see
   the card because the view is per side. Offline, "Teams" is a
   same-device game with team names (`LocalGame`, `opponent === 'teams'`).
+- **Navigation.** The top bar is sticky; on every page but home it starts with a button
+  (`BackButton`) that reads "Back" and goes to the previous page when there is one in
+  this tab (`previousPage`, `goBack` in `router.ts`, which keeps the trail of visited
+  pages in sessionStorage), and "Home" when the page was opened directly. The buttons at
+  the bottom of pages use the same component. The phone's back gesture works too (hash
+  routes).
+- **Card pictures.** A card with a picture (`card--photo`) shows it over the whole card
+  inside the frame, with the universe and name on a fade at the bottom; cards without one
+  keep the universe band and initials. On the Characters page a card opens up close
+  (`CardZoom`, a modal dialog, size `xl`).
 - **Leaderboards** show the top 1000; a player below that gets `around`: themselves and
   the players directly above and below, shown after a gap.
 - **Friends.** Players exchange a seven-character tag. A request must be accepted. There

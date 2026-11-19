@@ -1,3 +1,4 @@
+import { BackButton } from '../components/BackButton';
 import { CharacterCard } from '../components/CharacterCard';
 import { CHARACTERS, rarityOf, type Rarity } from '../data/characters';
 import { useI18n } from '../i18n';
@@ -51,9 +52,7 @@ export function Legal() {
       <h2>{t('legal.data.title')}</h2>
       <p>{t('legal.data')}</p>
 
-      <button type="button" className="btn" onClick={() => navigate('/')}>
-        {t('setup.back')}
-      </button>
+      <BackButton className="btn" />
     </main>
   );
 }

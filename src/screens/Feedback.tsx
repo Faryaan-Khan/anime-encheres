@@ -1,10 +1,10 @@
+import { BackButton } from '../components/BackButton';
 import { useState, type FormEvent } from 'react';
 import { useI18n } from '../i18n';
 import type { StringKey } from '../i18n/strings';
 import { toOnlineError } from '../online/api';
 import { ONLINE_AVAILABLE } from '../online/config';
 import { sendFeedback, type FeedbackCategory } from '../online/profile';
-import { navigate } from '../router';
 
 const CATEGORIES: Array<{ id: FeedbackCategory; label: StringKey }> = [
   { id: 'idea', label: 'feedback.idea' },
@@ -110,9 +110,7 @@ export function Feedback() {
         </form>
       )}
 
-      <button type="button" className="btn" onClick={() => navigate('/')}>
-        {t('setup.back')}
-      </button>
+      <BackButton className="btn" />
     </main>
   );
 }

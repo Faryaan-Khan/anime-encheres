@@ -1,3 +1,4 @@
+import { BackButton } from '../components/BackButton';
 import { useEffect, useState } from 'react';
 import { Avatar } from '../components/Avatar';
 import { countryFlag, countryName } from '../data/countries';
@@ -135,9 +136,7 @@ export function Leaderboard() {
       )}
 
       <div className="form__actions">
-        <button type="button" className="btn" onClick={() => navigate('/')}>
-          {t('setup.back')}
-        </button>
+        <BackButton className="btn" />
         <button type="button" className="btn btn--primary" onClick={() => navigate('/friends')}>
           {t('home.friends')}
         </button>

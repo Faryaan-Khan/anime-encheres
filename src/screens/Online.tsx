@@ -1,3 +1,4 @@
+import { BackButton } from '../components/BackButton';
 import { useEffect, useState, type FormEvent } from 'react';
 import { DEFAULT_OPTIONS, SettingsFields, toSettings, type GameOptions } from '../components/SettingsFields';
 import { poolFor } from '../data/characters';
@@ -29,9 +30,7 @@ export function Online() {
       <main className="page">
         <h1 className="display">{t('online.title')}</h1>
         <p className="alert">{t('online.unavailable')}</p>
-        <button type="button" className="btn" onClick={() => navigate('/')}>
-          {t('setup.back')}
-        </button>
+        <BackButton className="btn" />
       </main>
     );
   }
@@ -180,9 +179,7 @@ export function Online() {
         </button>
       </form>
 
-      <button type="button" className="btn" onClick={() => navigate('/')}>
-        {t('setup.back')}
-      </button>
+      <BackButton className="btn" />
     </main>
   );
 }

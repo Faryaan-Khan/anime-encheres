@@ -4,7 +4,8 @@ import { getCharacter, getImage, getUniverse, initials, rarityOf, tierOf } from 
 interface Props {
   /** Character id, or `null` for a face-down card. */
   id: string | null;
-  size?: 'lg' | 'sm';
+  /** `xl`: the card opened up close (Characters page). */
+  size?: 'xl' | 'lg' | 'sm';
 }
 
 const canTilt = () => {
@@ -19,7 +20,8 @@ const canTilt = () => {
  * A card drawn entirely by the app: universe colour, initials and name, in a
  * frame that shows its rarity. Higher rarities glow and carry a holographic
  * sheen that follows the pointer. If a picture exists in
- * src/assets/cards/<id>.* it replaces the initials.
+ * src/assets/cards/<id>.* it fills the whole card, with the name over a fade
+ * at the bottom.
  */
 export function CharacterCard({ id, size = 'lg' }: Props) {
   const ref = useRef<HTMLDivElement>(null);
@@ -42,7 +44,7 @@ export function CharacterCard({ id, size = 'lg' }: Props) {
 
   // Large cards lean towards the pointer, and the sheen moves with it.
   const tilt =
-    size === 'lg'
+    size !== 'sm'
       ? {
           onPointerMove: (e: PointerEvent<HTMLDivElement>) => {
             if (!ref.current || e.pointerType !== 'mouse' || !canTilt()) return;
@@ -65,12 +67,12 @@ export function CharacterCard({ id, size = 'lg' }: Props) {
     <div
       ref={ref}
       key={id}
-      className={`card card--face card--${size} rarity--${rarity}`}
+      className={`card card--face card--${size} rarity--${rarity}${image ? ' card--photo' : ''}`}
       style={style}
       data-rarity={rarity}
       {...tilt}
     >
-      {universe.name && <div className="card__universe">{universe.name}</div>}
+      {universe.name && !image && <div className="card__universe">{universe.name}</div>}
       <span className="card__tier" aria-label={`${rarity}`}>
         {rarity === 'apex' ? '★' : tierOf(character)}
       </span>
@@ -83,7 +85,10 @@ export function CharacterCard({ id, size = 'lg' }: Props) {
           </span>
         )}
       </div>
-      <div className="card__name">{character.name}</div>
+      <div className="card__name">
+        {image && universe.name && size !== 'sm' && <span className="card__verse">{universe.name}</span>}
+        {character.name}
+      </div>
       <span className="card__shine" aria-hidden="true" />
     </div>
   );
