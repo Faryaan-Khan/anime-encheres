@@ -343,10 +343,17 @@ checked to reach Google's account chooser with the right return address.
 Google shows the name and logo only after brand verification; until then it shows the
 supabase.co callback address. Both addresses are verified in Google Search Console with
 `public/google5ef95c3ea69c5ef4.html`, which must stay (pages.dev verified 18 Nov 2026).
-Brand verification has to be re-requested at least 24 hours after that ("View issues", "I
-have fixed the issues" on the Branding page); a scheduled task does it on 19 Nov 2026,
-14:10 Malaysia time. If Google later objects to the supabase.co address
-on the sign-in screen, the remaining fix is a Supabase custom domain (paid).
+Brand verification was re-requested on 19 Nov 2026 at 14:12 Malaysia time ("View issues",
+"I have fixed the issues", Proceed) and **failed again**: "The website of your home page URL
+https://anime-encheres.pages.dev is not registered to you". Search Console still shows the
+account as a verified owner of that site (HTML file method). One likely cause: Cloudflare
+Pages answers `/google5ef95c3ea69c5ef4.html` with a redirect to the same path without
+`.html` (its "pretty URLs"), which Google's brand check may not follow. Options, for the
+owner to choose: add the Search Console "HTML tag" method too (a meta tag in `index.html`,
+no redirect involved) and retry 24 hours later; or move the site to a custom domain verified
+with a DNS record, which is also the clean fix for the supabase.co address shown on the
+sign-in screen (Supabase custom domain, paid). Until branding is verified, sign-in works but
+Google shows the supabase.co address instead of the app name and logo.
 
 Google sign-in details: Everyone starts as a guest; a guest can keep their progress with
 Google (`link`) or start a new Google account and delete the guest (`fresh`), and a
