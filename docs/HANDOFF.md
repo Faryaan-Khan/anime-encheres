@@ -293,7 +293,10 @@ Short versions; details and reasons are in `docs/ARCHITECTURE.md`.
 - **Card pictures.** A card with a picture (`card--photo`) shows it over the whole card
   inside the frame, with the universe and name on a fade at the bottom; cards without one
   keep the universe band and initials. On the Characters page a card opens up close
-  (`CardZoom`, a modal dialog, size `xl`).
+  (`CardZoom`, a modal dialog, size `xl`) with a sound for its tier (`card-D` to `card-S`,
+  and `card-apex` for a universe's strongest, in `sound.ts`); up close it tilts with a
+  finger as well as a mouse (`touch-action: none` on `.card--xl`). The top bar is glass
+  (`backdrop-filter`, with an opaque fallback) and Back plays `back`.
 - **Leaderboards** show the top 1000; a player below that gets `around`: themselves and
   the players directly above and below, shown after a gap.
 - **Friends.** Players exchange a seven-character tag. A request must be accepted. There

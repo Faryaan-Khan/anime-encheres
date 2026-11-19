@@ -8,13 +8,22 @@ interface Props {
   size?: 'xl' | 'lg' | 'sm';
 }
 
-const canTilt = () => {
+const matches = (query: string) => {
   try {
-    return window.matchMedia('(hover: hover) and (prefers-reduced-motion: no-preference)').matches;
+    return window.matchMedia(query).matches;
   } catch {
     return false;
   }
 };
+
+/**
+ * Whether this pointer may tilt the card: a mouse on a device that hovers,
+ * or, on a card opened up close, a finger or a pen. Never when the player
+ * asked for less motion.
+ */
+const canTilt = (pointerType: string, closeUp: boolean) =>
+  matches('(prefers-reduced-motion: no-preference)') &&
+  (pointerType === 'mouse' ? matches('(hover: hover)') : closeUp);
 
 /**
  * A card drawn entirely by the app: universe colour, initials and name, in a
@@ -42,24 +51,37 @@ export function CharacterCard({ id, size = 'lg' }: Props) {
   const rarity = rarityOf(character);
   const style = { '--spot': universe.color } as CSSProperties;
 
-  // Large cards lean towards the pointer, and the sheen moves with it.
+  // Large cards lean towards the pointer, and the sheen moves with it. Up
+  // close they also follow a finger dragged across them.
+  const closeUp = size === 'xl';
+  const lean = (e: PointerEvent<HTMLDivElement>) => {
+    if (!ref.current || !canTilt(e.pointerType, closeUp)) return;
+    const box = ref.current.getBoundingClientRect();
+    const x = Math.min(1, Math.max(0, (e.clientX - box.left) / box.width));
+    const y = Math.min(1, Math.max(0, (e.clientY - box.top) / box.height));
+    const angle = closeUp ? 20 : 14;
+    ref.current.style.setProperty('--mx', `${x * 100}%`);
+    ref.current.style.setProperty('--my', `${y * 100}%`);
+    ref.current.style.setProperty('--rx', `${(0.5 - y) * angle}deg`);
+    ref.current.style.setProperty('--ry', `${(x - 0.5) * angle}deg`);
+  };
+  const rest = () => {
+    ref.current?.style.removeProperty('--rx');
+    ref.current?.style.removeProperty('--ry');
+  };
   const tilt =
     size !== 'sm'
       ? {
-          onPointerMove: (e: PointerEvent<HTMLDivElement>) => {
-            if (!ref.current || e.pointerType !== 'mouse' || !canTilt()) return;
-            const box = ref.current.getBoundingClientRect();
-            const x = (e.clientX - box.left) / box.width;
-            const y = (e.clientY - box.top) / box.height;
-            ref.current.style.setProperty('--mx', `${x * 100}%`);
-            ref.current.style.setProperty('--my', `${y * 100}%`);
-            ref.current.style.setProperty('--rx', `${(0.5 - y) * 14}deg`);
-            ref.current.style.setProperty('--ry', `${(x - 0.5) * 14}deg`);
+          onPointerMove: lean,
+          onPointerDown: (e: PointerEvent<HTMLDivElement>) => {
+            if (e.pointerType === 'mouse' || !closeUp) return;
+            // Keep following the finger even when it slides off the card.
+            e.currentTarget.setPointerCapture(e.pointerId);
+            lean(e);
           },
-          onPointerLeave: () => {
-            ref.current?.style.removeProperty('--rx');
-            ref.current?.style.removeProperty('--ry');
-          },
+          onPointerUp: (e: PointerEvent<HTMLDivElement>) => e.pointerType !== 'mouse' && rest(),
+          onPointerCancel: rest,
+          onPointerLeave: rest,
         }
       : {};
 
