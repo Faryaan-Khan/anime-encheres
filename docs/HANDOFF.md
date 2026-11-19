@@ -314,7 +314,8 @@ Short versions; details and reasons are in `docs/ARCHITECTURE.md`.
 - **Leaderboards** show the top 1000; a player below that gets `around`: themselves and
   the players directly above and below, shown after a gap.
 - **Online games are immersive.** While an online game is on (`Game` in `Room.tsx`), the
-  top bar is hidden and the browser's back is held (`setImmersive` in `chrome.ts`,
+  top bar and the footer (whose notices, privacy and terms links would leave the game) are
+  hidden and the browser's back is held (`setImmersive` in `chrome.ts`,
   `lockNavigation` in `router.ts`: a hash change not made by `navigate` is undone). The
   game's own Quit/Forfeit uses `navigate` and works.
 - **Friends after a match.** The results screen of any online game has "Add friend" for the
