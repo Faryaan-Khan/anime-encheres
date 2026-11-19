@@ -81,10 +81,17 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  /* The page ends at the footer: no bouncing past it into empty background
+     (phones stretch or rubber-band the page otherwise). Same at the top, which
+     also stops a pull from reloading the page in the middle of a game. */
+  overscroll-behavior-y: none;
+  /* Anything the browser still shows beyond the page is the page's own colour. */
+  background: var(--paper);
 }
 
 body {
   margin: 0;
+  overscroll-behavior-y: none;
   background: var(--paper);
   transition: background-color 0.25s, color 0.25s;
   color: var(--ink);
