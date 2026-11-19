@@ -1,3 +1,4 @@
+import { BackButton } from '../components/BackButton';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Avatar } from '../components/Avatar';
 import { useI18n } from '../i18n';
@@ -102,9 +103,7 @@ export function Friends() {
       <main className="page">
         <h1 className="display">{t('home.friends')}</h1>
         <p className="alert">{t('online.unavailable')}</p>
-        <button type="button" className="btn" onClick={() => navigate('/')}>
-          {t('setup.back')}
-        </button>
+        <BackButton className="btn" />
       </main>
     );
   }
@@ -260,9 +259,7 @@ export function Friends() {
       )}
 
       <div className="form__actions">
-        <button type="button" className="btn" onClick={() => navigate('/')}>
-          {t('setup.back')}
-        </button>
+        <BackButton className="btn" />
         <button type="button" className="btn" onClick={() => navigate('/leaderboard')}>
           {t('home.leaderboard')}
         </button>

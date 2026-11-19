@@ -1,3 +1,4 @@
+import { BackButton } from '../components/BackButton';
 import { useEffect, useState, type CSSProperties } from 'react';
 import { CharacterCard } from '../components/CharacterCard';
 import { getCharacter, getUniverse, powerIn, scaleFactor, slug } from '../data/characters';
@@ -251,9 +252,7 @@ export function Rules() {
         <button type="button" className="btn" onClick={() => navigate('/characters')}>
           {t('home.characters')}
         </button>
-        <button type="button" className="btn btn--primary" onClick={() => navigate('/')}>
-          {t('setup.back')}
-        </button>
+        <BackButton className="btn btn--primary" />
       </div>
     </main>
   );

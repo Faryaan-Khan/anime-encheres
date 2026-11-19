@@ -479,7 +479,10 @@ try {
 
   // Ana queues for Naruto, Ben for One Piece: different queues, so nobody is paired
   // until the computer arrives; each mode keeps its own trophies.
-  for (const page of [ana, ben]) await click(page, 'Back to home'); // leave the finished match
+  // Leave the finished match with the final screen's own button (not the bar's).
+  for (const page of [ana, ben]) {
+    await page.evaluate(() => [...document.querySelectorAll('.final__actions button')].find((b) => b.textContent === 'Home')?.click());
+  }
   await ana.goto(`${base}#/match`, { waitUntil: 'networkidle2' });
   await until(ana, () => sees(ana, '.modes'), 'the mode list');
   const modeLabels = await ana.$$eval('.modes__choice strong', (els) => els.map((e) => e.textContent));
@@ -777,6 +780,16 @@ try {
   const firstCaption = await solo.$eval('.demo__caption', (e) => e.textContent);
   await until(solo, async () => (await solo.$eval('.demo__caption', (e) => e.textContent)) !== firstCaption, 'the demo to move on by itself', 8000);
   await snap(solo, 'rules');
+  // A card opens up close; the bar at the top always offers a way back.
+  await solo.goto(`${base}#/characters`, { waitUntil: 'networkidle2' });
+  await until(solo, () => sees(solo, '.chars__card'), 'the characters');
+  await solo.evaluate(() => document.querySelector('.chars__card').click());
+  await until(solo, () => sees(solo, 'dialog[open] .card--xl'), 'the card up close');
+  await solo.keyboard.press('Escape');
+  await until(solo, async () => !(await sees(solo, 'dialog[open]')), 'the card to close');
+  await solo.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  const bar = await solo.$eval('.topbar__back', (e) => [e.textContent, e.getBoundingClientRect().top]);
+  assert(bar[0].includes('Back') && bar[1] >= 0 && bar[1] < 80, `the back button stays at the top (${bar})`);
   console.log('PASS  characters on each universe scale; how-to-play demo plays');
 
   // --- Dark theme, notices -------------------------------------------------------

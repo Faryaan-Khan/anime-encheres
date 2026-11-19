@@ -39,11 +39,61 @@ export function navigate(path: string): void {
   window.location.hash = path;
 }
 
+/**
+ * The pages visited in this tab, oldest first, so that "Back" can return to
+ * the page before (and say "Home" when there is none). Kept for the tab's
+ * life, so a reload keeps it.
+ */
+const TRAIL_KEY = 'ae.trail';
+const pathOf = (hash: string) => hash.replace(/^#/, '') || '/';
+
+function readTrail(): string[] {
+  try {
+    const trail = JSON.parse(sessionStorage.getItem(TRAIL_KEY) ?? '[]');
+    return Array.isArray(trail) ? trail.filter((p): p is string => typeof p === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+let trail: string[] = readTrail();
+
+function saveTrail() {
+  try {
+    sessionStorage.setItem(TRAIL_KEY, JSON.stringify(trail.slice(-50)));
+  } catch {
+    /* private mode: kept in memory */
+  }
+}
+
+/** Records the page now shown: going back pops the trail, anything else adds to it. */
+function visit(path: string) {
+  if (trail[trail.length - 1] === path) return;
+  if (trail[trail.length - 2] === path) trail = trail.slice(0, -1);
+  else trail = [...trail, path];
+  saveTrail();
+}
+
+/** The page before this one in the tab, or null when this is the first. */
+export function previousPage(): string | null {
+  return trail.length >= 2 ? trail[trail.length - 2] : null;
+}
+
+/** Back to the previous page, or home when there is none. */
+export function goBack(): void {
+  if (previousPage() !== null) window.history.back();
+  else navigate('/');
+}
+
 /** Tiny hash router: works on any static host with no server configuration. */
 export function useRoute(): Route {
-  const [route, setRoute] = useState<Route>(() => parseRoute(window.location.hash));
+  const [route, setRoute] = useState<Route>(() => {
+    visit(pathOf(window.location.hash));
+    return parseRoute(window.location.hash);
+  });
   useEffect(() => {
     const onChange = () => {
+      visit(pathOf(window.location.hash));
       setRoute(parseRoute(window.location.hash));
       window.scrollTo(0, 0);
     };

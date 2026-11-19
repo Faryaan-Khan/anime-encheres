@@ -1,3 +1,4 @@
+import { BackButton } from '../components/BackButton';
 import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from 'react';
 import { Avatar, AvatarPicker, avatarCharacter } from '../components/Avatar';
 import { countryFlag, countryName, countryOptions } from '../data/countries';
@@ -101,9 +102,7 @@ export function Profile() {
       <main className="page">
         <h1 className="display">{t('profile.title')}</h1>
         <p className="alert">{t(error ?? 'online.unavailable')}</p>
-        <button type="button" className="btn" onClick={() => navigate('/')}>
-          {t('setup.back')}
-        </button>
+        <BackButton className="btn" />
       </main>
     );
   }
@@ -371,9 +370,7 @@ export function Profile() {
       </form>
 
       <Account profile={profile} onOpened={show} signIn={signIn} />
-      <button type="button" className="btn" onClick={() => navigate('/')}>
-        {t('setup.back')}
-      </button>
+      <BackButton className="btn" />
     </main>
   );
 }

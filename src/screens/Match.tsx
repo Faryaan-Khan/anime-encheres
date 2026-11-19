@@ -1,3 +1,4 @@
+import { BackButton } from '../components/BackButton';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNow } from '../hooks';
 import { play } from '../sound';
@@ -194,9 +195,7 @@ export function Match() {
           </p>
         )}
         <div className="form__actions">
-          <button type="button" className="btn" onClick={() => navigate('/online')}>
-            {t('setup.back')}
-          </button>
+          <BackButton className="btn" />
           <button type="submit" className="btn btn--primary">
             {t('match.find')}
           </button>

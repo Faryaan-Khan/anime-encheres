@@ -1,3 +1,4 @@
+import { BackButton } from '../components/BackButton';
 import { useEffect, useState, type FormEvent } from 'react';
 import { AddFriend } from '../components/AddFriend';
 import { Avatar } from '../components/Avatar';
@@ -37,9 +38,7 @@ export function Room({ code }: { code: string }) {
     return (
       <main className="page">
         <p className="alert">{t('online.unavailable')}</p>
-        <button type="button" className="btn" onClick={() => navigate('/')}>
-          {t('setup.back')}
-        </button>
+        <BackButton className="btn" />
       </main>
     );
   }
@@ -87,9 +86,7 @@ export function ConnectedRoom({ code, matched }: { code: string; matched?: Match
         ) : (
           <p className="waiting">{t('online.connecting')}</p>
         )}
-        <button type="button" className="btn" onClick={() => navigate('/online')}>
-          {t('setup.back')}
-        </button>
+        <BackButton className="btn" />
       </main>
     );
   }
@@ -271,9 +268,7 @@ function JoinForm({ code, room }: { code: string; room: OnlineRoom }) {
           </p>
         )}
         <div className="form__actions">
-          <button type="button" className="btn" onClick={() => navigate('/online')}>
-            {t('setup.back')}
-          </button>
+          <BackButton className="btn" />
           <button type="submit" className="btn btn--primary" disabled={room.busy}>
             {t('online.join.action')}
           </button>

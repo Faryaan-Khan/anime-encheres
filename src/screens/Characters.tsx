@@ -1,4 +1,5 @@
-import { useMemo, useState, type CSSProperties } from 'react';
+import { BackButton } from '../components/BackButton';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { CharacterCard } from '../components/CharacterCard';
 import {
   ALL_SCALE,
@@ -11,7 +12,6 @@ import {
   type Character,
 } from '../data/characters';
 import { useI18n } from '../i18n';
-import { navigate } from '../router';
 
 /**
  * Every character and how strong they are, with the reason for the rating.
@@ -26,6 +26,7 @@ export function Characters() {
   const { t } = useI18n();
   const [scale, setScale] = useState<string>(ALL_SCALE);
   const [query, setQuery] = useState('');
+  const [zoomed, setZoomed] = useState<Character | null>(null);
 
   const rows = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -82,22 +83,29 @@ export function Characters() {
           : t('chars.count', { n: rows.length })}
       </p>
 
+      {zoomed && <CardZoom character={zoomed} onClose={() => setZoomed(null)} />}
+
       <ol className="chars__list">
         {rows.map(({ character, rank }) => (
-          <CharacterRow key={character.id} character={character} rank={rank} scale={scale} />
+          <CharacterRow key={character.id} character={character} rank={rank} scale={scale} onOpen={setZoomed} />
         ))}
       </ol>
 
       <div className="form__actions">
-        <button type="button" className="btn" onClick={() => navigate('/')}>
-          {t('setup.back')}
-        </button>
+        <BackButton className="btn" />
       </div>
     </main>
   );
 }
 
-function CharacterRow({ character, rank, scale }: { character: Character; rank: number; scale: string }) {
+interface RowProps {
+  character: Character;
+  rank: number;
+  scale: string;
+  onOpen(character: Character): void;
+}
+
+function CharacterRow({ character, rank, scale, onOpen }: RowProps) {
   const { t } = useI18n();
   const universe = getUniverse(character.universe);
   const own = powerIn(character, character.universe);
@@ -105,7 +113,14 @@ function CharacterRow({ character, rank, scale }: { character: Character; rank: 
   return (
     <li className="chars__row" style={{ '--spot': universe.color } as CSSProperties}>
       <span className="chars__rank">{rank}</span>
-      <CharacterCard id={character.id} size="sm" />
+      <button
+        type="button"
+        className="chars__card"
+        aria-label={t('chars.open', { name: character.name })}
+        onClick={() => onOpen(character)}
+      >
+        <CharacterCard id={character.id} size="sm" />
+      </button>
       <div className="chars__text">
         <h2 className="chars__name">{character.name}</h2>
         <p className="chars__meta">
@@ -126,5 +141,45 @@ function CharacterRow({ character, rank, scale }: { character: Character; rank: 
         </span>
       </div>
     </li>
+  );
+}
+
+/** A card opened up close, over the page. Closes with the button, a tap outside, or Escape. */
+function CardZoom({ character, onClose }: { character: Character; onClose(): void }) {
+  const { t } = useI18n();
+  const ref = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog = ref.current;
+    if (!dialog) return;
+    try {
+      dialog.showModal();
+    } catch {
+      dialog.setAttribute('open', '');
+    }
+    return () => dialog.close?.();
+  }, []);
+
+  return (
+    <dialog
+      ref={ref}
+      className="card-zoom"
+      aria-label={character.name}
+      onClose={onClose}
+      onCancel={onClose}
+      // A tap on the dark backdrop (the dialog itself, not its content) closes it.
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <CharacterCard id={character.id} size="xl" />
+      <p className="card-zoom__caption">
+        <strong>
+          {getUniverse(character.universe).name} · {t('chars.tier', { tier: tierOf(character) })}
+        </strong>
+        {character.note}
+      </p>
+      <button type="button" className="card-zoom__close" onClick={onClose}>
+        {t('chars.close')}
+      </button>
+    </dialog>
   );
 }

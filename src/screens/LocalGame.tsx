@@ -1,3 +1,4 @@
+import { BackButton } from '../components/BackButton';
 import { useEffect, useState, type FormEvent } from 'react';
 import type { BotLevel } from '../bot/bot';
 import { AUTO_BID_SECONDS, Board } from '../components/Board';
@@ -228,9 +229,7 @@ function LocalSetup({ solo, onStart }: SetupProps) {
           </p>
         )}
         <div className="form__actions">
-          <button type="button" className="btn" onClick={() => navigate('/')}>
-            {t('setup.back')}
-          </button>
+          <BackButton className="btn" />
           <button type="submit" className="btn btn--primary">
             {t('setup.start')}
           </button>

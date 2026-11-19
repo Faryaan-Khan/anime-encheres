@@ -1,4 +1,5 @@
 import { Suspense, lazy } from 'react';
+import { BackButton } from './components/BackButton';
 import { useI18n } from './i18n';
 import { navigate, useRoute } from './router';
 import { setSoundOn, useSoundOn } from './sound';
@@ -27,10 +28,14 @@ export function App() {
 
   return (
     <div className="app">
-      <header className="topbar">
-        <button type="button" className="topbar__brand" onClick={() => navigate('/')}>
-          {t('app.title')}
-        </button>
+      <header className={`topbar${route.name === 'home' ? '' : ' topbar--inner'}`}>
+        <div className="topbar__start">
+          {/* Always in reach, however long the page: back to the page before, or home. */}
+          {route.name !== 'home' && <BackButton className="topbar__back" compact />}
+          <button type="button" className="topbar__brand" onClick={() => navigate('/')}>
+            {t('app.title')}
+          </button>
+        </div>
         <div className="topbar__tools">
           <button
             type="button"
