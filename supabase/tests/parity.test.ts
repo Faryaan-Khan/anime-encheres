@@ -17,6 +17,8 @@ import { createTestDb, type TestDb } from './helpers';
 function withoutOnlineFields(view: GameView): GameView {
   const {
     matched: _matched,
+    public: _public,
+    verse: _verse,
     forfeit: _forfeit,
     idle: _idle,
     result: _result,

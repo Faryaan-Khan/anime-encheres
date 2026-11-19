@@ -44,7 +44,7 @@ if (!chromePath) {
 
 const db = new PGlite();
 await db.exec('create role anon nologin; create role authenticated nologin;');
-for (const file of ['0001_init.sql', '0002_matchmaking.sql', '0003_ranking.sql', '0004_character_powers.sql', '0005_accounts_and_opponent.sql', '0006_modes_and_friends.sql', '0007_seasons.sql', '0008_opponent_brain.sql', '0009_google_accounts.sql', '0010_fair_play.sql', '0011_autopilot.sql', '0012_passes_and_scales.sql', '0013_old_site_and_auto_bid.sql', '0014_seasons_names_avatars.sql']) {
+for (const file of ['0001_init.sql', '0002_matchmaking.sql', '0003_ranking.sql', '0004_character_powers.sql', '0005_accounts_and_opponent.sql', '0006_modes_and_friends.sql', '0007_seasons.sql', '0008_opponent_brain.sql', '0009_google_accounts.sql', '0010_fair_play.sql', '0011_autopilot.sql', '0012_passes_and_scales.sql', '0013_old_site_and_auto_bid.sql', '0014_seasons_names_avatars.sql', '0015_public_rooms.sql']) {
   await db.exec(readFileSync(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8'));
 }
 
@@ -540,6 +540,40 @@ try {
   await until(ben, () => sees(ben, '.lobby__code'), 'the lobby');
   await until(ana, async () => (await ana.$$('.lobby__players li')).length === 2 && !(await sees(ana, '.lobby__empty')), 'Ben in the lobby');
   console.log('PASS  friends: request by tag, friends ranking, invitation to a private room');
+
+  // --- Public rooms ------------------------------------------------------------
+
+  // Ben opens a public room in One Piece; Ana finds it in the list and joins.
+  await ben.goto(`${base}#/online`, { waitUntil: 'networkidle2' });
+  await until(ben, () => sees(ben, 'input[name=visibility]'), 'the room form');
+  await ben.evaluate(() => {
+    [...document.querySelectorAll('input[name=universe]')]
+      .find((i) => i.closest('label').textContent.startsWith('One Piece'))
+      .click();
+    document.querySelectorAll('input[name=visibility]')[1].click();
+  });
+  await click(ben, 'Create the room');
+  await until(ben, () => sees(ben, '.lobby__code'), 'the public lobby');
+  assert((await text(ben)).includes('Public room'), 'the lobby says the room is public');
+  const publicCode = await ben.$eval('.lobby__code', (e) => e.textContent.trim());
+
+  await ana.goto(`${base}#/online`, { waitUntil: 'networkidle2' });
+  await until(ana, () => sees(ana, '.public-rooms__row'), 'the list of public rooms');
+  const listed = await ana.$eval('.public-rooms__row', (e) => e.textContent);
+  assert(listed.includes('One Piece') && listed.includes('Ben') && listed.includes('1/2'), `the room is listed (${listed})`);
+  await snap(ana, 'public-rooms');
+  await ana.evaluate(() => document.querySelector('.public-rooms__row button').click());
+  await until(ana, () => sees(ana, '.lobby__code'), 'the lobby after joining from the list');
+  assert((await ana.$eval('.lobby__code', (e) => e.textContent.trim())) === publicCode, 'joined the listed room');
+  assert(await sees(ana, '.lobby__players .avatar'), 'players show their pictures in a public room');
+  assert(await click(ana, 'Add friend'), 'other players can be added as friends');
+  await until(ana, async () => (await text(ana)).includes('You are already friends.'), 'the answer to the request');
+  await until(ben, () => click(ben, 'Start the game'), 'Ana to appear');
+  await until(ben, () => sees(ben, '.scoreboard'), 'the public game');
+  const solo2 = await phone('lister');
+  await solo2.goto(`${base}#/online`, { waitUntil: 'networkidle2' });
+  await until(solo2, async () => (await text(solo2)).includes('No public rooms right now'), 'a started room leaves the list');
+  console.log('PASS  public rooms: listed, joined from the list, friend request, gone once started');
 
   // --- Home ---------------------------------------------------------------------
 

@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { AddFriend } from '../components/AddFriend';
 import { Avatar } from '../components/Avatar';
 import { Board } from '../components/Board';
 import { Final } from '../components/Final';
@@ -298,7 +299,7 @@ function Lobby({ view, room }: { view: GameView; room: OnlineRoom }) {
 
   return (
     <main className="page">
-      <p className="lobby__share">{t('lobby.share')}</p>
+      <p className="lobby__share">{t(view.public ? 'lobby.share.public' : 'lobby.share')}</p>
       <h1 className="lobby__code display">{view.code}</h1>
       <button type="button" className="btn" onClick={() => void copy()}>
         {copied ? t('lobby.copied') : t('lobby.copy')}
@@ -307,12 +308,14 @@ function Lobby({ view, room }: { view: GameView; room: OnlineRoom }) {
       <ul className="lobby__players">
         {view.players.map((p) => (
           <li key={p.seat} className={`seat${p.seat}`}>
+            {view.public && <Avatar value={p.avatar} size="sm" />}
             <strong>{p.name}</strong>
             <span>
               {[p.seat === 0 ? t('lobby.host') : null, p.seat === view.you ? t('lobby.you') : null]
                 .filter(Boolean)
                 .join(', ')}
             </span>
+            {p.seat !== view.you && p.tag && <AddFriend tag={p.tag} />}
           </li>
         ))}
         {!ready && <li className="lobby__empty">{t('lobby.waiting')}</li>}

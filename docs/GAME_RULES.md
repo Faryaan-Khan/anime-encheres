@@ -62,6 +62,20 @@ sees only what a player in its seat would see. "Computer" bids by feel and bluff
 then. "Computer, ultra hard" counts the cards that have come out and plays out the rest of
 the game in its head before every bid.
 
+### Teams on one device
+
+Choose "Teams" to play two teams on one phone, with as many people in each as you like.
+Give each team a name and pass the phone around; the rules are the same as for two
+players.
+
+### Rooms
+
+A room is a game with the rules its host chooses: universe, budget and team size. No
+trophies are at stake. A room reached "with the code" is private: share the code or
+invite a friend. A public room appears in the list of public rooms on the Play online
+page, where anyone can join it; it is a way to try a universe or to meet players, and
+each player has an "Add friend" button.
+
 ### Quick match
 
 "Quick match" finds you an opponent online. You choose a mode: one universe, or all of
@@ -182,6 +196,20 @@ Choisissez « Jouer contre l'ordinateur » et un niveau. L'ordinateur suit les m
 et ne voit que ce qu'un joueur à sa place verrait. « Ordinateur » mise au feeling et
 bluffe parfois. « Ordinateur ultra » compte les cartes sorties et simule la suite de la
 partie avant chaque mise.
+
+### Équipes sur un appareil
+
+Choisis « Équipes » pour jouer à deux équipes sur un seul téléphone, avec autant de
+joueurs que vous voulez dans chacune. Donnez un nom à chaque équipe et faites tourner le
+téléphone ; les règles sont les mêmes qu'à deux joueurs.
+
+### Salons
+
+Un salon est une partie avec les règles choisies par son hôte : univers, budget et taille
+des équipes. Aucun trophée n'est en jeu. Un salon « avec le code » est privé : partage le
+code ou invite un ami. Un salon public apparaît dans la liste des salons publics de la
+page Jouer en ligne, où tout le monde peut le rejoindre ; c'est un moyen d'essayer un
+univers ou de rencontrer des joueurs, et chaque joueur a un bouton « Ajouter en ami ».
 
 ### Partie rapide
 

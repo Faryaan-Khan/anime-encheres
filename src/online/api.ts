@@ -94,7 +94,19 @@ async function rpc<T = GameView>(fn: string, args: Record<string, unknown>): Pro
   return result.data as T;
 }
 
-export function createRoom(name: string, settings: Settings, pool: string[]): Promise<GameView> {
+export interface RoomOptions {
+  /** Listed for everyone online (a public room), or reached only by its code. */
+  public?: boolean;
+  /** The universe id, or `mix`, shown in the list of public rooms. */
+  verse?: string;
+}
+
+export function createRoom(
+  name: string,
+  settings: Settings,
+  pool: string[],
+  options: RoomOptions = {},
+): Promise<GameView> {
   return rpc('create_room', {
     p_token: getPlayerToken(),
     p_name: name,
@@ -103,7 +115,26 @@ export function createRoom(name: string, settings: Settings, pool: string[]): Pr
     p_min_bid: settings.minBid,
     p_increment: settings.increment,
     p_pool: pool,
+    p_public: options.public ?? false,
+    p_verse: options.verse ?? null,
   });
+}
+
+/** A public room waiting for players. */
+export interface PublicRoom {
+  code: string;
+  host: string;
+  verse: string;
+  budget: number;
+  teamSize: number;
+  players: number;
+  seats: number;
+  /** This device created it. */
+  mine: boolean;
+}
+
+export function getPublicRooms(): Promise<PublicRoom[]> {
+  return rpc('public_rooms', { p_token: getPlayerToken() });
 }
 
 export function joinRoom(code: string, name: string): Promise<GameView> {
