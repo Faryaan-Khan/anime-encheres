@@ -185,6 +185,9 @@ const fr = {
   'friends.list': 'Mes amis ({n})',
   'friends.empty': 'Pas encore d’amis. Partage ton tag.',
   'friends.remove': 'Retirer',
+  'friends.remove.ask': 'Retirer cet ami ?',
+  'friends.remove.yes': 'Oui, retirer',
+  'friends.remove.no': 'Garder',
   'friends.outgoing': 'Demandes envoyées',
   'friends.cancel': 'Annuler',
   'lobby.invite': 'Inviter un ami',
@@ -207,7 +210,7 @@ const fr = {
     'Enchères Animés (Anime Auction Draft en anglais) est un jeu de fans gratuit et non officiel. Il n’est ni affilié, ni soutenu, ni approuvé par les auteurs, éditeurs, studios ou ayants droit des séries citées. Les noms des personnages et des séries appartiennent à leurs propriétaires et ne servent qu’à identifier les personnages dans le jeu. Aucun droit sur eux n’est revendiqué.',
   'legal.art.title': 'Images',
   'legal.art':
-    'Le jeu ne contient aucune illustration officielle ni dessin de fan des personnages : chaque carte est dessinée par le jeu à partir du nom, de l’univers et de la rareté.',
+    'Le jeu ne contient aucune illustration officielle. Certaines cartes montrent une image du personnage faite pour ce jeu de fans ; le personnage reste la propriété de ses ayants droit, et toute image est retirée sur simple demande (voir plus bas). Les autres cartes sont dessinées par le jeu à partir du nom, de l’univers et de la rareté.',
   'legal.ratings.title': 'Notes de puissance',
   'legal.ratings':
     'Les notes, rangs et verdicts sont des choix éditoriaux faits pour le jeu. Ce ne sont pas des classements officiels.',
@@ -215,6 +218,9 @@ const fr = {
   'legal.rights':
     'Si vous détenez des droits sur un élément du jeu et souhaitez qu’il soit modifié ou retiré, envoyez une demande avec le sujet « Demande d’ayant droit » dans le formulaire d’avis, en indiquant l’élément concerné et un moyen de vous contacter. Chaque demande valable est traitée rapidement.',
   'legal.rights.action': 'Envoyer une demande',
+  'legal.credits.title': 'Crédits',
+  'legal.credits':
+    'Drapeaux : Twemoji, © Twitter, Inc. et contributeurs, sous licence CC-BY 4.0 (creativecommons.org/licenses/by/4.0), sous-ensemble par TalkJS.',
   'legal.data.title': 'Données',
   'legal.data':
     'Le jeu garde un pseudonyme, un pays facultatif, un avatar, tes trophées et tes parties. Aucune adresse e-mail ni mot de passe n’est demandé.',
@@ -684,6 +690,9 @@ const en: Record<StringKey, string> = {
   'friends.list': 'My friends ({n})',
   'friends.empty': 'No friends yet. Share your tag.',
   'friends.remove': 'Remove',
+  'friends.remove.ask': 'Remove this friend?',
+  'friends.remove.yes': 'Yes, remove',
+  'friends.remove.no': 'Keep',
   'friends.outgoing': 'Requests sent',
   'friends.cancel': 'Cancel',
   'lobby.invite': 'Invite a friend',
@@ -706,7 +715,7 @@ const en: Record<StringKey, string> = {
     'Anime Auction Draft (Enchères Animés in French) is a free, unofficial fan game. It is not affiliated with, sponsored by or endorsed by the creators, publishers, studios or rights holders of any series it mentions. Character and series names belong to their owners and are used only to identify the characters in the game. No rights in them are claimed.',
   'legal.art.title': 'Pictures',
   'legal.art':
-    'The game contains no official artwork and no fan drawings of the characters: every card is drawn by the game from the name, the universe and the rarity.',
+    'The game contains no official artwork. Some cards show a picture of the character made for this fan game; the character still belongs to its rights holders, and any picture is removed on request (see below). The other cards are drawn by the game from the name, the universe and the rarity.',
   'legal.ratings.title': 'Power ratings',
   'legal.ratings':
     'Ratings, tiers and verdicts are editorial choices made for the game. They are not official rankings.',
@@ -714,6 +723,9 @@ const en: Record<StringKey, string> = {
   'legal.rights':
     'If you own rights in something shown in the game and want it changed or removed, send a request with the topic "Rights request" through the feedback form, saying what it concerns and how to reach you. Every valid request is handled promptly.',
   'legal.rights.action': 'Send a request',
+  'legal.credits.title': 'Credits',
+  'legal.credits':
+    'Flags: Twemoji, © Twitter, Inc. and contributors, licensed under CC-BY 4.0 (creativecommons.org/licenses/by/4.0), subset by TalkJS.',
   'legal.data.title': 'Data',
   'legal.data':
     'The game keeps a nickname, an optional country, an avatar, your trophies and your games. It never asks for an email address or a password.',

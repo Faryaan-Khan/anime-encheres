@@ -51,7 +51,7 @@ export function Leaderboard() {
     { id: 'friends', label: t('board.tab.friends') },
     {
       id: 'country',
-      label: country ? `${countryFlag(country)} ${countryName(country, lang)}` : t('board.tab.country'),
+      label: country ? `${countryName(country, lang)} ${countryFlag(country)}` : t('board.tab.country'),
       disabled: !country,
     },
   ];
@@ -153,8 +153,13 @@ function LeaderRow({ row }: { row: LeaderboardRow }) {
       <span className="leaders__rank">{row.rank}</span>
       <Avatar value={row.avatar} size="sm" />
       <span className="leaders__name">
-        {row.country && <span title={countryName(row.country, lang)}>{countryFlag(row.country)} </span>}
         {row.name}
+        {row.country && (
+          <span className="leaders__flag" title={countryName(row.country, lang)}>
+            {' '}
+            {countryFlag(row.country)}
+          </span>
+        )}
       </span>
       <span className="leaders__value">{row.value}</span>
     </li>

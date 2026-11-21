@@ -323,6 +323,12 @@ Short versions; details and reasons are in `docs/ARCHITECTURE.md`.
   server keeps a pretend request (`ghost_requests`), shown under requests sent and never
   answered, so players do not learn it was the computer. The Friends screen has "Reject
   all"; the home screen shows the number of requests waiting.
+- **Flags.** Countries are shown as flag emoji after the name (leaderboards, profile).
+  Windows has no flag emoji and shows two letters ("FR"), so the site bundles
+  `src/assets/fonts/TwemojiCountryFlags.woff2` (Twemoji, CC-BY 4.0, credited on the
+  Notices page), first in both font stacks but limited by `unicode-range` to the flag
+  characters, so it is downloaded only by pages that show a flag.
+- **Removing a friend** takes two taps ("Remove", then "Yes, remove" or "Keep").
 - **Friends.** Players exchange a seven-character tag. A request must be accepted. There
   is a friends leaderboard, and the host of a private room can invite a friend, who sees
   the invitation on the home screen.
@@ -395,12 +401,25 @@ Google account, so test it by hand after changes.
   here: the characters' owners keep their rights whoever or whatever draws them. Keep the
   source of every picture in a credits file so any one can be removed quickly, and make
   sure app builds cannot include the web pictures (a build setting that leaves them out).
-  The owner will send the pictures as zip files named after the characters; convert them
-  to small WebP (about 420×588) named by character id in `src/assets/cards/`. The first
-  six (Zeno, Grand Priest, Whis, Vados, Beerus, Gogeta) went live on 19 Nov 2026, and nine
-  more the same day (Frieza, Champa, Vegito, Jiren, Goku, Broly, Vegeta, Gohan, Zamasu):
-  pictures not already 5:7 are cropped to it at the sides. A test checks that every file
-  matches a character id and is listed in `CREDITS.md`.
+  **How pictures arrive (from 22 Nov 2026):** the owner keeps the originals in a folder
+  `card-art` inside his local copy of the project (`Desktop\AnimeDraft\card-art` on his
+  PC, connected to the Claude chat), one sub-folder per universe, each picture named
+  after the character. `card-art/` is git-ignored: originals never go to GitHub. When he
+  says there are new pictures, stage the folder into the session and run
+  `python3 scripts/card_art.py <folder>`: it matches names (a close spelling is accepted
+  and reported, e.g. "Caulifa" → Caulifla), redoes only new or changed pictures (content
+  hashes in `src/assets/cards/sources.json`), cuts wider pictures to 5:7 around the point
+  in `src/assets/cards/crops.json`, writes the WebP and the `CREDITS.md` row, and lists
+  every character whose face must be placed. Pictures outside a universe folder are
+  ignored on purpose (for example "Imu mommy.png", which the owner keeps out of the
+  game). As of 22 Nov 2026: all 52 Dragon Ball characters, and Imu. The Notices page's
+  "Pictures" paragraph says some cards show pictures made for the fan game, removed on
+  request (until 22 Nov 2026 it still said the game had none).
+- **Faces for profile pictures** are placed by hand in `src/data/faces.json` (centre x, y
+  and face width, as fractions of the card), by looking at each card; `facePlacement` in
+  `Avatar.tsx` zooms the card so the face fills the circle. A face detector for anime
+  (lbpcascade_animeface) was tried and found 3 faces out of 53, so it is not used. The
+  test in `characters.test.ts` fails if a picture has no placed face.
 
 ### Waiting on the owner
 

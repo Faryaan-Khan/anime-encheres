@@ -49,6 +49,9 @@ export function Legal() {
         {t('legal.rights.action')}
       </button>
 
+      <h2>{t('legal.credits.title')}</h2>
+      <p>{t('legal.credits')}</p>
+
       <h2>{t('legal.data.title')}</h2>
       <p>{t('legal.data')}</p>
 

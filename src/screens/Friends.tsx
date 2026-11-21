@@ -38,6 +38,8 @@ export function Friends() {
   const [error, setError] = useState<StringKey | null>(null);
   const [status, setStatus] = useState<AddFriendStatus | null>(null);
   const [copied, setCopied] = useState(false);
+  /** The friend whose "Remove" was tapped once: a second tap, on "Yes, remove", is needed. */
+  const [confirming, setConfirming] = useState<string | null>(null);
 
   useEffect(() => {
     if (!ONLINE_AVAILABLE) return;
@@ -227,14 +229,29 @@ export function Friends() {
                     p,
                     <>
                       <span className="leaders__value">{p.trophies}</span>
-                      <button
-                        type="button"
-                        className="link"
-                        disabled={busy}
-                        onClick={() => void run(() => removeFriend(p.id))}
-                      >
-                        {t('friends.remove')}
-                      </button>
+                      {confirming === p.id ? (
+                        <span className="friends__confirm" role="group" aria-label={t('friends.remove.ask')}>
+                          <span>{t('friends.remove.ask')}</span>
+                          <button
+                            type="button"
+                            className="link link--danger"
+                            disabled={busy}
+                            onClick={() => {
+                              setConfirming(null);
+                              void run(() => removeFriend(p.id));
+                            }}
+                          >
+                            {t('friends.remove.yes')}
+                          </button>
+                          <button type="button" className="link" onClick={() => setConfirming(null)}>
+                            {t('friends.remove.no')}
+                          </button>
+                        </span>
+                      ) : (
+                        <button type="button" className="link" disabled={busy} onClick={() => setConfirming(p.id)}>
+                          {t('friends.remove')}
+                        </button>
+                      )}
                     </>,
                   ),
                 )}

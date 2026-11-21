@@ -7,6 +7,15 @@
  * flat. Seat colours (red-orange / blue) always mean "this player".
  */
 
+/* Country flags for Windows, which has no flag emoji: used only for the flag
+   characters (unicode-range), and only downloaded when a page shows one. */
+@font-face {
+  font-family: 'Twemoji Country Flags';
+  src: url('./assets/fonts/TwemojiCountryFlags.woff2') format('woff2');
+  unicode-range: U+1F1E6-1F1FF, U+1F3F4, U+E0062-E007F;
+  font-display: swap;
+}
+
 :root {
   --paper: #eceee8;
   --ink: #17171a;
@@ -18,8 +27,8 @@
   --seat1: #2f5bff;
   --seat2: #12a150;
 
-  --font-display: 'Dela Gothic One', 'Arial Black', 'Helvetica Neue', sans-serif;
-  --font-body: 'Zen Kaku Gothic New', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Twemoji Country Flags', 'Dela Gothic One', 'Arial Black', 'Helvetica Neue', sans-serif;
+  --font-body: 'Twemoji Country Flags', 'Zen Kaku Gothic New', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
   --line: 3px solid var(--ink);
   --radius: 12px;
@@ -67,6 +76,15 @@
 
 [data-theme='dark'] :is(.leaders__row--you, .modes__choice input:checked + span, .team--winner, .badge--earned) * {
   color: var(--on-accent);
+}
+
+/* ...except on the cards inside them, whose names sit on a dark band or fade. */
+[data-theme='dark'] :is(.leaders__row--you, .team--winner) .card :is(.card__name, .card__name :not(.card__verse)) {
+  color: #ffffff;
+}
+
+[data-theme='dark'] :is(.leaders__row--you, .team--winner) .card .card__verse {
+  color: color-mix(in srgb, var(--spot) 55%, #ffffff);
 }
 
 [data-theme='dark'] .card {
@@ -2830,6 +2848,18 @@ input {
   transform-origin: 50% 25%;
 }
 
+.avatar--character:has(.avatar__face) {
+  position: relative;
+}
+
+/* Placed on the face by facePlacement() (src/data/faces.json). */
+.avatar--character img.avatar__face {
+  position: absolute;
+  max-width: none;
+  object-fit: fill;
+  transform: none;
+}
+
 .avatar--none,
 .avatar--clear {
   background: #c9ccd1;
@@ -3451,4 +3481,27 @@ input {
   line-height: 1;
   vertical-align: middle;
   text-decoration: none;
+}
+
+/* Removing a friend takes two taps: "Remove", then "Yes, remove". */
+.friends__confirm {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  align-items: baseline;
+  justify-content: end;
+  font-weight: 700;
+}
+
+.link--danger {
+  color: var(--danger, #c0392b);
+  font-weight: 700;
+}
+
+[data-theme='dark'] .link--danger {
+  color: #ff7a6b;
+}
+
+.leaders__flag {
+  white-space: nowrap;
 }

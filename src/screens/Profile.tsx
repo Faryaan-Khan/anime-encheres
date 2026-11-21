@@ -154,7 +154,7 @@ export function Profile() {
             <p className="hero-card__sub">
               {profile.country && (
                 <span>
-                  {countryFlag(profile.country)} {countryName(profile.country, lang)}
+                  {countryName(profile.country, lang)} {countryFlag(profile.country)}
                 </span>
               )}
               <span>#{profile.tag}</span>

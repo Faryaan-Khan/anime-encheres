@@ -125,6 +125,13 @@ describe('card pictures', () => {
       expect(ids.has(file.replace(/\.[^.]+$/, '')), `${file} matches a character id`).toBe(true);
       expect(credits.includes(`| ${file} |`), `${file} is in CREDITS.md`).toBe(true);
     }
-    expect(pictures.length).toBeGreaterThanOrEqual(15);
+    expect(pictures.length).toBeGreaterThanOrEqual(53);
+    // Every picture has its face placed by hand for profile pictures (src/data/faces.json).
+    const faces = JSON.parse(readFileSync(new URL('../data/faces.json', import.meta.url), 'utf8'));
+    for (const file of pictures) {
+      const face = faces[file.replace(/\.[^.]+$/, '')];
+      expect(face && !face.guess, `${file} has a face position`).toBe(true);
+    }
+    for (const id of Object.keys(faces)) expect(ids.has(id), `faces.json: ${id} is a character`).toBe(true);
   });
 });

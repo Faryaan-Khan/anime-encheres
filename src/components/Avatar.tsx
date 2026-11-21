@@ -1,5 +1,6 @@
 import { useState, type CSSProperties } from 'react';
 import { CHARACTERS, UNIVERSES, getCharacter, getImage, getUniverse, initials } from '../data/characters';
+import faces from '../data/faces.json';
 import { useI18n } from '../i18n';
 
 /**
@@ -19,6 +20,24 @@ export function avatarCharacter(value: AvatarValue): string | null {
   return getCharacter(value).universe === 'unknown' ? null : value;
 }
 
+type Face = { x: number; y: number; size: number };
+
+/**
+ * Where to place a card picture inside the circle so that the face fills it.
+ * `faces.json` gives each face's centre (x, y) and width (size) as fractions of the
+ * card; the picture is scaled so the face is about 80% of the circle, then moved so
+ * the face sits in the middle, without leaving a gap at any edge.
+ */
+export function facePlacement(face: Face | undefined): CSSProperties | undefined {
+  if (!face) return undefined;
+  const width = Math.min(Math.max(0.8 / face.size, 1), 6);
+  const height = width * 1.4;
+  const left = Math.min(Math.max(0.5 - face.x * width, 1 - width), 0);
+  const top = Math.min(Math.max(0.5 - face.y * height, 1 - height), 0);
+  const pct = (n: number) => `${(n * 100).toFixed(2)}%`;
+  return { width: pct(width), height: pct(height), left: pct(left), top: pct(top) };
+}
+
 export function Avatar({ value, size = 'md' }: { value: AvatarValue; size?: 'sm' | 'md' | 'lg' }) {
   const id = avatarCharacter(value);
   if (!id) {
@@ -33,7 +52,18 @@ export function Avatar({ value, size = 'md' }: { value: AvatarValue; size?: 'sm'
   const style = { '--spot': getUniverse(character.universe).color } as CSSProperties;
   return (
     <span className={`avatar avatar--${size} avatar--character`} style={style} aria-hidden="true">
-      {image ? <img src={image} alt="" draggable={false} loading="lazy" /> : initials(character.name)}
+      {image ? (
+        <img
+          src={image}
+          alt=""
+          draggable={false}
+          loading="lazy"
+          className={id in faces ? 'avatar__face' : undefined}
+          style={facePlacement((faces as Record<string, Face>)[id])}
+        />
+      ) : (
+        initials(character.name)
+      )}
     </span>
   );
 }
