@@ -412,12 +412,14 @@ Google account, so test it by hand after changes.
   in `src/assets/cards/crops.json`, writes the WebP and the `CREDITS.md` row, and lists
   every character whose face must be placed. Pictures outside a universe folder are
   ignored on purpose (for example "Imu mommy.png", which the owner keeps out of the
-  game). As of 22 Nov 2026: all 52 Dragon Ball characters, and Imu. The Notices page's
+  game). As of 23 Nov 2026: all 52 Dragon Ball characters and 27 One Piece characters. The Notices page's
   "Pictures" paragraph says some cards show pictures made for the fan game, removed on
   request (until 22 Nov 2026 it still said the game had none).
 - **Faces for profile pictures** are placed by hand in `src/data/faces.json` (centre x, y
   and face width, as fractions of the card), by looking at each card; `facePlacement` in
-  `Avatar.tsx` zooms the card so the face fills the circle. A face detector for anime
+  `Avatar.tsx` frames the whole head and the top of the shoulders (face under half the
+  circle, a little above the middle), as the owner asked on 23 Nov 2026 after a first,
+  tighter version showed only the face. A face detector for anime
   (lbpcascade_animeface) was tried and found 3 faces out of 53, so it is not used. The
   test in `characters.test.ts` fails if a picture has no placed face.
 
