@@ -55,6 +55,9 @@ the client that calls them.
 - Routes are hash routes (`#/match`, `#/room/CODE`); see `src/router.ts`.
 - Commits are authored as `Faryaan Khan <Faryaan-Khan@users.noreply.github.com>`. The
   owner's personal email must not appear in the repository.
+- Commit messages carry no AI co-author or session lines (no `Co-Authored-By: Claude`,
+  no `Claude-Session:`). The owner asked for this on 23 Nov 2026, and the whole history
+  was rewritten that day to remove the ones already there (old commit ids changed).
 - Card pictures: website only (see "Character rights" below). They live in
   `src/assets/cards/<character-id>.webp`, each recorded in `CREDITS.md` there; cards
   without one are drawn from the name. Build app versions with `VITE_CARD_IMAGES=off`.
@@ -346,7 +349,7 @@ an Edge Function; rarity cards; dark theme; sound; security headers; French and 
 (https://anime-encheres.pages.dev), after Netlify's free credits ran out (there, each
 production deploy and every GB of traffic costs credits). Netlify cannot publish again
 before its credits reset on 16 Dec, so `anime-encheres.netlify.app` still serves build
-`main@0bc5ee8`, which knows nothing about the pass limit; `0013_old_site_and_auto_bid.sql` lets
+`main@304a7cd`, which knows nothing about the pass limit; `0013_old_site_and_auto_bid.sql` lets
 requests from that origin pass without limit. **To do on or after 16 Dec:** turn the
 Netlify site into a redirect to the new address (one deploy, with a `public/_redirects`
 line `/* https://anime-encheres.pages.dev/:splat 301`), then remove the old-site
