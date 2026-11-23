@@ -423,6 +423,15 @@ Google account, so test it by hand after changes.
   (lbpcascade_animeface) was tried and found 3 faces out of 53, so it is not used. The
   test in `characters.test.ts` fails if a picture has no placed face.
 
+### Decided, to build later
+
+- **Real offline play.** Today "Play offline" needs internet to open the site (there is
+  no service worker); only the game itself runs without the server. Agreed on 23 Nov
+  2026: make the site work offline (a service worker caching the built files after the
+  first visit, installable to the home screen, online modes saying "no connection", and a
+  "new version, tap to update" notice). The owner asked to wait until the game is
+  further along, so do not build it until he says so.
+
 ### Waiting on the owner
 
 - **When to switch off the computer opponent.** The owner's idea is once there are
