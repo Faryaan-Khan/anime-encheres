@@ -415,7 +415,7 @@ Google account, so test it by hand after changes.
   in `src/assets/cards/crops.json`, writes the WebP and the `CREDITS.md` row, and lists
   every character whose face must be placed. Pictures outside a universe folder are
   ignored on purpose (for example "Imu mommy.png", which the owner keeps out of the
-  game). As of 27 Nov 2026: all 52 Dragon Ball characters, all 62 One Piece characters and 6 Naruto ones (Hagoromo, Kaguya, Madara, Naruto, Obito, Sasuke). The folder also holds Bellamy, Brogy and Dorry, who are not in the game's One Piece list, so the script skips them. The Notices page's
+  game). As of 28 Nov 2026: all 52 Dragon Ball characters, all 62 One Piece characters and 22 of the 58 Naruto ones. The folder also holds Bellamy, Brogy and Dorry, who are not in the game's One Piece list, so the script skips them. The Notices page's
   "Pictures" paragraph says some cards show pictures made for the fan game, removed on
   request (until 22 Nov 2026 it still said the game had none).
 - **Faces for profile pictures** are placed by hand in `src/data/faces.json` (centre x, y
